@@ -64,6 +64,11 @@ function doGet(e) {
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
+// Retorna a URL pública do webapp (para uso no cliente via google.script.run)
+function getAppUrl() {
+  return ScriptApp.getService().getUrl();
+}
+
 // Retorna lista de jogadores
 function getJogadores() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -238,8 +243,9 @@ function calcularFechamento(mesAno, custoSegunda, custoSexta) {
   };
   
   todos.forEach(j => {
-    let pagoSeg = pagamentos.some(p => String(p.idJogador) === String(j.id) && p.diaSemana === 'Segunda');
-    let pagoSex = pagamentos.some(p => String(p.idJogador) === String(j.id) && p.diaSemana === 'Sexta');
+    // Só considera pagamentos ativos (status 'Pago')
+    let pagoSeg = pagamentos.some(p => String(p.idJogador) === String(j.id) && p.diaSemana === 'Segunda' && p.status === 'Pago');
+    let pagoSex = pagamentos.some(p => String(p.idJogador) === String(j.id) && p.diaSemana === 'Sexta' && p.status === 'Pago');
     
     // Suporte a categorias legadas ('MENS' ou 'Mensalista')
     let tipoUpper = String(j.tipo).toUpperCase();
@@ -278,7 +284,9 @@ function calcularFechamento(mesAno, custoSegunda, custoSexta) {
     let arrecadadoMensalistas = 0;
     let arrecadadoAvulsos = 0;
     
+    // Só contabiliza pagamentos com status 'Pago' (ignora 'Cancelado')
     pagamentos.forEach(p => { 
+      if (p.status !== 'Pago') return;
       let valor = parseFloat(String(p.valor).replace(',', '.')) || 0;
       // Se a data tem mais de 7 caracteres (ex: 06/03/2026), é pagamento diário de avulso
       if (p.mesAno && p.mesAno.length > 7) {
@@ -351,7 +359,7 @@ function deletarConfigFinanceira(mesAno) {
   }
 }
 
-// Obtém pagamentos de um mês específico
+// Obtém pagamentos de um mês específico (retorna todos os registros, inclusive Cancelados, para histórico)
 function getPagamentos(mesAno) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_PAGAMENTOS);
@@ -372,12 +380,12 @@ function getPagamentos(mesAno) {
       diaSemana: hasNameCol ? row[2] : row[1],
       mesAno: mAno,
       valor: hasNameCol ? row[4] : (row[3] || 0),
-      status: row.length >= 6 ? row[5] : 'Pago'
+      status: row.length >= 6 && row[5] ? row[5] : 'Pago'
     };
   }).filter(p => p !== null);
 }
 
-// Registra um pagamento (Toggle: Adiciona se não existe, remove se existe)
+// Registra um pagamento (Toggle de status: Pago <-> Cancelado, mas NUNCA deleta o registro)
 function registrarPagamento(idJogador, nome, diaSemana, mesAno, valor) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(SHEET_PAGAMENTOS);
@@ -396,17 +404,19 @@ function registrarPagamento(idJogador, nome, diaSemana, mesAno, valor) {
     let rowDia = data[i].length >= 5 ? data[i][2] : data[i][1];
     let rowMes = data[i].length >= 5 ? tratarMesAno(data[i][3]) : tratarMesAno(data[i][2]);
     
-    // Se for data exata (avulso) ou se for o mesAno (mensalista)
+    // Registro já existe: alterna o status (Pago <-> Cancelado) sem deletar
     if(rowId === idJogador && rowDia === diaSemana && rowMes === mesAno) {
-      sheet.deleteRow(i + 1);
-      return getPagamentos(mesAno.length > 7 ? mesAno.split('/').slice(1).join('/') : mesAno);
+      let statusAtual = data[i].length >= 6 && data[i][5] ? data[i][5] : 'Pago';
+      let novoStatus = statusAtual === 'Pago' ? 'Cancelado' : 'Pago';
+      sheet.getRange(i + 1, 6).setValue(novoStatus);
+      let filtro = mesAno.length > 7 ? mesAno.split('/').slice(1).join('/') : mesAno;
+      return getPagamentos(filtro);
     }
   }
   
-  // Não existe, então adicionamos (Toggle ON) - Forçando texto com '
+  // Não existe: cria novo registro com status 'Pago'
   sheet.appendRow([idJogador, nome, diaSemana, "'" + mesAno, valor, 'Pago']);
   
-  // Se for uma data exata (vários caracteres), extraímos o mes/ano para retornar a lista filtrada corretamente
   let filtroRetorno = mesAno.length > 7 ? mesAno.split('/').slice(1).join('/') : mesAno;
   return getPagamentos(filtroRetorno);
 }

@@ -80,7 +80,17 @@
 <body class="min-h-screen text-slate-200 selection:bg-emerald-500 selection:text-white">
     <div id="app" class="max-w-md mx-auto min-h-screen pb-20 relative">
 
-        <!-- Loading Overlay -->
+        <!-- Toast de Sucesso -->
+        <transition name="toast">
+            <div v-if="toastMsg"
+                class="fixed top-5 left-1/2 z-50 bg-emerald-500 text-white font-bold px-5 py-4 rounded-2xl shadow-2xl shadow-emerald-500/40 text-sm text-center animate-fade-in max-w-xs"
+                style="transform: translateX(-50%)">
+                <div class="text-2xl mb-1">🎉</div>
+                {{ toastMsg }}
+            </div>
+        </transition>
+
+
         <div v-if="loading" class="fixed inset-0 bg-slate-900/80 backdrop-blur z-50 flex items-center justify-center">
             <div class="animate-spin text-emerald-400 text-5xl">
                 <i class="fa-solid fa-volleyball"></i>
@@ -345,8 +355,9 @@
 
                 <div v-if="fechamento" class="flex justify-center mt-3">
                     <button @click="limparTelaFinanceiro"
+                        title="Use apenas se houve erro no lançamento e precisa refazer o cálculo. Os pagamentos já registrados são preservados como histórico."
                         class="text-[10px] text-slate-500 hover:text-red-400 transition-colors font-bold uppercase flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700/50 hover:border-red-400/30 glass">
-                        <i class="fas fa-trash-alt"></i> Limpar / Novo Cálculo
+                        <i class="fas fa-rotate-left"></i> Corrigir / Refazer Cálculo
                     </button>
                 </div>
 
@@ -371,8 +382,9 @@
                                     </button>
                                     <button @click="fazerPagamento(jog, 'Segunda')"
                                         :class="jog.pago ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'"
+                                        :title="jog.pago ? 'Clique para cancelar o pagamento (registro mantido)' : 'Marcar como pago'"
                                         class="w-7 h-7 rounded-md transition flex items-center justify-center">
-                                        <i class="fa-solid fa-check"></i>
+                                        <i :class="jog.pago ? 'fa-solid fa-check' : 'fa-solid fa-minus'"></i>
                                     </button>
                                 </div>
                             </div>
@@ -404,8 +416,9 @@
                                     </button>
                                     <button @click="fazerPagamento(jog, 'Sexta')"
                                         :class="jog.pago ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'"
+                                        :title="jog.pago ? 'Clique para cancelar o pagamento (registro mantido)' : 'Marcar como pago'"
                                         class="w-7 h-7 rounded-md transition flex items-center justify-center">
-                                        <i class="fa-solid fa-check"></i>
+                                        <i :class="jog.pago ? 'fa-solid fa-check' : 'fa-solid fa-minus'"></i>
                                     </button>
                                 </div>
                             </div>
@@ -528,7 +541,9 @@
                     fechamento: null,
                     mesReferencia: (new Date().getMonth() + 1).toString().padStart(2, '0') + '/' + new Date().getFullYear(),
                     pagamentosGlobal: [],
-                    loading: false
+                    loading: false,
+                    appUrl: window.location.href,
+                    toastMsg: ''
                 };
             },
             computed: {
@@ -602,6 +617,11 @@
             },
             mounted: function () {
                 this.fetchJogadores();
+                // Busca a URL pública do webapp do servidor
+                var self = this;
+                this.runGoogleScript('getAppUrl').then(function (url) {
+                    if (url) self.appUrl = url;
+                });
             },
             methods: {
                 descobrirProximaData: function (diaSemana) {
@@ -680,6 +700,8 @@
                             google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).deletarConfigFinanceira(args[0]);
                         } else if (funcName === 'getPagamentos') {
                             google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getPagamentos(args[0]);
+                        } else if (funcName === 'getAppUrl') {
+                            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getAppUrl();
                         } else {
                             reject('Função não encontrada');
                         }
@@ -846,8 +868,7 @@
                     window.open("https://wa.me/?text=" + encodeURIComponent(texto), '_blank');
                 },
                 notificarTodos: function () {
-                    var appUrl = window.location.href;
-                    var texto = "*🏐 VOLEIZINDOSCRIA - CHAMADA 🏐*\n\nFala galera! Já está aberta a lista para o jogo de *" + this.diaSelecionado + "* (" + this.dataJogo + ").\n\nPor favor, confirmem sua presença no link abaixo:\n🔗 " + appUrl;
+                    var texto = "*🏐 VOLEIZINDOSCRIA - CHAMADA 🏐*\n\nFala galera! Já está aberta a lista para o jogo de *" + this.diaSelecionado + "* (" + this.dataJogo + ").\n\nPor favor, confirmem sua presença no link abaixo:\n🔗 " + this.appUrl;
                     window.open("https://wa.me/?text=" + encodeURIComponent(texto), '_blank');
                 },
                 calcularFechamento: function () {
@@ -855,8 +876,9 @@
                     var cSeg = this.custoSegunda || 0;
                     var cSex = this.custoSexta || 0;
                     var self = this;
-                    this.runGoogleScript('calcularFechamento', [this.mesReferencia, cSeg, cSex]).then(function (res) {
+                    return this.runGoogleScript('calcularFechamento', [this.mesReferencia, cSeg, cSex]).then(function (res) {
                         self.fechamento = res;
+                        return res;
                     });
                 },
                 checkFinanceiro: function () {
@@ -892,9 +914,23 @@
                     // UI Otimista: Muda o estado local antes de ir pro servidor
                     jogador.pago = !jogador.pago;
 
-                    this.runGoogleScript('registrarPagamento', [jogador.id, jogador.nome, dia, this.mesReferencia, valor]).then(function (pagamentosAtualizados) {
-                        // Sincroniza com o servidor caso algo tenha mudado
-                        self.calcularFechamento();
+                    this.runGoogleScript('registrarPagamento', [jogador.id, jogador.nome, dia, this.mesReferencia, valor]).then(function () {
+                        // Recalcula do servidor para garantir status correto
+                        var promise = self.calcularFechamento();
+                        if (promise && promise.then) {
+                            promise.then(function (res) {
+                                // Se todos pagaram, exibe sucesso e limpa a tela automaticamente
+                                if (res && res.statusGeral === 'Pago Totalmente') {
+                                    self.toastMsg = 'Fechamento de ' + self.mesReferencia + ' concluído! Todos os pagamentos confirmados. ✅';
+                                    setTimeout(function () {
+                                        self.toastMsg = '';
+                                        self.fechamento = null;
+                                        self.custoSegunda = '';
+                                        self.custoSexta = '';
+                                    }, 3500);
+                                }
+                            });
+                        }
                     }).catch(function () {
                         // Reverte em caso de erro
                         jogador.pago = !jogador.pago;
