@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <title>VoleizinDosCria</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #0b0f1a;
+            color: #f1f5f9;
+        }
+
+        .glass {
+            background: rgba(30, 41, 59, 0.45);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-primary:active {
+            transform: scale(0.95);
+        }
+
+        .whatsapp-btn {
+            background: #25D366;
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .nav-btn.active {
+            transform: translateY(-2px);
+        }
+
+        .animate-in {
+            animation: slideUp 0.5s ease-out forwards;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen text-slate-200 selection:bg-emerald-500 selection:text-white">
+    <div id="app" class="max-w-md mx-auto min-h-screen pb-20 relative">
+
+        <!-- Loading Overlay -->
+        <div v-if="loading" class="fixed inset-0 bg-slate-900/80 backdrop-blur z-50 flex items-center justify-center">
+            <div class="animate-spin text-emerald-400 text-5xl">
+                <i class="fa-solid fa-volleyball"></i>
+            </div>
+        </div>
+
+        <!-- Cabeçalho -->
+        <header class="p-6 text-center">
+            <div class="inline-block p-4 rounded-full bg-slate-800 mb-2 border border-slate-700 shadow-xl">
+                <i class="fa-solid fa-volleyball text-4xl text-emerald-400"></i>
+            </div>
+            <h1
+                class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">
+                VoleizinDosCria</h1>
+            <p class="text-slate-400 text-sm mt-1">Organização, Times e Finanças</p>
+        </header>
+
+        <!-- Navegação -->
+        <div class="flex px-4 gap-2 mb-6">
+            <button @click="tab = 'presenca'"
+                :class="tab === 'presenca' ? 'active bg-slate-800 text-emerald-400 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.2)]' : 'bg-slate-800/30 text-slate-500 border-transparent'"
+                class="nav-btn flex-1 py-3 rounded-xl border font-semibold"><i
+                    class="fa-solid fa-calendar-check lg:mr-2"></i></button>
+            <button @click="tab = 'times'"
+                :class="tab === 'times' ? 'active bg-slate-800 text-cyan-400 border-cyan-500/50 shadow-[0_0_15px_rgba(34,211,238,0.2)]' : 'bg-slate-800/30 text-slate-500 border-transparent'"
+                class="nav-btn flex-1 py-3 rounded-xl border font-semibold"><i
+                    class="fa-solid fa-shuffle lg:mr-2"></i></button>
+            <button @click="tab = 'financeiro'"
+                :class="tab === 'financeiro' ? 'active bg-slate-800 text-yellow-400 border-yellow-500/50 shadow-[0_0_15px_rgba(250,204,21,0.2)]' : 'bg-slate-800/30 text-slate-500 border-transparent'"
+                class="nav-btn flex-1 py-3 rounded-xl border font-semibold"><i
+                    class="fa-solid fa-wallet lg:mr-2"></i></button>
+            <button @click="tab = 'admin'"
+                :class="tab === 'admin' ? 'active bg-slate-800 text-purple-400 border-purple-500/50 shadow-[0_0_15px_rgba(192,132,252,0.2)]' : 'bg-slate-800/30 text-slate-500 border-transparent'"
+                class="nav-btn flex-1 py-3 rounded-xl border font-semibold"><i
+                    class="fa-solid fa-users-gear lg:mr-2"></i></button>
+        </div>
+
+        <!-- Main Content -->
+        <main class="px-4">
+
+            <!-- PRESENÇA -->
+            <section v-if="tab === 'presenca'" class="space-y-4 animate-fade-in">
+                <div class="glass p-5 rounded-2xl">
+                    <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><i
+                            class="fa-regular fa-calendar-check text-emerald-400"></i> Próximo Jogo</h2>
+                    <div class="flex gap-2 mb-4">
+                        <button @click="mudarDia('Segunda')"
+                            :class="diaSelecionado === 'Segunda' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'"
+                            class="flex-1 py-3 rounded-xl font-bold transition-all flex flex-col items-center">
+                            <span>Segunda</span>
+                            <span class="text-[10px] opacity-75 font-normal">{{ descobrirProximaData('Segunda')
+                                }}</span>
+                        </button>
+                        <button @click="mudarDia('Sexta')"
+                            :class="diaSelecionado === 'Sexta' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'"
+                            class="flex-1 py-3 rounded-xl font-bold transition-all flex flex-col items-center">
+                            <span>Sexta</span>
+                            <span class="text-[10px] opacity-75 font-normal">{{ descobrirProximaData('Sexta') }}</span>
+                        </button>
+                    </div>
+                    <button @click="carregarPresencas"
+                        class="w-full btn-primary font-bold py-3 rounded-xl text-white shadow-lg">Atualizar
+                        Lista</button>
+                </div>
+
+                <div v-if="jogadores.length > 0" class="glass p-5 rounded-2xl">
+                    <div class="flex flex-col mb-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="font-bold">Confirmados: <span class="text-emerald-400 text-xl">{{
+                                    totalConfirmados.total }}</span></h3>
+                            <button @click="notificarTodos"
+                                class="text-xs bg-slate-800 text-emerald-400 px-3 py-1.5 rounded-lg font-bold border border-slate-600 hover:bg-slate-700 transition">
+                                <i class="fa-brands fa-whatsapp"></i> Cobrar Presença
+                            </button>
+                        </div>
+                        <div class="flex gap-3 text-xs font-bold text-slate-400">
+                            <span>Mensalistas: <span class="text-emerald-400">{{ totalConfirmados.mensalista
+                                    }}</span></span>
+                            <span>Avulsos: <span class="text-amber-400">{{ totalConfirmados.avulso }}</span></span>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <div v-for="j in jogadores" :key="j.id"
+                            class="flex items-center justify-between p-3 bg-slate-800/50 rounded-xl border border-slate-700/50">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <p class="font-semibold"
+                                        :class="getPresenca(j.id) === 'Confirmado' ? 'text-emerald-400' : (getPresenca(j.id) === 'Falta' ? 'text-red-400 line-through opacity-50' : '')">
+                                        {{j.nome}}</p>
+                                    <span v-if="getPresenca(j.id) === 'Confirmado'"
+                                        :class="j.tipo.includes('Avulso') ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'"
+                                        class="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase">{{
+                                        j.tipo.includes('Avulso') ? 'Avulso' : 'Mensalista' }}</span>
+                                </div>
+                                <p class="text-[10px] text-slate-400 uppercase tracking-wider">{{j.tipo}} | ⭐
+                                    {{j.nivel}}</p>
+                            </div>
+                            <div class="flex gap-1.5 text-sm items-center">
+                                <!-- Botão de Pagamento para Avulsos (Case-Insensitive) -->
+                                <button v-if="j.tipo.toLowerCase().includes('avulso') && !getPagamentoHoje(j.id)"
+                                    @click="pagarAvulso(j)"
+                                    class="bg-amber-500 hover:bg-amber-400 text-white px-3 py-1.5 rounded-lg transition-all font-black text-[10px] uppercase shadow-lg shadow-amber-500/20 border border-amber-400/50">
+                                    Pagar R$10
+                                </button>
+                                <span v-else-if="j.tipo.toLowerCase().includes('avulso')"
+                                    class="text-[9px] font-black text-amber-400 bg-amber-400/10 px-2 py-1 rounded-md border border-amber-400/20 mr-1">PAGO
+                                    ✅</span>
+
+                                <button @click="marcar(j, 'Confirmado')"
+                                    :disabled="j.tipo.toLowerCase().includes('avulso') && !getPagamentoHoje(j.id)"
+                                    :class="[
+                                        getPresenca(j.id) === 'Confirmado' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-slate-700 text-slate-300 hover:bg-slate-600',
+                                        (j.tipo.toLowerCase().includes('avulso') && !getPagamentoHoje(j.id)) ? 'opacity-30 cursor-not-allowed grayscale' : ''
+                                    ]" class="px-3 py-1.5 rounded-lg transition-all font-semibold">Vou</button>
+                                <button @click="marcar(j, 'Falta')"
+                                    :class="getPresenca(j.id) === 'Falta' ? 'bg-red-500 text-white shadow-lg shadow-red-500/20' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'"
+                                    class="px-3 py-1.5 rounded-lg transition-all font-semibold">Falto</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TIMES -->
+            <section v-if="tab === 'times'" class="space-y-4 animate-fade-in">
+                <div class="glass p-5 rounded-2xl">
+                    <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><i
+                            class="fa-solid fa-users text-cyan-400"></i> Sortear Times</h2>
+                    <div
+                        class="bg-slate-800 p-4 rounded-xl mb-4 text-sm text-slate-300 flex justify-between items-center">
+                        <span>Jogadores por time:</span>
+                        <div class="flex items-center gap-3">
+                            <button @click="diminuirJogadores"
+                                class="w-8 h-8 rounded-full bg-slate-700 text-white font-bold hover:bg-cyan-500 transition">-</button>
+                            <span class="text-xl font-bold text-white">{{jogadoresPorTime}}</span>
+                            <button @click="aumentarJogadores"
+                                class="w-8 h-8 rounded-full bg-slate-700 text-white font-bold hover:bg-cyan-500 transition">+</button>
+                        </div>
+                    </div>
+                    <button @click="sortear"
+                        class="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 font-bold py-3 rounded-xl text-white transition-all shadow-lg flex justify-center gap-2 items-center">
+                        <i class="fa-solid fa-shuffle"></i> Gerar Times Equilibrados
+                    </button>
+                </div>
+
+                <div v-if="times.length > 0" class="space-y-4 animate-fade-in">
+                    <button @click="enviarTimesWhatsapp"
+                        class="w-full whatsapp-btn font-bold py-3 rounded-xl text-white flex justify-center items-center gap-2">
+                        <i class="fa-brands fa-whatsapp text-xl"></i> Enviar no Grupo
+                    </button>
+                    <div class="grid gap-4">
+                        <div v-for="(time, idx) in times" :key="idx"
+                            class="glass p-4 rounded-2xl border-t-2 border-t-cyan-400">
+                            <div class="flex justify-between items-center mb-3">
+                                <h3 class="font-bold text-cyan-400 text-lg">Time {{idx + 1}}</h3>
+                                <span class="text-xs bg-slate-800 px-2 py-1 rounded text-cyan-300 font-bold">Lvl Total:
+                                    {{ somaNivel(time) }}</span>
+                            </div>
+                            <ul class="space-y-1.5">
+                                <li v-for="tj in time"
+                                    class="flex justify-between text-sm py-1 border-b border-slate-700/50 last:border-0 pl-2">
+                                    <span class="font-medium font-semibold text-slate-100">{{tj.nome}}</span>
+                                    <span class="text-amber-400 text-xs mt-1">
+                                        <i v-for="n in tj.nivel" class="fa-solid fa-star"></i>
+                                    </span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- FINANCEIRO -->
+            <section v-if="tab === 'financeiro'" class="space-y-4 animate-fade-in">
+                <div class="glass p-5 rounded-2xl">
+                    <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><i
+                            class="fa-solid fa-wallet text-yellow-400"></i> Fechamento do Mês</h2>
+                    <div class="space-y-3 mb-4">
+                        <div class="relative">
+                            <label class="text-xs text-slate-400 font-bold uppercase block mb-1">Custo Total
+                                (Segunda)</label>
+                            <span class="absolute bottom-3 left-4 text-slate-400 font-bold">R$</span>
+                            <input type="number" v-model="custoSegunda"
+                                class="w-full bg-slate-800 border-none rounded-lg p-3 pl-10 text-white focus:ring-2 focus:ring-yellow-500 outline-none font-bold"
+                                placeholder="0,00">
+                        </div>
+                        <div class="relative">
+                            <label class="text-xs text-slate-400 font-bold uppercase block mb-1">Custo Total
+                                (Sexta)</label>
+                            <span class="absolute bottom-3 left-4 text-slate-400 font-bold">R$</span>
+                            <input type="number" v-model="custoSexta"
+                                class="w-full bg-slate-800 border-none rounded-lg p-3 pl-10 text-white focus:ring-2 focus:ring-yellow-500 outline-none font-bold"
+                                placeholder="0,00">
+                        </div>
+                    </div>
+                    <button @click="calcularFechamento"
+                        class="w-full bg-gradient-to-r from-yellow-500 to-orange-500 font-bold py-3 rounded-xl text-white transition-all shadow-lg flex justify-center gap-2 items-center active:scale-95">
+                        <i class="fa-solid fa-calculator"></i> Calcular Mensalidades
+                    </button>
+                </div>
+
+                <!-- Resumo Financeiro Superior -->
+                <div v-if="fechamento" class="grid grid-cols-2 gap-3 animate-in">
+                    <div class="glass p-4 rounded-2xl border-b-2 border-emerald-500/30">
+                        <div class="flex justify-between items-start mb-1">
+                            <p class="text-[10px] text-slate-400 font-bold uppercase">Arrecadação p/ Quadra</p>
+                            <span
+                                :class="fechamento.statusGeral === 'Pago Totalmente' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50' : 'bg-amber-500/20 text-amber-400 border-amber-500/50'"
+                                class="text-[8px] px-1.5 py-0.5 rounded border font-black uppercase">
+                                {{ fechamento.statusGeral }}
+                            </span>
+                        </div>
+                        <p class="text-xl font-black text-emerald-400">R$ {{ totalArrecadado }}</p>
+                    </div>
+                    <div class="glass p-4 rounded-2xl border-b-2 border-slate-500/30">
+                        <p class="text-[10px] text-slate-400 font-bold uppercase mb-1">Custo Total</p>
+                        <p class="text-xl font-black text-white">R$ {{ (parseFloat(custoSegunda||0) +
+                            parseFloat(custoSexta||0)).toFixed(2).replace('.', ',') }}</p>
+                    </div>
+                </div>
+
+                <!-- Sessão: Rateio para a Quadra (Mensalistas) -->
+                <div v-if="fechamento" class="glass p-5 rounded-2xl border-t-2 border-t-indigo-500 animate-in">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-bold text-indigo-400 flex items-center gap-2">
+                            <i class="fa-solid fa-coins"></i> Rateio Mensalistas
+                        </h3>
+                        <span
+                            class="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded font-bold uppercase">Quadra</span>
+                    </div>
+                    <div class="flex justify-between items-end">
+                        <div>
+                            <p class="text-[10px] text-slate-400 font-bold uppercase">Meta de Arrecadação</p>
+                            <p class="text-2xl font-black text-white">R$ {{ (parseFloat(custoSegunda||0) +
+                                parseFloat(custoSexta||0)).toFixed(2).replace('.', ',') }}</p>
+                            <p class="text-[9px] text-indigo-300 font-bold mt-1">Já Arrecadado: R$ {{
+                                totalArrecadadoMensalistas }}</p>
+                        </div>
+                        <p class="text-[10px] text-slate-500 italic max-w-[150px] text-right">Valor arrecadado com as
+                            mensalidades para cobrir os custos.</p>
+                    </div>
+                </div>
+
+                <!-- Sessão: Caixa de Equipamentos (AVULSOS) -->
+                <div v-if="fechamento" class="glass p-5 rounded-2xl border-t-2 border-t-amber-500 animate-in mt-3">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-bold text-amber-500 flex items-center gap-2">
+                            <i class="fa-solid fa-volleyball"></i> Caixa de Equipamentos
+                        </h3>
+                        <span
+                            class="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-1 rounded font-bold uppercase">Avulsos</span>
+                    </div>
+                    <div class="flex justify-between items-end">
+                        <div>
+                            <p class="text-[10px] text-slate-400 font-bold uppercase">Total para Compras</p>
+                            <p class="text-2xl font-black text-white">R$ {{ totalArrecadadoAvulsos }}</p>
+                        </div>
+                        <p class="text-[10px] text-slate-500 italic max-w-[150px] text-right">Verba extra vinda
+                            exclusivamente dos pagamentos dos avulsos (R$ 10).</p>
+                    </div>
+                </div>
+
+                <div v-if="fechamento" class="flex justify-center mt-3">
+                    <button @click="limparTelaFinanceiro"
+                        class="text-[10px] text-slate-500 hover:text-red-400 transition-colors font-bold uppercase flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700/50 hover:border-red-400/30 glass">
+                        <i class="fas fa-trash-alt"></i> Limpar / Novo Cálculo
+                    </button>
+                </div>
+
+                <div v-if="fechamento" class="space-y-4 animate-fade-in">
+                    <div class="glass p-5 rounded-2xl border-l-4 border-l-yellow-400">
+                        <div class="flex justify-between items-center mb-1">
+                            <h3 class="font-bold text-yellow-400">Rateio de Segunda</h3>
+                            <span class="font-black text-white text-xl">R$ {{fechamento.segunda.valorPorPessoa}}</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mb-4">Total: {{fechamento.segunda.totalMensalistas}}
+                            mensalistas</p>
+
+                        <div class="space-y-2 mb-4 max-h-48 overflow-y-auto pr-1">
+                            <div v-for="jog in fechamento.segunda.jogadores" :key="jog.id"
+                                class="flex items-center justify-between p-2 bg-slate-800/40 rounded-lg border border-slate-700/30 text-xs">
+                                <span
+                                    :class="jog.pago ? 'text-emerald-400 font-bold' : 'text-slate-300'">{{jog.nome}}</span>
+                                <div class="flex gap-2">
+                                    <button @click="cobrarIndividual(jog, fechamento.segunda.valorPorPessoa, 'Segunda')"
+                                        class="w-7 h-7 bg-emerald-500/10 text-emerald-400 rounded-md hover:bg-emerald-500/20 transition">
+                                        <i class="fa-brands fa-whatsapp"></i>
+                                    </button>
+                                    <button @click="fazerPagamento(jog, 'Segunda')"
+                                        :class="jog.pago ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'"
+                                        class="w-7 h-7 rounded-md transition flex items-center justify-center">
+                                        <i class="fa-solid fa-check"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button @click="cobrarMensalidade(fechamento.segunda.valorPorPessoa, 'Segunda')"
+                            class="w-full whatsapp-btn py-2.5 rounded-xl font-bold text-sm shadow flex justify-center items-center gap-2">
+                            <i class="fa-brands fa-whatsapp text-lg"></i> Cobrar Todos Seg
+                        </button>
+                    </div>
+
+                    <div class="glass p-5 rounded-2xl border-l-4 border-l-orange-400">
+                        <div class="flex justify-between items-center mb-1">
+                            <h3 class="font-bold text-orange-400">Rateio de Sexta</h3>
+                            <span class="font-black text-white text-xl">R$ {{fechamento.sexta.valorPorPessoa}}</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mb-4">Total: {{fechamento.sexta.totalMensalistas}} mensalistas
+                        </p>
+
+                        <div class="space-y-2 mb-4 max-h-48 overflow-y-auto pr-1">
+                            <div v-for="jog in fechamento.sexta.jogadores" :key="jog.id"
+                                class="flex items-center justify-between p-2 bg-slate-800/40 rounded-lg border border-slate-700/30 text-xs">
+                                <span
+                                    :class="jog.pago ? 'text-orange-400 font-bold' : 'text-slate-300'">{{jog.nome}}</span>
+                                <div class="flex gap-2">
+                                    <button @click="cobrarIndividual(jog, fechamento.sexta.valorPorPessoa, 'Sexta')"
+                                        class="w-7 h-7 bg-emerald-500/10 text-emerald-400 rounded-md hover:bg-emerald-500/20 transition">
+                                        <i class="fa-brands fa-whatsapp"></i>
+                                    </button>
+                                    <button @click="fazerPagamento(jog, 'Sexta')"
+                                        :class="jog.pago ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'"
+                                        class="w-7 h-7 rounded-md transition flex items-center justify-center">
+                                        <i class="fa-solid fa-check"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button @click="cobrarMensalidade(fechamento.sexta.valorPorPessoa, 'Sexta')"
+                            class="w-full whatsapp-btn py-2.5 rounded-xl font-bold text-sm shadow flex justify-center items-center gap-2">
+                            <i class="fa-brands fa-whatsapp text-lg"></i> Cobrar Todos Sex
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ADMIN / JOGADORES -->
+            <section v-if="tab === 'admin'" class="space-y-4 animate-fade-in">
+                <div class="glass p-5 rounded-2xl">
+                    <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+                        <i
+                            :class="novoJogador.id ? 'fa-solid fa-user-pen text-amber-400' : 'fa-solid fa-user-plus text-purple-400'"></i>
+                        {{ novoJogador.id ? 'Editar Jogador' : 'Cadastrar Jogador' }}
+                    </h2>
+                    <div class="space-y-3 mb-4">
+                        <input type="text" v-model="novoJogador.nome" placeholder="Nome Completo"
+                            class="w-full bg-slate-800 rounded-xl p-3 outline-none focus:ring-2 focus:ring-purple-500 font-semibold">
+                        <div class="relative">
+                            <i class="fa-brands fa-whatsapp absolute top-3.5 left-3 text-slate-400"></i>
+                            <input type="tel" v-model="novoJogador.telefone" placeholder="DDD + Número"
+                                class="w-full bg-slate-800 rounded-xl p-3 pl-9 outline-none focus:ring-2 focus:ring-purple-500">
+                        </div>
+                        <div class="flex gap-2">
+                            <div class="flex-1">
+                                <label class="text-[10px] text-slate-400 uppercase font-bold ml-1">Nível de Jogo</label>
+                                <select v-model="novoJogador.nivel"
+                                    class="w-full bg-slate-800 rounded-xl p-3 outline-none mt-1">
+                                    <option value="1">1 - Iniciante</option>
+                                    <option value="2">2 - Básico</option>
+                                    <option value="3">3 - Intermediário</option>
+                                    <option value="4">4 - Avançado</option>
+                                    <option value="5">5 - Profissional</option>
+                                </select>
+                            </div>
+                            <div class="flex-1">
+                                <label class="text-[10px] text-slate-400 uppercase font-bold ml-1">Categoria</label>
+                                <select v-model="novoJogador.tipo"
+                                    class="w-full bg-slate-800 rounded-xl p-3 outline-none mt-1">
+                                    <option value="Mensalista Seg">Mensalista Segunda</option>
+                                    <option value="Mensalista Sex">Mensalista Sexta</option>
+                                    <option value="Mensalista Seg e Sex">Ambos</option>
+                                    <option value="Avulso">Apenas Avulso</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button v-if="novoJogador.id" @click="cancelarEdicao"
+                            class="w-1/3 bg-slate-700 hover:bg-slate-600 font-bold py-3 rounded-xl text-slate-300 shadow-lg transition-all">
+                            Cancelar
+                        </button>
+                        <button @click="salvarJogador"
+                            :class="novoJogador.id ? 'w-2/3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400' : 'w-full bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-400 hover:to-indigo-400'"
+                            class="font-bold py-3 rounded-xl text-white shadow-lg transition-all flex justify-center items-center gap-2">
+                            <i :class="novoJogador.id ? 'fa-solid fa-cloud-arrow-up' : 'fa-solid fa-plus'"></i>
+                            {{ novoJogador.id ? 'Atualizar Dados' : 'Salvar Jogador' }}
+                        </button>
+                    </div>
+                </div>
+
+                <div class="glass p-5 rounded-2xl">
+                    <h3 class="font-bold flex justify-between items-center mb-4">
+                        Elenco do Time
+                        <span class="bg-indigo-500/20 text-indigo-400 px-2 py-1 rounded-lg text-xs">{{jogadores.length}}
+                            listados</span>
+                    </h3>
+                    <div class="space-y-2 max-h-80 overflow-y-auto pr-1">
+                        <div v-for="j in jogadores" :key="j.id"
+                            class="p-3 bg-slate-800/80 rounded-xl text-sm flex justify-between items-center border border-slate-700/50">
+                            <div>
+                                <p class="font-bold text-slate-200">{{j.nome}}</p>
+                                <p class="text-xs text-slate-400 mt-0.5"><i
+                                        class="fa-solid fa-phone text-[10px] mr-1"></i>{{ mascararTelefone(j.telefone)
+                                    }}</p>
+                            </div>
+                            <div class="text-right flex items-center gap-3">
+                                <div class="flex flex-col items-end">
+                                    <div class="text-amber-400 text-[10px] mb-1">
+                                        <i v-for="n in parseInt(j.nivel)" class="fa-solid fa-star"></i>
+                                    </div>
+                                    <span
+                                        class="text-[10px] bg-slate-700 px-2 py-1 rounded-md text-slate-300 font-bold uppercase">{{j.tipo.replace('Mensalista','Mens')}}</span>
+                                </div>
+                                <button @click="prepararEdicao(j)"
+                                    class="w-8 h-8 rounded-lg bg-slate-700 text-cyan-400 hover:bg-cyan-500 hover:text-white transition flex items-center justify-center">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script>
+        var createApp = Vue.createApp;
+
+        createApp({
+            data: function () {
+                return {
+                    tab: 'presenca',
+                    jogadores: [],
+                    presencas: [],
+                    times: [],
+                    diaSelecionado: 'Segunda',
+                    dataJogo: '',
+                    novoJogador: { nome: '', telefone: '', nivel: '3', tipo: 'Mensalista Seg' },
+                    jogadoresPorTime: 6,
+                    custoSegunda: '',
+                    custoSexta: '',
+                    fechamento: null,
+                    mesReferencia: (new Date().getMonth() + 1).toString().padStart(2, '0') + '/' + new Date().getFullYear(),
+                    pagamentosGlobal: [],
+                    loading: false
+                };
+            },
+            computed: {
+                totalConfirmados: function () {
+                    var count = { total: 0, mensalista: 0, avulso: 0 };
+                    for (var i = 0; i < this.presencas.length; i++) {
+                        if (this.presencas[i].status === 'Confirmado') {
+                            count.total++;
+                            var jogador = this.jogadores.find(function (j) { return j.id == this.presencas[i].idJogador }.bind(this));
+                            if (jogador && jogador.tipo.includes('Avulso')) count.avulso++;
+                            else count.mensalista++;
+                        }
+                    }
+                    return count;
+                },
+                totalArrecadado: function () {
+                    if (!this.fechamento) return "0.00";
+                    if (this.fechamento.totalArrecadado !== undefined) {
+                        return this.fechamento.totalArrecadado.toFixed(2).replace('.', ',');
+                    }
+                    var total = 0;
+                    var self = this;
+                    this.fechamento.segunda.jogadores.forEach(function (j) { if (j.pago) total += parseFloat(String(self.fechamento.segunda.valorPorPessoa).replace(',', '.')) || 0; });
+                    this.fechamento.sexta.jogadores.forEach(function (j) { if (j.pago) total += parseFloat(String(self.fechamento.sexta.valorPorPessoa).replace(',', '.')) || 0; });
+                    return total.toFixed(2).replace('.', ',');
+                },
+                totalArrecadadoMensalistas: function () {
+                    if (!this.fechamento) return "0.00";
+                    var total = 0;
+                    var self = this;
+                    // Soma pagamentos de mensalistas (segunda)
+                    this.fechamento.segunda.jogadores.forEach(function (j) {
+                        if (j.pago) {
+                            var v = String(self.fechamento.segunda.valorPorPessoa).replace(',', '.');
+                            total += (parseFloat(v) || 0);
+                        }
+                    });
+                    // Soma pagamentos de mensalistas (sexta)
+                    this.fechamento.sexta.jogadores.forEach(function (j) {
+                        if (j.pago) {
+                            var v = String(self.fechamento.sexta.valorPorPessoa).replace(',', '.');
+                            total += (parseFloat(v) || 0);
+                        }
+                    });
+                    return total.toFixed(2).replace('.', ',');
+                },
+                totalArrecadadoAvulsos: function () {
+                    if (!this.fechamento) return "0.00";
+                    if (this.fechamento.totalAvulsos !== undefined) {
+                        return this.fechamento.totalAvulsos.toFixed(2).replace('.', ',');
+                    }
+                    var total = 0;
+                    this.pagamentosGlobal.forEach(function (p) {
+                        if (p.mesAno && p.mesAno.length > 7) {
+                            total += parseFloat(String(p.valor).replace(',', '.')) || 0;
+                        }
+                    });
+                    return total.toFixed(2).replace('.', ',');
+                }
+            },
+            watch: {
+                dataJogo: function () { this.carregarPresencas(); },
+                tab: function (newTab) {
+                    if (newTab === 'financeiro') this.checkFinanceiro();
+                }
+            },
+            created: function () {
+                var d = new Date();
+                this.diaSelecionado = (d.getDay() === 2 || d.getDay() === 3 || d.getDay() === 4 || d.getDay() === 5) ? 'Sexta' : 'Segunda';
+                this.dataJogo = this.descobrirProximaData(this.diaSelecionado);
+            },
+            mounted: function () {
+                this.fetchJogadores();
+            },
+            methods: {
+                descobrirProximaData: function (diaSemana) {
+                    var targetDay = diaSemana === 'Segunda' ? 1 : 5; // 1 for Monday, 5 for Friday
+                    var d = new Date();
+                    d.setHours(0, 0, 0, 0); // Reset time to start of day
+                    var day = d.getDay(); // 0 for Sunday, 1 for Monday, ..., 6 for Saturday
+                    var diff = targetDay - day;
+                    if (diff < 0) { // If target day has already passed this week
+                        diff += 7;
+                    } else if (diff === 0 && d.getHours() >= 18) { // If it's the target day but after 6 PM, consider next week
+                        diff += 7;
+                    }
+                    d.setDate(d.getDate() + diff);
+                    return d.getDate().toString().padStart(2, '0') + '/' + (d.getMonth() + 1).toString().padStart(2, '0') + '/' + d.getFullYear();
+                },
+                mudarDia: function (dia) {
+                    this.diaSelecionado = dia;
+                    this.dataJogo = this.descobrirProximaData(dia);
+                },
+                aumentarJogadores: function () {
+                    if (this.jogadoresPorTime < 8) this.jogadoresPorTime++;
+                },
+                diminuirJogadores: function () {
+                    if (this.jogadoresPorTime > 4) this.jogadoresPorTime--;
+                },
+                runGoogleScript: function (funcName, args) {
+                    var self = this;
+                    if (!args) args = [];
+
+                    // Detecta se está rodando localmente (file:// ou localhost)
+                    var isLocal = window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+                    this.loading = true;
+                    return new Promise(function (resolve, reject) {
+                        // Se for local, não espera o timeout do Google e vai direto pro Mock
+                        if (typeof google === 'undefined' || typeof google.script === 'undefined') {
+                            if (isLocal) {
+                                setTimeout(function () { resolve(self.mockData(funcName, args)); }, 300);
+                                return;
+                            }
+
+                            var attempts = 0;
+                            var timer = setInterval(function () {
+                                attempts++;
+                                if (typeof google !== 'undefined' && typeof google.script !== 'undefined') {
+                                    clearInterval(timer);
+                                    self.runGoogleScript(funcName, args).then(resolve).catch(reject);
+                                } else if (attempts > 5) {
+                                    clearInterval(timer);
+                                    resolve(self.mockData(funcName, args));
+                                }
+                            }, 500);
+                            return;
+                        }
+
+                        if (funcName === 'getJogadores') {
+                            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getJogadores();
+                        } else if (funcName === 'getPresencas') {
+                            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getPresencas(args[0], args[1]);
+                        } else if (funcName === 'registrarPresenca') {
+                            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).registrarPresenca(args[0], args[1], args[2], args[3], args[4]);
+                        } else if (funcName === 'adicionarJogador') {
+                            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).adicionarJogador(args[0], args[1], args[2], args[3]);
+                        } else if (funcName === 'editarJogador') {
+                            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).editarJogador(args[0], args[1], args[2], args[3], args[4]);
+                        } else if (funcName === 'sortearTimes') {
+                            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).sortearTimes(args[0], args[1], args[2]);
+                        } else if (funcName === 'calcularFechamento') {
+                            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).calcularFechamento(args[0], args[1], args[2]);
+                        } else if (funcName === 'registrarPagamento') {
+                            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).registrarPagamento(args[0], args[1], args[2], args[3], args[4]);
+                        } else if (funcName === 'getConfigFinanceira') {
+                            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getConfigFinanceira(args[0]);
+                        } else if (funcName === 'deletarConfigFinanceira') {
+                            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).deletarConfigFinanceira(args[0]);
+                        } else if (funcName === 'getPagamentos') {
+                            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getPagamentos(args[0]);
+                        } else {
+                            reject('Função não encontrada');
+                        }
+                    })
+                        .catch(function (err) {
+                            console.error(err);
+                            if (isLocal) resolve(self.mockData(funcName, args));
+                            else alert('Erro: ' + (err.message || err));
+                        })
+                        .finally(function () {
+                            self.loading = false;
+                        });
+                },
+                mockData: function (f, a) {
+                    console.warn("Rodando em modo de SIMULAÇÃO (Local): " + f);
+                    if (f === 'getJogadores') return [
+                        { id: '1', nome: 'Hector (Admin)', telefone: '551199999999', nivel: '5', tipo: 'Mensalista Seg e Sex' },
+                        { id: '2', nome: 'Bruno (Teste)', telefone: '551188888888', nivel: '4', tipo: 'MENS' },
+                        { id: '3', nome: 'Avulso da Silva', telefone: '551177777777', nivel: '2', tipo: 'Avulso' }
+                    ];
+                    if (f === 'getPresencas') return [{ idJogador: '1', status: 'Confirmado' }];
+                    if (f === 'sortearTimes') return [[{ nome: 'Hector', nivel: 5, tipo: 'Mensalista' }], [{ nome: 'Bruno', nivel: 4, tipo: 'Mensalista' }]];
+                    if (f === 'calcularFechamento') return {
+                        segunda: {
+                            valorPorPessoa: 45.50,
+                            totalMensalistas: 2,
+                            jogadores: [
+                                { id: '1', nome: 'Hector (Admin)', telefone: '551199999999', pago: true },
+                                { id: '2', nome: 'Bruno (Teste)', telefone: '551188888888', pago: false }
+                            ]
+                        },
+                        sexta: {
+                            valorPorPessoa: 40.00,
+                            totalMensalistas: 1,
+                            jogadores: [
+                                { id: '1', nome: 'Hector (Admin)', telefone: '551199999999', pago: false }
+                            ]
+                        }
+                    };
+                    if (f === 'getConfigFinanceira') return { custoSegunda: 120, custoSexta: 100 };
+                    return [];
+                },
+                fetchJogadores: function () {
+                    var self = this;
+                    this.runGoogleScript('getJogadores').then(function (res) {
+                        self.jogadores = res || [];
+                        if (self.jogadores.length > 0) self.carregarPresencas();
+                    });
+                },
+                carregarPresencas: function () {
+                    if (!this.dataJogo) return;
+                    var self = this;
+                    this.runGoogleScript('getPresencas', [this.diaSelecionado, this.dataJogo]).then(function (res) {
+                        self.presencas = res || [];
+                    });
+                    // Também carrega pagamentos para atualizar botões de avulsos
+                    this.runGoogleScript('getPagamentos', [this.mesReferencia]).then(function (res) {
+                        self.pagamentosGlobal = res || [];
+                    });
+                },
+                getPagamentoHoje: function (idJogador) {
+                    var self = this;
+                    return this.pagamentosGlobal.some(function (p) {
+                        return String(p.idJogador) === String(idJogador) && p.mesAno === self.dataJogo;
+                    });
+                },
+                pagarAvulso: function (jogador) {
+                    var self = this;
+                    if (!confirm("Confirmar recebimento de R$ 10,00 de " + jogador.nome + "?")) return;
+
+                    this.runGoogleScript('registrarPagamento', [jogador.id, jogador.nome, this.diaSelecionado, this.dataJogo, 10]).then(function (res) {
+                        // Res retorna getPagamentos(mesAno)
+                        self.pagamentosGlobal = res;
+                        // Opcional: Notificar sucesso
+                    });
+                },
+                getPresenca: function (id) {
+                    var res = null;
+                    for (var i = 0; i < this.presencas.length; i++) {
+                        if (this.presencas[i].idJogador == id) { res = this.presencas[i]; break; }
+                    }
+                    return res ? res.status : null;
+                },
+                marcar: function (jogador, status) {
+                    var self = this;
+                    this.runGoogleScript('registrarPresenca', [this.diaSelecionado, this.dataJogo, jogador.id, jogador.nome, status]).then(function (res) {
+                        self.presencas = res;
+                    });
+                },
+                prepararEdicao: function (jogador) {
+                    // Normaliza o tipo para garantir que o select carregue corretamente
+                    var tipoRaw = String(jogador.tipo || '').trim().toUpperCase();
+                    var tipoNormalizado = jogador.tipo; // default: mantém o original
+                    if (tipoRaw === 'MENS' || tipoRaw === 'MENSALISTA' || tipoRaw === 'MENSALISTA SEG E SEX' || tipoRaw === 'MENSALISTA SEG' && tipoRaw.includes('SEX')) {
+                        tipoNormalizado = 'Mensalista Seg e Sex';
+                    } else if (tipoRaw.includes('SEG') && !tipoRaw.includes('SEX')) {
+                        tipoNormalizado = 'Mensalista Seg';
+                    } else if (tipoRaw.includes('SEX') && !tipoRaw.includes('SEG')) {
+                        tipoNormalizado = 'Mensalista Sex';
+                    } else if (tipoRaw.includes('AVULSO')) {
+                        tipoNormalizado = 'Avulso';
+                    }
+                    this.novoJogador = {
+                        id: jogador.id,
+                        nome: jogador.nome,
+                        telefone: jogador.telefone,
+                        nivel: String(jogador.nivel), // String garante que o select de nivel também bata
+                        tipo: tipoNormalizado
+                    };
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                },
+                mascararTelefone: function (tel) {
+                    if (!tel) return '---';
+                    var s = String(tel).replace(/\D/g, ''); // só dígitos
+                    if (s.length < 4) return '****';
+                    var ultimos = s.slice(-4);
+                    var mascarados = s.slice(0, s.length - 4).replace(/\d/g, '*');
+                    return (mascarados + ultimos).replace(/(\*{2})(\*{2})(\d+)(\d{4})/, '$1 ($2) $3-$4');
+                },
+                cancelarEdicao: function () {
+                    this.novoJogador = { nome: '', telefone: '', nivel: '3', tipo: 'Mensalista Seg' };
+                },
+                salvarJogador: function () {
+                    if (!this.novoJogador.nome) return alert("Preencha o nome!");
+                    var self = this;
+                    if (this.novoJogador.id) {
+                        this.runGoogleScript('editarJogador', [this.novoJogador.id, this.novoJogador.nome, this.novoJogador.telefone, this.novoJogador.nivel, this.novoJogador.tipo]).then(function (res) {
+                            self.jogadores = res;
+                            self.cancelarEdicao();
+                            alert("Jogador atualizado com sucesso!");
+                        });
+                    } else {
+                        this.runGoogleScript('adicionarJogador', [this.novoJogador.nome, this.novoJogador.telefone, this.novoJogador.nivel, this.novoJogador.tipo]).then(function (res) {
+                            self.jogadores = res;
+                            self.cancelarEdicao();
+                            alert("Jogador adicionado!");
+                        });
+                    }
+                },
+                sortear: function () {
+                    var self = this;
+                    this.runGoogleScript('sortearTimes', [this.diaSelecionado, this.dataJogo, this.jogadoresPorTime]).then(function (res) {
+                        self.times = res;
+                    });
+                },
+                somaNivel: function (time) {
+                    var count = 0;
+                    for (var i = 0; i < time.length; i++) {
+                        count += parseInt(time[i].nivel) || 0;
+                    }
+                    return count;
+                },
+                enviarTimesWhatsapp: function () {
+                    var texto = "*🏐 TIMES SORTEADOS - " + this.diaSelecionado.toUpperCase() + " 🏐*\n\n";
+                    for (var i = 0; i < this.times.length; i++) {
+                        texto += "*Time " + (i + 1) + ":*\n";
+                        for (var j = 0; j < this.times[i].length; j++) {
+                            var tp = this.times[i][j].tipo === 'Avulso' ? ' *(Avulso)*' : '';
+                            texto += "  - " + this.times[i][j].nome + tp + "\n";
+                        }
+                        texto += "\n";
+                    }
+                    texto += "Bora pro jogo! 🔥";
+                    window.open("https://wa.me/?text=" + encodeURIComponent(texto), '_blank');
+                },
+                notificarTodos: function () {
+                    var appUrl = window.location.href;
+                    var texto = "*🏐 VOLEIZINDOSCRIA - CHAMADA 🏐*\n\nFala galera! Já está aberta a lista para o jogo de *" + this.diaSelecionado + "* (" + this.dataJogo + ").\n\nPor favor, confirmem sua presença no link abaixo:\n🔗 " + appUrl;
+                    window.open("https://wa.me/?text=" + encodeURIComponent(texto), '_blank');
+                },
+                calcularFechamento: function () {
+                    if (!this.custoSegunda && !this.custoSexta) return alert("Preencha ao menos um custo.");
+                    var cSeg = this.custoSegunda || 0;
+                    var cSex = this.custoSexta || 0;
+                    var self = this;
+                    this.runGoogleScript('calcularFechamento', [this.mesReferencia, cSeg, cSex]).then(function (res) {
+                        self.fechamento = res;
+                    });
+                },
+                checkFinanceiro: function () {
+                    var self = this;
+                    this.runGoogleScript('getConfigFinanceira', [this.mesReferencia]).then(function (res) {
+                        if (res) {
+                            self.custoSegunda = res.custoSegunda || '';
+                            self.custoSexta = res.custoSexta || '';
+                            self.calcularFechamento();
+                        } else {
+                            self.fechamento = null;
+                        }
+                    });
+                },
+                limparTelaFinanceiro: function () {
+                    if (!confirm("Deseja realmente limpar os custos deste mês e iniciar um novo cálculo?")) return;
+                    var self = this;
+                    this.runGoogleScript('deletarConfigFinanceira', [this.mesReferencia]).then(function () {
+                        self.custoSegunda = '';
+                        self.custoSexta = '';
+                        self.fechamento = null;
+                        alert("Dados do mês limpos com sucesso!");
+                    });
+                },
+                cobrarIndividual: function (jogador, valor, dia) {
+                    var texto = "*💳 MENSALIDADE VÔLEI - " + dia.toUpperCase() + "*\n\nFala " + jogador.nome + ", o rateio desse mês ficou em *R$ " + valor + "*.\n\nPode mandar o PIX para o organizador quando conseguir! Valeu! 🏐";
+                    window.open("https://wa.me/" + jogador.telefone + "?text=" + encodeURIComponent(texto), '_blank');
+                },
+                fazerPagamento: function (jogador, dia) {
+                    var self = this;
+                    var valor = dia === 'Segunda' ? this.fechamento.segunda.valorPorPessoa : this.fechamento.sexta.valorPorPessoa;
+
+                    // UI Otimista: Muda o estado local antes de ir pro servidor
+                    jogador.pago = !jogador.pago;
+
+                    this.runGoogleScript('registrarPagamento', [jogador.id, jogador.nome, dia, this.mesReferencia, valor]).then(function (pagamentosAtualizados) {
+                        // Sincroniza com o servidor caso algo tenha mudado
+                        self.calcularFechamento();
+                    }).catch(function () {
+                        // Reverte em caso de erro
+                        jogador.pago = !jogador.pago;
+                    });
+                },
+                cobrarMensalidade: function (valor, dia) {
+                    var texto = "*💳 FECHAMENTO DO MÊS - " + dia.toUpperCase() + " 💳*\n\nA mensalidade da quadra fechou em *R$ " + valor + "* por pessoa este mês.\n\nPor favor, realizem o PIX para o organizador. Valeu! 🏐";
+                    window.open("https://wa.me/?text=" + encodeURIComponent(texto), '_blank');
+                }
+            }
+        }).mount('#app'); // <-- MONTAGEM ESSENCIAL DO COMPONENTE
+    </script>
+</body>
+
+</html>
