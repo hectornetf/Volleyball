@@ -14,8 +14,10 @@
 </p>
 
 <p align="center">
-  <img src="https://via.placeholder.com/300x600?text=Preview+Mobile+App" alt="Preview do Sistema" width="250">
+  <img src="./minha_foto.png" alt="Preview do Sistema" width="400">
 </p>
+
+> **Nota:** Interface real do Web App rodando via Google Apps Script. Siga o guia de instalação abaixo para configurar seu próprio painel.
 
 ---
 
