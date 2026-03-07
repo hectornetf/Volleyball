@@ -11,9 +11,15 @@ function setupInicial() {
   
   if (!ss.getSheetByName(SHEET_JOGADORES)) {
     let sheet = ss.insertSheet(SHEET_JOGADORES);
-    sheet.appendRow(['ID', 'Nome', 'Telefone', 'Nível (1-5)', 'Tipo']);
-    sheet.getRange("A1:E1").setFontWeight("bold");
+    sheet.appendRow(['ID', 'Nome', 'Telefone', 'Nível (1-5)', 'Tipo', 'Data Nascimento']);
+    sheet.getRange("A1:F1").setFontWeight("bold");
+  } else {
+    let sheet = ss.getSheetByName(SHEET_JOGADORES);
+    if (sheet.getLastColumn() < 6) {
+      sheet.getRange(1, 6).setValue("Data Nascimento").setFontWeight("bold");
+    }
   }
+  // ... rest of setup ...
   if (!ss.getSheetByName(SHEET_PRESENCAS_SEG)) {
     let sheet = ss.insertSheet(SHEET_PRESENCAS_SEG);
     sheet.appendRow(['Data', 'ID Jogador', 'Nome', 'Status', 'Tipo']);
@@ -81,35 +87,47 @@ function getJogadores() {
     nome: row[1],
     telefone: row[2],
     nivel: row[3],
-    tipo: row[4]
+    tipo: row[4],
+    dataNascimento: row[5] ? formatarParaInputData(row[5]) : ''
   }));
 }
 
+// Helper para formatar data do Sheets (Date object) para string YYYY-MM-DD (input date)
+function formatarParaInputData(data) {
+  if (!(data instanceof Date)) return String(data);
+  let d = data.getDate().toString().padStart(2, '0');
+  let m = (data.getMonth() + 1).toString().padStart(2, '0');
+  let y = data.getFullYear();
+  return `${y}-${m}-${d}`;
+}
+
 // Adiciona jogador
-function adicionarJogador(nome, telefone, nivel, tipo) {
+function adicionarJogador(nome, telefone, nivel, tipo, dataNascimento) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(SHEET_JOGADORES);
   if (!sheet) { setupInicial(); sheet = ss.getSheetByName(SHEET_JOGADORES); }
   const id = new Date().getTime().toString();
-  sheet.appendRow([id, nome, telefone, nivel, tipo]);
+  // Se houver data, salva como Date object para o Sheets formatar corretamente
+  let dataSalvar = dataNascimento ? new Date(dataNascimento + 'T00:00:00') : '';
+  sheet.appendRow([id, nome, telefone, nivel, tipo, dataSalvar]);
   return getJogadores();
 }
 
 // Edita jogador existente
-function editarJogador(id, nome, telefone, nivel, tipo) {
+function editarJogador(id, nome, telefone, nivel, tipo, dataNascimento) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_JOGADORES);
   if (!sheet) return getJogadores();
   
   const data = sheet.getDataRange().getValues();
-  // Começa do índice 1 para pular o cabeçalho
   for(let i=1; i<data.length; i++) {
     if(data[i][0] == id) {
-      // Atualiza as colunas B(2), C(3), D(4), E(5) da linha atual (i+1 pois getRange é índice 1-based)
       sheet.getRange(i+1, 2).setValue(nome);
       sheet.getRange(i+1, 3).setValue(telefone);
       sheet.getRange(i+1, 4).setValue(nivel);
       sheet.getRange(i+1, 5).setValue(tipo);
+      let dataSalvar = dataNascimento ? new Date(dataNascimento + 'T00:00:00') : '';
+      sheet.getRange(i+1, 6).setValue(dataSalvar);
       return getJogadores();
     }
   }
@@ -507,6 +525,15 @@ function getDashboardData() {
     .sort((a, b) => b.total - a.total)
     .slice(0, 5);
 
+  // 5. Aniversariantes do Dia
+  const hojeDia = hoje.getDate();
+  const hojeMes = hoje.getMonth();
+  const aniversariantes = jogadores.filter(j => {
+    if (!j.dataNascimento) return false;
+    let [ano, mes, dia] = j.dataNascimento.split('-');
+    return parseInt(dia) === hojeDia && parseInt(mes) === (hojeMes + 1);
+  }).map(j => j.nome);
+
   return {
     statsJogadores,
     financeiro: {
@@ -520,6 +547,7 @@ function getDashboardData() {
     niveis: [1,2,3,4,5].map(n => ({
       nivel: n,
       qtd: jogadores.filter(j => parseInt(j.nivel) === n).length
-    }))
+    })),
+    aniversariantes
   };
 }

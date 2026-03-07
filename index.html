@@ -138,16 +138,32 @@
             <!-- DASHBOARD -->
             <section v-if="tab === 'dashboard'" class="space-y-4 animate-fade-in">
                 <div v-if="dashboardData" class="space-y-4">
+                    <!-- Aniversariantes do Dia -->
+                    <div v-if="dashboardData.aniversariantes && dashboardData.aniversariantes.length > 0"
+                        class="glass p-5 rounded-2xl border-l-4 border-pink-500 animate-in bg-gradient-to-r from-pink-500/10 to-transparent">
+                        <h3 class="font-bold text-slate-100 mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-cake-candles text-pink-500"></i> Aniversariantes de Hoje! 🎂
+                        </h3>
+                        <div class="flex flex-wrap gap-2">
+                            <span v-for="nome in dashboardData.aniversariantes" :key="nome"
+                                class="bg-pink-500 text-white text-xs font-black px-3 py-1.5 rounded-full shadow-lg shadow-pink-500/20">
+                                {{ nome }}
+                            </span>
+                        </div>
+                    </div>
+
                     <!-- Cards de Jogadores -->
                     <div class="grid grid-cols-2 gap-3">
                         <div class="glass p-4 rounded-2xl border-l-4 border-blue-500">
                             <p class="text-[10px] text-slate-400 font-bold uppercase">Total Elenco</p>
                             <p class="text-2xl font-black text-white">{{ dashboardData.statsJogadores.total }}</p>
-                            <p class="text-[9px] text-blue-400 font-bold mt-1">{{ dashboardData.statsJogadores.mensalistas }} Mensalistas</p>
+                            <p class="text-[9px] text-blue-400 font-bold mt-1">{{
+                                dashboardData.statsJogadores.mensalistas }} Mensalistas</p>
                         </div>
                         <div class="glass p-4 rounded-2xl border-l-4 border-emerald-500">
                             <p class="text-[10px] text-slate-400 font-bold uppercase">Nível Médio</p>
-                            <p class="text-2xl font-black text-white">⭐ {{ dashboardData.statsJogadores.mediaNivel }}</p>
+                            <p class="text-2xl font-black text-white">⭐ {{ dashboardData.statsJogadores.mediaNivel }}
+                            </p>
                             <p class="text-[9px] text-emerald-400 font-bold mt-1">Escala 1 a 5</p>
                         </div>
                     </div>
@@ -161,44 +177,56 @@
                             <div>
                                 <div class="flex justify-between text-xs mb-1">
                                     <span class="text-slate-400">Quadra (Mensalistas)</span>
-                                    <span class="text-white font-bold">R$ {{ dashboardData.financeiro.totalQuadra.toFixed(2).replace('.',',') }}</span>
+                                    <span class="text-white font-bold">R$ {{
+                                        dashboardData.financeiro.totalQuadra.toFixed(2).replace('.',',') }}</span>
                                 </div>
                                 <div class="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden">
-                                    <div class="bg-blue-500 h-full" :style="{ width: (dashboardData.financeiro.totalQuadra / dashboardData.financeiro.totalGeral * 100) + '%' }"></div>
+                                    <div class="bg-blue-500 h-full"
+                                        :style="{ width: (dashboardData.financeiro.totalQuadra / dashboardData.financeiro.totalGeral * 100) + '%' }">
+                                    </div>
                                 </div>
                             </div>
                             <div>
                                 <div class="flex justify-between text-xs mb-1">
                                     <span class="text-slate-400">Equipamentos (Avulsos)</span>
-                                    <span class="text-white font-bold">R$ {{ dashboardData.financeiro.totalEquipamentos.toFixed(2).replace('.',',') }}</span>
+                                    <span class="text-white font-bold">R$ {{
+                                        dashboardData.financeiro.totalEquipamentos.toFixed(2).replace('.',',') }}</span>
                                 </div>
                                 <div class="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden">
-                                    <div class="bg-emerald-500 h-full" :style="{ width: (dashboardData.financeiro.totalEquipamentos / dashboardData.financeiro.totalGeral * 100) + '%' }"></div>
+                                    <div class="bg-emerald-500 h-full"
+                                        :style="{ width: (dashboardData.financeiro.totalEquipamentos / dashboardData.financeiro.totalGeral * 100) + '%' }">
+                                    </div>
                                 </div>
                             </div>
                             <div class="pt-2 border-t border-slate-700 flex justify-between items-center">
                                 <span class="text-sm font-bold text-slate-300">Total Geral</span>
-                                <span class="text-lg font-black text-yellow-400">R$ {{ dashboardData.financeiro.totalGeral.toFixed(2).replace('.',',') }}</span>
+                                <span class="text-lg font-black text-yellow-400">R$ {{
+                                    dashboardData.financeiro.totalGeral.toFixed(2).replace('.',',') }}</span>
                             </div>
                         </div>
                     </div>
 
                     <!-- Pendências Financeiras -->
-                    <div v-if="dashboardData.financeiro.saldoEmAberto > 0" class="glass p-5 rounded-2xl border-l-4 border-red-500 animate-in">
+                    <div v-if="dashboardData.financeiro.saldoEmAberto > 0"
+                        class="glass p-5 rounded-2xl border-l-4 border-red-500 animate-in">
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="font-bold text-slate-100 flex items-center gap-2">
                                 <i class="fa-solid fa-hand-holding-dollar text-red-500"></i> Pendências do Mês
                             </h3>
-                            <span class="text-lg font-black text-red-400">R$ {{ dashboardData.financeiro.saldoEmAberto.toFixed(2).replace('.',',') }}</span>
+                            <span class="text-lg font-black text-red-400">R$ {{
+                                dashboardData.financeiro.saldoEmAberto.toFixed(2).replace('.',',') }}</span>
                         </div>
                         <div class="space-y-2 max-h-40 overflow-y-auto pr-1">
-                            <div v-for="(d, idx) in dashboardData.financeiro.devedores" :key="idx" 
+                            <div v-for="(d, idx) in dashboardData.financeiro.devedores" :key="idx"
                                 class="flex justify-between items-center p-2 bg-red-500/5 rounded-lg border border-red-500/10">
                                 <div class="flex items-center gap-2">
-                                    <span class="text-[10px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded font-bold uppercase">{{ d.dia }}</span>
+                                    <span
+                                        class="text-[10px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded font-bold uppercase">{{
+                                        d.dia }}</span>
                                     <span class="text-sm font-semibold text-slate-300">{{ d.nome }}</span>
                                 </div>
-                                <span class="text-xs font-bold text-slate-400 italic">R$ {{ d.valor.toFixed(2).replace('.',',') }}</span>
+                                <span class="text-xs font-bold text-slate-400 italic">R$ {{
+                                    d.valor.toFixed(2).replace('.',',') }}</span>
                             </div>
                         </div>
                     </div>
@@ -218,14 +246,17 @@
                                 <i class="fa-solid fa-crown text-amber-400"></i> Top 5 Assíduos
                             </h3>
                             <div class="space-y-2">
-                                <div v-for="(r, idx) in dashboardData.ranking" :key="idx" class="flex justify-between items-center p-2 bg-slate-800/40 rounded-lg border border-slate-700/30">
+                                <div v-for="(r, idx) in dashboardData.ranking" :key="idx"
+                                    class="flex justify-between items-center p-2 bg-slate-800/40 rounded-lg border border-slate-700/30">
                                     <div class="flex items-center gap-3">
                                         <span class="text-[10px] font-black text-slate-500">#{{ idx+1 }}</span>
                                         <span class="text-sm font-semibold">{{ r.nome }}</span>
                                     </div>
                                     <span class="text-xs font-bold text-emerald-400">{{ r.total }} jogos</span>
                                 </div>
-                                <p v-if="dashboardData.ranking.length === 0" class="text-center text-xs text-slate-500 py-4 italic">Nenhuma presença registrada ainda.</p>
+                                <p v-if="dashboardData.ranking.length === 0"
+                                    class="text-center text-xs text-slate-500 py-4 italic">Nenhuma presença registrada
+                                    ainda.</p>
                             </div>
                         </div>
 
@@ -235,10 +266,12 @@
                                 <i class="fa-solid fa-scale-balanced text-cyan-400"></i> Equilíbrio do Grupo
                             </h3>
                             <div class="flex items-end justify-between gap-2 h-24 px-2">
-                                <div v-for="n in dashboardData.niveis" :key="n.nivel" class="flex-1 flex flex-col items-center gap-2">
+                                <div v-for="n in dashboardData.niveis" :key="n.nivel"
+                                    class="flex-1 flex flex-col items-center gap-2">
                                     <span class="text-[9px] text-slate-400 font-bold">{{ n.qtd }}</span>
-                                    <div class="w-full bg-cyan-500/20 border-t border-cyan-500/50 rounded-t-sm transition-all duration-500" 
-                                         :style="{ height: (n.qtd / Math.max(...dashboardData.niveis.map(x=>x.qtd), 1) * 100) + '%' }"></div>
+                                    <div class="w-full bg-cyan-500/20 border-t border-cyan-500/50 rounded-t-sm transition-all duration-500"
+                                        :style="{ height: (n.qtd / Math.max(...dashboardData.niveis.map(x=>x.qtd), 1) * 100) + '%' }">
+                                    </div>
                                     <span class="text-[10px] font-black text-slate-500">⭐{{ n.nivel }}</span>
                                 </div>
                             </div>
@@ -386,15 +419,18 @@
             <!-- FINANCEIRO -->
             <section v-if="tab === 'financeiro'" class="space-y-4 animate-fade-in">
                 <!-- Seletor de Mês -->
-                <div class="flex items-center justify-between px-2 bg-slate-800/50 rounded-2xl p-2 border border-slate-700/50">
-                    <button @click="alterarMes(-1)" class="w-10 h-10 rounded-xl bg-slate-700 hover:bg-slate-600 transition flex items-center justify-center text-slate-300">
+                <div
+                    class="flex items-center justify-between px-2 bg-slate-800/50 rounded-2xl p-2 border border-slate-700/50">
+                    <button @click="alterarMes(-1)"
+                        class="w-10 h-10 rounded-xl bg-slate-700 hover:bg-slate-600 transition flex items-center justify-center text-slate-300">
                         <i class="fa-solid fa-chevron-left"></i>
                     </button>
                     <div class="text-center">
                         <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Mês de Referência</p>
                         <p class="text-lg font-black text-white">{{ mesReferencia }}</p>
                     </div>
-                    <button @click="alterarMes(1)" class="w-10 h-10 rounded-xl bg-slate-700 hover:bg-slate-600 transition flex items-center justify-center text-slate-300">
+                    <button @click="alterarMes(1)"
+                        class="w-10 h-10 rounded-xl bg-slate-700 hover:bg-slate-600 transition flex items-center justify-center text-slate-300">
                         <i class="fa-solid fa-chevron-right"></i>
                     </button>
                 </div>
@@ -605,6 +641,12 @@
                                 </select>
                             </div>
                         </div>
+                        <div class="flex-1">
+                            <label class="text-[10px] text-slate-400 uppercase font-bold ml-1">Data de Nascimento
+                                (Opcional)</label>
+                            <input type="date" v-model="novoJogador.dataNascimento"
+                                class="w-full bg-slate-800 rounded-xl p-3 outline-none mt-1 text-slate-300">
+                        </div>
                     </div>
                     <div class="flex gap-2">
                         <button v-if="novoJogador.id" @click="cancelarEdicao"
@@ -669,7 +711,7 @@
                     dashboardData: null,
                     diaSelecionado: 'Segunda',
                     dataJogo: '',
-                    novoJogador: { nome: '', telefone: '', nivel: '3', tipo: 'Mensalista Seg' },
+                    novoJogador: { nome: '', telefone: '', nivel: '3', tipo: 'Mensalista Seg', dataNascimento: '' },
                     jogadoresPorTime: 6,
                     custoSegunda: '',
                     custoSexta: '',
@@ -762,9 +804,9 @@
                 });
             },
             methods: {
-                fetchDashboardData: function() {
+                fetchDashboardData: function () {
                     var self = this;
-                    this.runGoogleScript('getDashboardData').then(function(res) {
+                    this.runGoogleScript('getDashboardData').then(function (res) {
                         self.dashboardData = res;
                     });
                 },
@@ -786,10 +828,10 @@
                     var partes = this.mesReferencia.split('/');
                     var mes = parseInt(partes[0]);
                     var ano = parseInt(partes[1]);
-                    
+
                     var data = new Date(ano, mes - 1 + direcao, 1);
                     this.mesReferencia = (data.getMonth() + 1).toString().padStart(2, '0') + '/' + data.getFullYear();
-                    
+
                     // Reseta campos de custo para o novo mês (serão preenchidos pelo checkFinanceiro se existirem)
                     this.custoSegunda = '';
                     this.custoSexta = '';
@@ -843,9 +885,9 @@
                         } else if (funcName === 'registrarPresenca') {
                             google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).registrarPresenca(args[0], args[1], args[2], args[3], args[4]);
                         } else if (funcName === 'adicionarJogador') {
-                            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).adicionarJogador(args[0], args[1], args[2], args[3]);
+                            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).adicionarJogador(args[0], args[1], args[2], args[3], args[4]);
                         } else if (funcName === 'editarJogador') {
-                            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).editarJogador(args[0], args[1], args[2], args[3], args[4]);
+                            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).editarJogador(args[0], args[1], args[2], args[3], args[4], args[5]);
                         } else if (funcName === 'sortearTimes') {
                             google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).sortearTimes(args[0], args[1], args[2]);
                         } else if (funcName === 'calcularFechamento') {
@@ -967,7 +1009,8 @@
                         nome: jogador.nome,
                         telefone: jogador.telefone,
                         nivel: String(jogador.nivel), // String garante que o select de nivel também bata
-                        tipo: tipoNormalizado
+                        tipo: tipoNormalizado,
+                        dataNascimento: jogador.dataNascimento || ''
                     };
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 },
@@ -980,19 +1023,19 @@
                     return (mascarados + ultimos).replace(/(\*{2})(\*{2})(\d+)(\d{4})/, '$1 ($2) $3-$4');
                 },
                 cancelarEdicao: function () {
-                    this.novoJogador = { nome: '', telefone: '', nivel: '3', tipo: 'Mensalista Seg' };
+                    this.novoJogador = { nome: '', telefone: '', nivel: '3', tipo: 'Mensalista Seg', dataNascimento: '' };
                 },
                 salvarJogador: function () {
                     if (!this.novoJogador.nome) return alert("Preencha o nome!");
                     var self = this;
                     if (this.novoJogador.id) {
-                        this.runGoogleScript('editarJogador', [this.novoJogador.id, this.novoJogador.nome, this.novoJogador.telefone, this.novoJogador.nivel, this.novoJogador.tipo]).then(function (res) {
+                        this.runGoogleScript('editarJogador', [this.novoJogador.id, this.novoJogador.nome, this.novoJogador.telefone, this.novoJogador.nivel, this.novoJogador.tipo, this.novoJogador.dataNascimento]).then(function (res) {
                             self.jogadores = res;
                             self.cancelarEdicao();
                             alert("Jogador atualizado com sucesso!");
                         });
                     } else {
-                        this.runGoogleScript('adicionarJogador', [this.novoJogador.nome, this.novoJogador.telefone, this.novoJogador.nivel, this.novoJogador.tipo]).then(function (res) {
+                        this.runGoogleScript('adicionarJogador', [this.novoJogador.nome, this.novoJogador.telefone, this.novoJogador.nivel, this.novoJogador.tipo, this.novoJogador.dataNascimento]).then(function (res) {
                             self.jogadores = res;
                             self.cancelarEdicao();
                             alert("Jogador adicionado!");
