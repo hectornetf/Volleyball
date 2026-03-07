@@ -615,7 +615,9 @@
                             class="w-full bg-slate-800 rounded-xl p-3 outline-none focus:ring-2 focus:ring-purple-500 font-semibold">
                         <div class="relative">
                             <i class="fa-brands fa-whatsapp absolute top-3.5 left-3 text-slate-400"></i>
-                            <input type="tel" v-model="novoJogador.telefone" placeholder="DDD + Número"
+                            <input type="text" v-model="novoJogador.telefone" 
+                                @focus="novoJogador.telefone.includes('*') && (novoJogador.telefone = '')"
+                                placeholder="DDD + Número"
                                 class="w-full bg-slate-800 rounded-xl p-3 pl-9 outline-none focus:ring-2 focus:ring-purple-500">
                         </div>
                         <div class="flex gap-2">
@@ -644,7 +646,9 @@
                         <div class="flex-1">
                             <label class="text-[10px] text-slate-400 uppercase font-bold ml-1">Data de Nascimento
                                 (Opcional)</label>
-                            <input type="date" v-model="novoJogador.dataNascimento"
+                            <input :type="novoJogador.dataNascimento && novoJogador.dataNascimento.includes('*') ? 'text' : 'date'" 
+                                v-model="novoJogador.dataNascimento"
+                                @focus="novoJogador.dataNascimento && novoJogador.dataNascimento.includes('*') && (novoJogador.dataNascimento = '')"
                                 class="w-full bg-slate-800 rounded-xl p-3 outline-none mt-1 text-slate-300">
                         </div>
                     </div>
@@ -712,6 +716,8 @@
                     diaSelecionado: 'Segunda',
                     dataJogo: '',
                     novoJogador: { nome: '', telefone: '', nivel: '3', tipo: 'Mensalista Seg', dataNascimento: '' },
+                    originalTelefone: '',
+                    originalDataNascimento: '',
                     jogadoresPorTime: 6,
                     custoSegunda: '',
                     custoSexta: '',
@@ -1004,13 +1010,18 @@
                     } else if (tipoRaw.includes('AVULSO')) {
                         tipoNormalizado = 'Avulso';
                     }
+
+                    // Salva valores originais para não sobrescrever com asteriscos ao salvar
+                    this.originalTelefone = jogador.telefone;
+                    this.originalDataNascimento = jogador.dataNascimento || '';
+
                     this.novoJogador = {
                         id: jogador.id,
                         nome: jogador.nome,
-                        telefone: jogador.telefone,
+                        telefone: this.mascararTelefone(jogador.telefone),
                         nivel: String(jogador.nivel), // String garante que o select de nivel também bata
                         tipo: tipoNormalizado,
-                        dataNascimento: jogador.dataNascimento || ''
+                        dataNascimento: this.mascararData(jogador.dataNascimento)
                     };
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 },
@@ -1022,20 +1033,33 @@
                     var mascarados = s.slice(0, s.length - 4).replace(/\d/g, '*');
                     return (mascarados + ultimos).replace(/(\*{2})(\*{2})(\d+)(\d{4})/, '$1 ($2) $3-$4');
                 },
+                mascararData: function (data) {
+                    if (!data) return '';
+                    var partes = data.split('-');
+                    if (partes.length < 3) return data;
+                    return '****-**-' + partes[2];
+                },
                 cancelarEdicao: function () {
                     this.novoJogador = { nome: '', telefone: '', nivel: '3', tipo: 'Mensalista Seg', dataNascimento: '' };
+                    this.originalTelefone = '';
+                    this.originalDataNascimento = '';
                 },
                 salvarJogador: function () {
                     if (!this.novoJogador.nome) return alert("Preencha o nome!");
                     var self = this;
+
+                    // Desmascara os dados: se contém asteriscos, usa o valor original salvo
+                    var telFinal = (this.novoJogador.id && this.novoJogador.telefone.includes('*')) ? this.originalTelefone : this.novoJogador.telefone;
+                    var dataFinal = (this.novoJogador.id && this.novoJogador.dataNascimento && this.novoJogador.dataNascimento.includes('*')) ? this.originalDataNascimento : this.novoJogador.dataNascimento;
+
                     if (this.novoJogador.id) {
-                        this.runGoogleScript('editarJogador', [this.novoJogador.id, this.novoJogador.nome, this.novoJogador.telefone, this.novoJogador.nivel, this.novoJogador.tipo, this.novoJogador.dataNascimento]).then(function (res) {
+                        this.runGoogleScript('editarJogador', [this.novoJogador.id, this.novoJogador.nome, telFinal, this.novoJogador.nivel, this.novoJogador.tipo, dataFinal]).then(function (res) {
                             self.jogadores = res;
                             self.cancelarEdicao();
                             alert("Jogador atualizado com sucesso!");
                         });
                     } else {
-                        this.runGoogleScript('adicionarJogador', [this.novoJogador.nome, this.novoJogador.telefone, this.novoJogador.nivel, this.novoJogador.tipo, this.novoJogador.dataNascimento]).then(function (res) {
+                        this.runGoogleScript('adicionarJogador', [this.novoJogador.nome, telFinal, this.novoJogador.nivel, this.novoJogador.tipo, dataFinal]).then(function (res) {
                             self.jogadores = res;
                             self.cancelarEdicao();
                             alert("Jogador adicionado!");
