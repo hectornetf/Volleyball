@@ -420,3 +420,106 @@ function registrarPagamento(idJogador, nome, diaSemana, mesAno, valor) {
   let filtroRetorno = mesAno.length > 7 ? mesAno.split('/').slice(1).join('/') : mesAno;
   return getPagamentos(filtroRetorno);
 }
+
+/** 
+ * DASHBOARD: Consolida dados para visão analítica e financeira
+ */
+function getDashboardData() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const jogadores = getJogadores();
+  const pagamentosSheet = ss.getSheetByName(SHEET_PAGAMENTOS);
+  const pagamentos = pagamentosSheet ? pagamentosSheet.getDataRange().getValues() : [];
+  
+  const hoje = new Date();
+  const mesAtual = (hoje.getMonth() + 1).toString().padStart(2, '0') + '/' + hoje.getFullYear();
+  
+  // 1. Estatísticas Básicas
+  const statsJogadores = {
+    total: jogadores.length,
+    mensalistas: jogadores.filter(j => j.tipo.toLowerCase().includes('mens')).length,
+    avulsos: jogadores.filter(j => j.tipo.toLowerCase().includes('avulso')).length,
+    mediaNivel: (jogadores.reduce((acc, j) => acc + (parseInt(j.nivel) || 0), 0) / (jogadores.length || 1)).toFixed(1)
+  };
+
+  // 2. Financeiro: Arrecadação Acumulada (Histórico)
+  let totalQuadra = 0;
+  let totalEquipamentos = 0;
+  if (pagamentos.length > 1) {
+    pagamentos.slice(1).forEach(row => {
+      if (row[5] === 'Pago') {
+        let valor = parseFloat(String(row[4]).replace(',', '.')) || 0;
+        let dataStr = String(row[3]);
+        // Se a data tem mais de 7 caracteres (DD/MM/YYYY), é avulso diário
+        if (dataStr.length > 7) totalEquipamentos += valor;
+        else totalQuadra += valor;
+      }
+    });
+  }
+
+  // 3. Financeiro: Pendências do Mês Atual
+  let saldoEmAberto = 0;
+  const devedores = [];
+  const config = getConfigFinanceira(mesAtual);
+  
+  if (config) {
+    // Busca registros 'Pago' deste mês para conferência
+    const pagosEsteMes = pagamentos.slice(1).filter(r => tratarMesAno(r[3]) === mesAtual && r[5] === 'Pago');
+    
+    // Processa Segunda
+    const jSeg = jogadores.filter(j => j.tipo.toUpperCase().includes('SEG') || j.tipo.toUpperCase() === 'MENS' || j.tipo.toUpperCase() === 'MENSALISTA');
+    const valorSeg = parseFloat(config.custoSegunda) / (jSeg.length || 1);
+    jSeg.forEach(j => {
+      if (!pagosEsteMes.some(p => String(p[0]) === String(j.id) && p[2] === 'Segunda')) {
+        saldoEmAberto += valorSeg;
+        devedores.push({ nome: j.nome, valor: valorSeg, dia: 'Seg' });
+      }
+    });
+
+    // Processa Sexta
+    const jSex = jogadores.filter(j => j.tipo.toUpperCase().includes('SEX') || j.tipo.toUpperCase() === 'MENS' || j.tipo.toUpperCase() === 'MENSALISTA');
+    const valorSex = parseFloat(config.custoSexta) / (jSex.length || 1);
+    jSex.forEach(j => {
+      if (!pagosEsteMes.some(p => String(p[0]) === String(j.id) && p[2] === 'Sexta')) {
+        saldoEmAberto += valorSex;
+        devedores.push({ nome: j.nome, valor: valorSex, dia: 'Sex' });
+      }
+    });
+  }
+
+  // 4. Ranking de Presença
+  const presencasSeg = ss.getSheetByName(SHEET_PRESENCAS_SEG) ? ss.getSheetByName(SHEET_PRESENCAS_SEG).getDataRange().getValues() : [];
+  const presencasSex = ss.getSheetByName(SHEET_PRESENCAS_SEX) ? ss.getSheetByName(SHEET_PRESENCAS_SEX).getDataRange().getValues() : [];
+  const contadorPresenca = {};
+  const processarLista = (lista) => {
+    if (lista.length <= 1) return;
+    lista.slice(1).forEach(row => {
+      if (row[3] === 'Confirmado') {
+        const nome = row[2];
+        contadorPresenca[nome] = (contadorPresenca[nome] || 0) + 1;
+      }
+    });
+  };
+  processarLista(presencasSeg);
+  processarLista(presencasSex);
+
+  const ranking = Object.keys(contadorPresenca)
+    .map(nome => ({ nome, total: contadorPresenca[nome] }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 5);
+
+  return {
+    statsJogadores,
+    financeiro: {
+      totalQuadra,
+      totalEquipamentos,
+      totalGeral: totalQuadra + totalEquipamentos,
+      saldoEmAberto,
+      devedores: devedores.sort((a, b) => b.valor - a.valor)
+    },
+    ranking,
+    niveis: [1,2,3,4,5].map(n => ({
+      nivel: n,
+      qtd: jogadores.filter(j => parseInt(j.nivel) === n).length
+    }))
+  };
+}
