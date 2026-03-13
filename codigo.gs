@@ -305,6 +305,7 @@ function calcularFechamento(mesAno, custosJsonStr) {
 
   // Inicializa o objeto do relatório com os dias que têm custo > 0
   Object.keys(custosObj).forEach(dia => {
+    if (dia === 'Avulso') return; // Pula a configuração de preço do avulso (é receita)
     let c = parseFloat(custosObj[dia]) || 0;
     if (c > 0) {
       relatorio.dias[dia] = { custo: c, totalMensalistas: 0, valorPorPessoa: 0, jogadores: [] };
@@ -348,8 +349,10 @@ function calcularFechamento(mesAno, custosJsonStr) {
     }
   });
   
-  // Salva a configuração e calcula o status
-  if (custoTotalQuadra > 0) {
+  // Salva a configuração (sempre que houver custos configurados ou status alterado)
+  let temQualquerCusto = Object.keys(custosObj).some(k => parseFloat(custosObj[k]) > 0);
+  
+  if (temQualquerCusto || custoTotalQuadra > 0) {
     let arrecadadoMensalistas = 0;
     let arrecadadoAvulsos = 0;
     
@@ -366,7 +369,7 @@ function calcularFechamento(mesAno, custosJsonStr) {
     });
 
     // O status (para pagar a quadra) agora depende apenas da arrecadação dos mensalistas
-    let status = arrecadadoMensalistas >= (custoTotalQuadra - 0.01) ? "Pago Totalmente" : "Em Aberto";
+    let status = (custoTotalQuadra > 0 && arrecadadoMensalistas >= (custoTotalQuadra - 0.01)) ? "Pago Totalmente" : "Em Aberto";
     
     salvarConfigFinanceira(mesAno, custosJsonStr, status);
     relatorio.statusGeral = status;

@@ -339,7 +339,7 @@
                                 <button v-if="j.tipo.toLowerCase().includes('avulso') && !getPagamentoHoje(j.id)"
                                     @click="pagarAvulso(j)"
                                     class="bg-amber-500 hover:bg-amber-400 text-white px-3 py-1.5 rounded-lg transition-all font-black text-[10px] uppercase shadow-lg shadow-amber-500/20 border border-amber-400/50">
-                                    Pagar R$10
+                                    Pagar R${{ costsAvulsoLabel }}
                                 </button>
                                 <span v-else-if="j.tipo.toLowerCase().includes('avulso')"
                                     class="text-[9px] font-black text-amber-400 bg-amber-400/10 px-2 py-1 rounded-md border border-amber-400/20 mr-1">PAGO
@@ -445,12 +445,34 @@
                                     placeholder="0,00">
                             </div>
                         </div>
+
+                        <!-- Valor Avulso Dinâmico -->
+                        <div class="pt-2 border-t border-slate-700/50 mt-2">
+                            <div class="flex items-center gap-2">
+                                <label class="w-24 text-xs font-bold text-amber-500">Valor Avulso</label>
+                                <div class="relative flex-1">
+                                    <span
+                                        class="absolute top-1/2 -translate-y-1/2 left-3 text-amber-500/50 font-bold text-sm">R$</span>
+                                    <input type="number" v-model="custosConfig['Avulso']"
+                                        class="w-full bg-slate-800/80 border border-amber-500/30 rounded-lg py-2 pl-9 text-amber-400 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none font-black placeholder-amber-900/40"
+                                        placeholder="10,00">
+                                </div>
+                            </div>
+                            <p class="text-[9px] text-slate-500 mt-1 ml-26 italic">* Valor cobrado por dia de cada
+                                convidado/avulso.</p>
+                        </div>
                     </div>
 
-                    <button @click="calcularFechamento"
-                        class="w-full bg-gradient-to-r from-yellow-500 to-orange-500 font-bold py-3 rounded-xl text-white transition-all shadow-lg flex justify-center gap-2 items-center active:scale-95 mt-6">
-                        <i class="fa-solid fa-calculator"></i> Iniciar Rateio
-                    </button>
+                    <div class="flex gap-2 mt-6">
+                        <button @click="salvarConfigSomente"
+                            class="flex-1 bg-slate-700 hover:bg-slate-600 font-bold py-3 rounded-xl text-slate-300 shadow-lg transition-all flex justify-center gap-2 items-center">
+                            <i class="fa-solid fa-save"></i> Salvar
+                        </button>
+                        <button @click="calcularFechamento"
+                            class="flex-[2] bg-gradient-to-r from-yellow-500 to-orange-500 font-bold py-3 rounded-xl text-white transition-all shadow-lg flex justify-center gap-2 items-center active:scale-95">
+                            <i class="fa-solid fa-calculator"></i> Iniciar Rateio
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Resumo Financeiro Superior -->
@@ -726,7 +748,7 @@
                     originalDataNascimento: '',
                     jogadoresPorTime: 6,
                     custosConfig: {
-                        Domingo: '', Segunda: '', Terça: '', Quarta: '', Quinta: '', Sexta: '', Sábado: ''
+                        Domingo: '', Segunda: '', Terça: '', Quarta: '', Quinta: '', Sexta: '', Sábado: '', Avulso: ''
                     },
                     fechamento: null,
                     mesReferencia: (new Date().getMonth() + 1).toString().padStart(2, '0') + '/' + new Date().getFullYear(),
@@ -782,6 +804,10 @@
                         return this.fechamento.totalAvulsos.toFixed(2).replace('.', ',');
                     }
                     return "0,00"; // Fallback para modelo antigo se houver
+                },
+                costsAvulsoLabel: function () {
+                    let v = parseFloat(this.custosConfig['Avulso']) || 10;
+                    return v.toFixed(2).replace('.', ',');
                 }
             },
             watch: {
@@ -809,8 +835,9 @@
             methods: {
                 somaCustosConfig: function () {
                     let sum = 0;
-                    Object.values(this.custosConfig).forEach(v => {
-                        sum += parseFloat(String(v).replace(',', '.')) || 0;
+                    Object.keys(this.custosConfig).forEach(k => {
+                        if (k === 'Avulso') return; // Avulso é receita, não custo de rateio
+                        sum += parseFloat(String(this.custosConfig[k]).replace(',', '.')) || 0;
                     });
                     return sum;
                 },
@@ -843,8 +870,9 @@
                     this.mesReferencia = (data.getMonth() + 1).toString().padStart(2, '0') + '/' + data.getFullYear();
 
                     // Reseta campos de custo para o novo mês (serão preenchidos pelo checkFinanceiro se existirem)
-                    this.custoSegunda = '';
-                    this.custoSexta = '';
+                    for (var d in this.custosConfig) {
+                        this.custosConfig[d] = '';
+                    }
                 },
                 mudarDia: function (dia) {
                     this.diaSelecionado = dia;
@@ -980,9 +1008,10 @@
                 },
                 pagarAvulso: function (jogador) {
                     var self = this;
-                    if (!confirm("Confirmar recebimento de R$ 10,00 de " + jogador.nome + "?")) return;
+                    var valorAvulso = parseFloat(this.custosConfig['Avulso']) || 10;
+                    if (!confirm("Confirmar recebimento de R$ " + valorAvulso.toFixed(2).replace('.', ',') + " de " + jogador.nome + "?")) return;
 
-                    this.runGoogleScript('registrarPagamento', [jogador.id, jogador.nome, this.diaSelecionado, this.dataJogo, 10]).then(function (res) {
+                    this.runGoogleScript('registrarPagamento', [jogador.id, jogador.nome, this.diaSelecionado, this.dataJogo, valorAvulso]).then(function (res) {
                         // Res retorna getPagamentos(mesAno)
                         self.pagamentosGlobal = res;
                         // Opcional: Notificar sucesso
@@ -1125,7 +1154,10 @@
                         if (res && res.custosJsonStr) {
                             try {
                                 var configLocal = JSON.parse(res.custosJsonStr);
-                                self.custosConfig = configLocal;
+                                // Merge para manter reatividade e chaves novas
+                                Object.keys(configLocal).forEach(function (k) {
+                                    self.custosConfig[k] = configLocal[k];
+                                });
                                 self.calcularFechamento();
                             } catch (e) {
                                 console.error('Erro ao parsear custos', e);
@@ -1133,6 +1165,15 @@
                         } else {
                             self.fechamento = null;
                         }
+                    });
+                },
+                salvarConfigSomente: function () {
+                    this.loading = true;
+                    var self = this;
+                    this.runGoogleScript('calcularFechamento', [this.mesReferencia, JSON.stringify(this.custosConfig), 'Salvar']).then(function (res) {
+                        self.fechamento = res;
+                        self.toastMsg = 'Configurações de ' + self.mesReferencia + ' salvas com sucesso! ✅';
+                        setTimeout(function () { self.toastMsg = ''; }, 3000);
                     });
                 },
                 limparTelaFinanceiro: function () {
