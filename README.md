@@ -14,10 +14,10 @@
 </p>
 
 <p align="center">
-  <img src="./demo_voleizin.webp" alt="Demonstração Animada do Sistema" width="700" style="border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
+  <img src="./minha_foto.png" alt="Preview do Sistema" width="400">
 </p>
 
-> **Nota:** Demonstração animada real do Web App rodando de forma unificada e reativa via Google Apps Script. 
+> **Nota:** Interface real do Web App rodando via Google Apps Script. Siga o guia de instalação abaixo para configurar seu próprio painel.
 
 ---
 
