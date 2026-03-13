@@ -1,4 +1,4 @@
-# <p align="center">🏐 VoleizinDosCria</p>
+# <p align="center">🏐 VoleizinDosCria 🏐</p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Vue.js-35495E?style=for-the-badge&logo=vuedotjs&logoColor=4FC08D" />
@@ -10,84 +10,85 @@
 
 <p align="center">
   <strong>O sistema definitivo para gestão de grupos de vôlei amador.</strong><br />
-  Uma aplicação Web moderna que transforma o Google Sheets em um Dashboard inteligente e automatizado.
+  Uma aplicação Web moderna que transforma o Google Sheets em um Dashboard inteligente, organizado e automatizado para todos os dias da semana.
 </p>
 
 <p align="center">
-  <img src="./minha_foto.png" alt="Preview do Sistema" width="400">
+  <img src="./demo_voleizin.webp" alt="Demonstração Animada do Sistema" width="700" style="border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
 </p>
 
-> **Nota:** Interface real do Web App rodando via Google Apps Script. Siga o guia de instalação abaixo para configurar seu próprio painel.
+> **Nota:** Demonstração animada real do Web App rodando de forma unificada e reativa via Google Apps Script. 
 
 ---
 
 ## 🌟 Visão Geral
 
-O **VoleizinDosCria** foi desenvolvido para resolver o caos da organização de vôlei amador: listas de presença infinitas no WhatsApp, cálculos de rateio complexos e times desequilibrados. Com uma interface **Glassmorphism** e lógica de backend robusta, ele centraliza tudo em um único lugar.
+O **VoleizinDosCria** foi minuciosamente desenvolvido para resolver o caos e as dores de cabeça da organização de vôlei amador: listas de presença infinitas no WhatsApp, cálculos de rateio complexos e manuais, além da montagem de times recorrentemente desequilibrados. Com uma interface **Glassmorphism**, um backend robusto em GAS e suporte a qualquer dia da semana, ele centraliza exatamente tudo o que um administrador de vôlei precisa em um único lugar, num formato "App-Like" responsivo para celulares e desktops.
 
 ---
 
 ## 🚀 Funcionalidades de Elite
 
 ### 📊 Dashboard Analítico (Business Intelligence)
-*   **Visão Geral do Elenco:** Acompanhe o total de jogadores e a proporção entre mensalistas e avulsos.
-*   **Saúde Financeira:** Monitore a arrecadação mensal com separação automática de verbas.
-*   **Ranking de Assiduidade:** Top 5 de presença para incentivar o grupo.
-*   **Equilíbrio Técnico:** Visualização gráfica da força do grupo por níveis (1 a 5 ⭐).
+*   **Visão Geral do Elenco:** Acompanhe o total de jogadores, separados entre todas as categorias.
+*   **Saúde Financeira:** Monitore a arrecadação acumulada e visualize as proporções destinadas à quadra e aos avulsos (caixa de bola).
+*   **Ranking de Assiduidade:** Top 5 presenças para incentivar a regularidade do grupo.
+*   **Equilíbrio Técnico:** Gráficos e painéis indicando a distribuição de força do grupo por níveis (1 a 5 ⭐).
 
-### 📅 Chamada Inteligente
-*   **Reconhecimento de Dia:** O app identifica automaticamente a próxima Segunda ou Sexta.
-*   **Status em Tempo Real:** Confirmações rápidas ("Vou" ou "Falto") com feedback instantâneo.
-*   **Trava de Segurança:** Avulsos só confirmam presença após a validação do pagamento.
+### 📅 Chamada Inteligente e Dinâmica
+*   **Aba Presença Multi-Dia:** Reconhecimento automático de todos os dias cadastrados da semana. O app sabe exatamente qual será o próximo dia de treino.
+*   **Status em Tempo Real:** Confirmações de jogo dinâmicas ("Vou" ou "Falto") com recálculo instantâneo de presenças.
+*   **Trava Financeira em Tempo Real:** Jogadores na modalidade **Avulso** só podem clicar em "Vou" após a confirmação em sistema de que receberam e atestaram o seu pix/dinheiro da diária (R$10).
 
-### 🔀 Algoritmo de Sorteio (Snake Draft)
-*   **Fair Play:** Distribuição baseada em nível técnico para times equilibrados.
-*   **Zap Sync:** Gere e copie a lista de times formatada com um clique para o WhatsApp.
+### 🔀 Algoritmo de Sorteio Balanceado (Snake Draft)
+*   **Fair Play Garantido:** Distribuição de jogadores pautada puramente pela somatória dos níveis técnicos, equilibrando o peso (Lvl Total) de cada equipe formada na grade.
+*   **Zap Sync Instantâneo:** Gere os times otimizados e encaminhe a formatação textual no WhatsApp com apenas um toque no botão, economizando muito tempo.
 
----
-
-## 💰 Inteligência Financeira (Regras de Negócio)
-
-1.  **Rateio de Mensalistas:** Custo da quadra dividido dinamicamente pelo número de mensalistas ativos.
-2.  **Fundo de Equipamentos:** Verba de **Avulsos** (R$ 10,00) acumulada para compra de bolas e materiais.
-3.  **Gestão de Pendências:** Lista automática de devedores com atalho para cobrança via WhatsApp.
+### 💰 Inteligência Financeira e Regras de Negócio
+1. **Rateio de Mensalistas:** O valor integral do custo da quadra determinado nos fechamentos é rateado dinamicamente pelos mensalistas vinculados a cada dia de treino (Ex: Rateio Terça, Rateio Sexta)
+2. **Fundo de Equipamentos e Bola:** A verba levantada pelos **Avulsos** vai diretamente para um bloco separado de caixa focado em benefícios futuros.
+3. **Gestão Pró-Ativa:** Listagem automática dos "Devedores" do mês com links diretos de cobrança para o WhatsApp individual de suas respectívas pendências.
 
 ---
 
-## 🔒 Privacidade e Segurança
+## 🔒 Privacidade e Segurança Embutida
 
-*   **Mascaramento de Dados:** Telefones e datas de nascimento ocultos por padrão (`****-**-07`).
-*   **Preservação de Dados:** Sistema inteligente que não sobrescreve dados reais com asteriscos.
-*   **Auditoria:** Histórico de pagamentos imutável salvo em abas de log.
+*   **Mascaramento de Dados:** Dados sensíveis, como os Telefones dos jogadores da plataforma, são mascarados automaticamente e com segurança nativa de string na visualização.
+*   **Manutenção Controlada:** Operações de leitura, cálculo de saldo, rateio sob demanda e registros sem risco de corromper o banco na nuvem (Google Sheets).
 
 ---
 
 ## 📂 Estrutura do Projeto
 
 ```text
-├── codigo.gs          # Backend (Lógica de negócio e API do Sheets)
-├── index.html         # Frontend (Vue.js + Tailwind + UI)
-├── README.md          # Documentação do projeto
-└── INSTRUCOES.md      # Guia passo a passo para usuários leigos
+├── codigo.gs          # Backend (Lógica de API hospedada pelo Google Apps Script)
+├── index.html         # Frontend (Template reativo em Vue 3.js + TailwindCSS)
+├── demo_voleizin.webp # Captura animada demonstrativa da versão Web do sistema
+├── README.md          # Documentação do projeto principal (Visão Geral)
+└── INSTRUCOES.md      # Tabela com as instruções mais aprofundadas sobre como fazer o Deploy
 ```
 
 ---
 
-## 🛠️ Guia de Instalação
+## 🛠️ Guia Rápido de Instalação
 
-1.  Crie uma nova [Planilha Google](https://sheets.new).
-2.  Vá em **Extensões > Apps Script**.
-3.  Cole o conteúdo de `codigo.gs` e `index.html`.
-4.  Execute a função `setupInicial` no editor do script.
-5.  Clique em **Implantar > Nova Implantação** (Tipo: App da Web, Acesso: Qualquer pessoa).
+Quer colocar esse sistema totalmente gratuito e robusto nas nuvens pelo Google?
+
+1. Acesse **[Google Sheets / Planilhas Google](https://sheets.new)** e crie ou logue em uma planilha.
+2. Na barra do topo, acesse **Extensões > Apps Script**.
+3. Crie (ou selecione os existentes) os arquivos `codigo.gs` e `index.html` e cole o código neles de acordo com sua cópia.
+4. Execute `setupInicial()` manualmente no editor 1 vez para arquitetar e gerar a base nas abas da sua planilha. Aceite os termos de consentimento que vão aparecer num pop-up.
+5. No fim das contas, siga em tela para **Implantar > Nova Implantação**. Selecione que será do tipo **"App da Web"**, e em "Quem pode acessar", garanta que escolheu **Qualquer pessoa**. A URL gerada final é seu aplicativo.
+
+Veja com mais calma e ilustrado como fazer esse pass-a-passo no [INSTRUCOES.md](./INSTRUCOES.md).
 
 ---
 
-## 🎨 Interface & UX
-O app utiliza uma estética **Dark Mode** com elementos translúcidos, otimizado para ser adicionado à tela inicial do celular como um PWA.
+## 🎨 Interface & UX Responsiva
+Buscando oferecer a melhor sensação possível, o App baseia-se numa estética **Dark Mode** rica em nuances com painéis no modelo "Glass", exibindo destaques pontuais baseados em cores (*Emerald, Cyan, Purple, Amber e Rose*). Funciona incrivelmente bem nas visualizações limitadas de Mobile (PWA nativo de fábrica com suporte a Full Screen da Home) até o layout largo proporcionado por Telas Desktops ou Notebooks em grade.
 
 ---
 
 <p align="center">
-  Desenvolvido com ❤️ para a comunidade de Vôlei.
+  <i>Desenvolvido com ❤️ e voleibol na veia, focando na união de gerenciamento esportivo em nuvem. </i>
 </p>

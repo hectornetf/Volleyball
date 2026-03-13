@@ -289,19 +289,12 @@
                 <div class="glass p-5 rounded-2xl">
                     <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><i
                             class="fa-regular fa-calendar-check text-emerald-400"></i> Próximo Jogo</h2>
-                    <div class="flex gap-2 mb-4">
-                        <button @click="mudarDia('Segunda')"
-                            :class="diaSelecionado === 'Segunda' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'"
-                            class="flex-1 py-3 rounded-xl font-bold transition-all flex flex-col items-center">
-                            <span>Segunda</span>
-                            <span class="text-[10px] opacity-75 font-normal">{{ descobrirProximaData('Segunda')
-                                }}</span>
-                        </button>
-                        <button @click="mudarDia('Sexta')"
-                            :class="diaSelecionado === 'Sexta' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'"
-                            class="flex-1 py-3 rounded-xl font-bold transition-all flex flex-col items-center">
-                            <span>Sexta</span>
-                            <span class="text-[10px] opacity-75 font-normal">{{ descobrirProximaData('Sexta') }}</span>
+                    <div class="flex gap-2 mb-4 overflow-x-auto pb-2 -mx-2 px-2 snap-x">
+                        <button v-for="dia in diasDaSemana" :key="dia" @click="mudarDia(dia)"
+                            :class="diaSelecionado === dia ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 ring-2 ring-emerald-400 border-none' : 'bg-slate-800 text-slate-400 border border-slate-700/50 hover:bg-slate-700'"
+                            class="flex-shrink-0 min-w-[80px] py-3 rounded-xl font-bold transition-all flex flex-col items-center snap-center">
+                            <span class="text-sm">{{ dia.substring(0,3).toUpperCase() }}</span>
+                            <span class="text-[9px] opacity-75 font-normal mt-1">{{ descobrirProximaData(dia) }}</span>
                         </button>
                     </div>
                     <button @click="carregarPresencas"
@@ -438,26 +431,24 @@
                 <div v-if="!fechamento" class="glass p-5 rounded-2xl">
                     <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><i
                             class="fa-solid fa-wallet text-yellow-400"></i> Novo Fechamento</h2>
+
                     <div class="space-y-3 mb-4">
-                        <div class="relative">
-                            <label class="text-xs text-slate-400 font-bold uppercase block mb-1">Custo Total
-                                (Segunda)</label>
-                            <span class="absolute bottom-3 left-4 text-slate-400 font-bold">R$</span>
-                            <input type="number" v-model="custoSegunda"
-                                class="w-full bg-slate-800 border-none rounded-lg p-3 pl-10 text-white focus:ring-2 focus:ring-yellow-500 outline-none font-bold"
-                                placeholder="0,00">
-                        </div>
-                        <div class="relative">
-                            <label class="text-xs text-slate-400 font-bold uppercase block mb-1">Custo Total
-                                (Sexta)</label>
-                            <span class="absolute bottom-3 left-4 text-slate-400 font-bold">R$</span>
-                            <input type="number" v-model="custoSexta"
-                                class="w-full bg-slate-800 border-none rounded-lg p-3 pl-10 text-white focus:ring-2 focus:ring-yellow-500 outline-none font-bold"
-                                placeholder="0,00">
+                        <p class="text-xs text-slate-400 font-bold uppercase mb-2">Configure os custos por dia:</p>
+
+                        <div v-for="dia in diasDaSemana" :key="dia" class="relative flex items-center gap-2">
+                            <label class="w-24 text-xs font-bold text-slate-300">{{ dia }}</label>
+                            <div class="relative flex-1">
+                                <span
+                                    class="absolute top-1/2 -translate-y-1/2 left-3 text-slate-400 font-bold text-sm">R$</span>
+                                <input type="number" v-model="custosConfig[dia]"
+                                    class="w-full bg-slate-800 border border-slate-700 rounded-lg py-2 pl-9 text-white focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 outline-none font-bold placeholder-slate-600"
+                                    placeholder="0,00">
+                            </div>
                         </div>
                     </div>
+
                     <button @click="calcularFechamento"
-                        class="w-full bg-gradient-to-r from-yellow-500 to-orange-500 font-bold py-3 rounded-xl text-white transition-all shadow-lg flex justify-center gap-2 items-center active:scale-95">
+                        class="w-full bg-gradient-to-r from-yellow-500 to-orange-500 font-bold py-3 rounded-xl text-white transition-all shadow-lg flex justify-center gap-2 items-center active:scale-95 mt-6">
                         <i class="fa-solid fa-calculator"></i> Iniciar Rateio
                     </button>
                 </div>
@@ -477,8 +468,8 @@
                     </div>
                     <div class="glass p-4 rounded-2xl border-b-2 border-slate-500/30">
                         <p class="text-[10px] text-slate-400 font-bold uppercase mb-1">Custo Total</p>
-                        <p class="text-xl font-black text-white">R$ {{ (parseFloat(custoSegunda||0) +
-                            parseFloat(custoSexta||0)).toFixed(2).replace('.', ',') }}</p>
+                        <p class="text-xl font-black text-white">R$ {{ (somaCustosConfig()).toFixed(2).replace('.', ',')
+                            }}</p>
                     </div>
                 </div>
 
@@ -494,8 +485,8 @@
                     <div class="flex justify-between items-end">
                         <div>
                             <p class="text-[10px] text-slate-400 font-bold uppercase">Meta de Arrecadação</p>
-                            <p class="text-2xl font-black text-white">R$ {{ (parseFloat(custoSegunda||0) +
-                                parseFloat(custoSexta||0)).toFixed(2).replace('.', ',') }}</p>
+                            <p class="text-2xl font-black text-white">R$ {{ (somaCustosConfig()).toFixed(2).replace('.',
+                                ',') }}</p>
                             <p class="text-[9px] text-indigo-300 font-bold mt-1">Já Arrecadado: R$ {{
                                 totalArrecadadoMensalistas }}</p>
                         </div>
@@ -531,72 +522,56 @@
                     </button>
                 </div>
 
-                <div v-if="fechamento" class="space-y-4 animate-fade-in">
-                    <div class="glass p-5 rounded-2xl border-l-4 border-l-yellow-400">
+                <div v-if="fechamento && fechamento.dias" class="space-y-4 animate-fade-in pb-8">
+                    <div v-for="(dadosDia, nomeDia) in fechamento.dias" :key="nomeDia"
+                        class="glass p-5 rounded-2xl border-l-4" :class="[
+                            nomeDia === 'Segunda' ? 'border-l-yellow-400' : 
+                            nomeDia === 'Sexta' ? 'border-l-orange-400' :
+                            nomeDia === 'Terça' ? 'border-l-blue-400' :
+                            nomeDia === 'Quarta' ? 'border-l-purple-400' :
+                            nomeDia === 'Quinta' ? 'border-l-pink-400' :
+                            'border-l-emerald-400'
+                        ]">
                         <div class="flex justify-between items-center mb-1">
-                            <h3 class="font-bold text-yellow-400">Rateio de Segunda</h3>
-                            <span class="font-black text-white text-xl">R$ {{fechamento.segunda.valorPorPessoa}}</span>
+                            <h3 class="font-bold uppercase tracking-wider text-sm" :class="[
+                                    nomeDia === 'Segunda' ? 'text-yellow-400' : 
+                                    nomeDia === 'Sexta' ? 'text-orange-400' :
+                                    nomeDia === 'Terça' ? 'text-blue-400' :
+                                    nomeDia === 'Quarta' ? 'text-purple-400' :
+                                    nomeDia === 'Quinta' ? 'text-pink-400' :
+                                    'text-emerald-400'
+                                ]">Rateio {{ nomeDia }}</h3>
+                            <span class="font-black text-white text-xl">R$ {{dadosDia.valorPorPessoa}}</span>
                         </div>
-                        <p class="text-xs text-slate-400 mb-4">Total: {{fechamento.segunda.totalMensalistas}}
-                            mensalistas</p>
+                        <p class="text-xs text-slate-400 mb-4">Total: {{dadosDia.totalMensalistas}} mensalistas | Custo
+                            Quadra: R$ {{dadosDia.custo}}</p>
 
                         <div class="space-y-2 mb-4 max-h-48 overflow-y-auto pr-1">
-                            <div v-for="jog in fechamento.segunda.jogadores" :key="jog.id"
+                            <div v-for="jog in dadosDia.jogadores" :key="jog.id"
                                 class="flex items-center justify-between p-2 bg-slate-800/40 rounded-lg border border-slate-700/30 text-xs">
-                                <span
-                                    :class="jog.pago ? 'text-emerald-400 font-bold' : 'text-slate-300'">{{jog.nome}}</span>
+                                <span :class="jog.pago ? 'text-white font-bold' : 'text-slate-400'">{{jog.nome}}</span>
                                 <div class="flex gap-2">
-                                    <button @click="cobrarIndividual(jog, fechamento.segunda.valorPorPessoa, 'Segunda')"
+                                    <button @click="cobrarIndividual(jog, dadosDia.valorPorPessoa, nomeDia)"
                                         class="w-7 h-7 bg-emerald-500/10 text-emerald-400 rounded-md hover:bg-emerald-500/20 transition">
                                         <i class="fa-brands fa-whatsapp"></i>
                                     </button>
-                                    <button @click="fazerPagamento(jog, 'Segunda')"
-                                        :class="jog.pago ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'"
-                                        :title="jog.pago ? 'Clique para cancelar o pagamento (registro mantido)' : 'Marcar como pago'"
+                                    <button @click="fazerPagamento(jog, nomeDia)"
+                                        :class="jog.pago ? 'bg-emerald-500 text-white shadow shadow-emerald-500/30' : 'bg-slate-700 text-slate-500 hover:bg-slate-600'"
+                                        :title="jog.pago ? 'Cancelar pagamento' : 'Marcar como pago'"
                                         class="w-7 h-7 rounded-md transition flex items-center justify-center">
                                         <i :class="jog.pago ? 'fa-solid fa-check' : 'fa-solid fa-minus'"></i>
                                     </button>
                                 </div>
                             </div>
+                            <p v-if="dadosDia.jogadores.length === 0"
+                                class="text-xs text-slate-500 italic p-2 text-center">Nenhum mensalista cadastrado para
+                                este dia.</p>
                         </div>
 
-                        <button @click="cobrarMensalidade(fechamento.segunda.valorPorPessoa, 'Segunda')"
+                        <button v-if="dadosDia.jogadores.length > 0"
+                            @click="cobrarMensalidade(dadosDia.valorPorPessoa, nomeDia)"
                             class="w-full whatsapp-btn py-2.5 rounded-xl font-bold text-sm shadow flex justify-center items-center gap-2">
-                            <i class="fa-brands fa-whatsapp text-lg"></i> Cobrar Todos Seg
-                        </button>
-                    </div>
-
-                    <div class="glass p-5 rounded-2xl border-l-4 border-l-orange-400">
-                        <div class="flex justify-between items-center mb-1">
-                            <h3 class="font-bold text-orange-400">Rateio de Sexta</h3>
-                            <span class="font-black text-white text-xl">R$ {{fechamento.sexta.valorPorPessoa}}</span>
-                        </div>
-                        <p class="text-xs text-slate-400 mb-4">Total: {{fechamento.sexta.totalMensalistas}} mensalistas
-                        </p>
-
-                        <div class="space-y-2 mb-4 max-h-48 overflow-y-auto pr-1">
-                            <div v-for="jog in fechamento.sexta.jogadores" :key="jog.id"
-                                class="flex items-center justify-between p-2 bg-slate-800/40 rounded-lg border border-slate-700/30 text-xs">
-                                <span
-                                    :class="jog.pago ? 'text-orange-400 font-bold' : 'text-slate-300'">{{jog.nome}}</span>
-                                <div class="flex gap-2">
-                                    <button @click="cobrarIndividual(jog, fechamento.sexta.valorPorPessoa, 'Sexta')"
-                                        class="w-7 h-7 bg-emerald-500/10 text-emerald-400 rounded-md hover:bg-emerald-500/20 transition">
-                                        <i class="fa-brands fa-whatsapp"></i>
-                                    </button>
-                                    <button @click="fazerPagamento(jog, 'Sexta')"
-                                        :class="jog.pago ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'"
-                                        :title="jog.pago ? 'Clique para cancelar o pagamento (registro mantido)' : 'Marcar como pago'"
-                                        class="w-7 h-7 rounded-md transition flex items-center justify-center">
-                                        <i :class="jog.pago ? 'fa-solid fa-check' : 'fa-solid fa-minus'"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <button @click="cobrarMensalidade(fechamento.sexta.valorPorPessoa, 'Sexta')"
-                            class="w-full whatsapp-btn py-2.5 rounded-xl font-bold text-sm shadow flex justify-center items-center gap-2">
-                            <i class="fa-brands fa-whatsapp text-lg"></i> Cobrar Todos Sex
+                            <i class="fa-brands fa-whatsapp text-lg"></i> Cobrar Todos {{ nomeDia.substring(0,3) }}
                         </button>
                     </div>
                 </div>
@@ -615,7 +590,7 @@
                             class="w-full bg-slate-800 rounded-xl p-3 outline-none focus:ring-2 focus:ring-purple-500 font-semibold">
                         <div class="relative">
                             <i class="fa-brands fa-whatsapp absolute top-3.5 left-3 text-slate-400"></i>
-                            <input type="text" v-model="novoJogador.telefone" 
+                            <input type="text" v-model="novoJogador.telefone"
                                 @focus="novoJogador.telefone.includes('*') && (novoJogador.telefone = '')"
                                 placeholder="DDD + Número"
                                 class="w-full bg-slate-800 rounded-xl p-3 pl-9 outline-none focus:ring-2 focus:ring-purple-500">
@@ -633,20 +608,50 @@
                                 </select>
                             </div>
                             <div class="flex-1">
-                                <label class="text-[10px] text-slate-400 uppercase font-bold ml-1">Categoria</label>
-                                <select v-model="novoJogador.tipo"
-                                    class="w-full bg-slate-800 rounded-xl p-3 outline-none mt-1">
-                                    <option value="Mensalista Seg">Mensalista Segunda</option>
-                                    <option value="Mensalista Sex">Mensalista Sexta</option>
-                                    <option value="Mensalista Seg e Sex">Ambos</option>
-                                    <option value="Avulso">Apenas Avulso</option>
-                                </select>
+                                <label class="text-[10px] text-slate-400 uppercase font-bold ml-1">Categoria do
+                                    Jogador</label>
+                                <div class="bg-slate-800 rounded-xl p-3 outline-none mt-1 space-y-3">
+                                    <label
+                                        class="flex items-center gap-2 cursor-pointer border-b border-slate-700/50 pb-3">
+                                        <div class="relative w-10 h-5"
+                                            @click="novoJogador.isAvulso = !novoJogador.isAvulso">
+                                            <div :class="novoJogador.isAvulso ? 'bg-amber-500' : 'bg-slate-600'"
+                                                class="w-10 h-5 rounded-full shadow-inner transition-colors duration-300">
+                                            </div>
+                                            <div :class="novoJogador.isAvulso ? 'translate-x-5' : 'translate-x-0'"
+                                                class="absolute top-0 left-0 w-5 h-5 bg-white rounded-full shadow transform transition-transform duration-300">
+                                            </div>
+                                        </div>
+                                        <span class="text-xs font-bold"
+                                            :class="novoJogador.isAvulso ? 'text-amber-400' : 'text-slate-400'">Apenas
+                                            Avulso</span>
+                                    </label>
+
+                                    <div v-if="!novoJogador.isAvulso" class="space-y-2 max-h-40 overflow-y-auto pr-1">
+                                        <p class="text-[9px] text-slate-400 font-bold uppercase mb-2">Dias como
+                                            Mensalista:</p>
+                                        <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                            <label v-for="dia in diasDaSemana" :key="dia"
+                                                class="cursor-pointer transition-all duration-200"
+                                                :class="novoJogador.diasMensalista.includes(dia) ? 'bg-purple-500/20 shadow-lg shadow-purple-500/20 border-purple-500 border ring-1 ring-purple-400/50' : 'bg-slate-700/50 border border-slate-600 hover:bg-slate-600'"
+                                                class="rounded-lg py-2 flex flex-col items-center justify-center text-center">
+                                                <input type="checkbox" :value="dia" v-model="novoJogador.diasMensalista"
+                                                    class="hidden">
+                                                <span class="text-[10px] font-black uppercase tracking-wider block"
+                                                    :class="novoJogador.diasMensalista.includes(dia) ? 'text-purple-300' : 'text-slate-400'">
+                                                    {{ dia.substring(0,3) }}
+                                                </span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <div class="flex-1">
                             <label class="text-[10px] text-slate-400 uppercase font-bold ml-1">Data de Nascimento
                                 (Opcional)</label>
-                            <input :type="novoJogador.dataNascimento && novoJogador.dataNascimento.includes('*') ? 'text' : 'date'" 
+                            <input
+                                :type="novoJogador.dataNascimento && novoJogador.dataNascimento.includes('*') ? 'text' : 'date'"
                                 v-model="novoJogador.dataNascimento"
                                 @focus="novoJogador.dataNascimento && novoJogador.dataNascimento.includes('*') && (novoJogador.dataNascimento = '')"
                                 class="w-full bg-slate-800 rounded-xl p-3 outline-none mt-1 text-slate-300">
@@ -713,14 +718,16 @@
                     presencas: [],
                     times: [],
                     dashboardData: null,
-                    diaSelecionado: 'Segunda',
+                    diaSelecionado: 'Segunda', // fallback
+                    diasDaSemana: ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'],
                     dataJogo: '',
-                    novoJogador: { nome: '', telefone: '', nivel: '3', tipo: 'Mensalista Seg', dataNascimento: '' },
+                    novoJogador: { id: null, nome: '', telefone: '', nivel: '3', tipo: '', isAvulso: false, diasMensalista: ['Segunda'], dataNascimento: '' },
                     originalTelefone: '',
                     originalDataNascimento: '',
                     jogadoresPorTime: 6,
-                    custoSegunda: '',
-                    custoSexta: '',
+                    custosConfig: {
+                        Domingo: '', Segunda: '', Terça: '', Quarta: '', Quinta: '', Sexta: '', Sábado: ''
+                    },
                     fechamento: null,
                     mesReferencia: (new Date().getMonth() + 1).toString().padStart(2, '0') + '/' + new Date().getFullYear(),
                     pagamentosGlobal: [],
@@ -748,29 +755,25 @@
                         return this.fechamento.totalArrecadado.toFixed(2).replace('.', ',');
                     }
                     var total = 0;
-                    var self = this;
-                    this.fechamento.segunda.jogadores.forEach(function (j) { if (j.pago) total += parseFloat(String(self.fechamento.segunda.valorPorPessoa).replace(',', '.')) || 0; });
-                    this.fechamento.sexta.jogadores.forEach(function (j) { if (j.pago) total += parseFloat(String(self.fechamento.sexta.valorPorPessoa).replace(',', '.')) || 0; });
+                    if (this.fechamento.dias) {
+                        Object.keys(this.fechamento.dias).forEach(dia => {
+                            this.fechamento.dias[dia].jogadores.forEach(j => {
+                                if (j.pago) total += parseFloat(String(this.fechamento.dias[dia].valorPorPessoa).replace(',', '.')) || 0;
+                            });
+                        });
+                    }
                     return total.toFixed(2).replace('.', ',');
                 },
                 totalArrecadadoMensalistas: function () {
                     if (!this.fechamento) return "0.00";
                     var total = 0;
-                    var self = this;
-                    // Soma pagamentos de mensalistas (segunda)
-                    this.fechamento.segunda.jogadores.forEach(function (j) {
-                        if (j.pago) {
-                            var v = String(self.fechamento.segunda.valorPorPessoa).replace(',', '.');
-                            total += (parseFloat(v) || 0);
-                        }
-                    });
-                    // Soma pagamentos de mensalistas (sexta)
-                    this.fechamento.sexta.jogadores.forEach(function (j) {
-                        if (j.pago) {
-                            var v = String(self.fechamento.sexta.valorPorPessoa).replace(',', '.');
-                            total += (parseFloat(v) || 0);
-                        }
-                    });
+                    if (this.fechamento.dias) {
+                        Object.keys(this.fechamento.dias).forEach(dia => {
+                            this.fechamento.dias[dia].jogadores.forEach(j => {
+                                if (j.pago) total += parseFloat(String(this.fechamento.dias[dia].valorPorPessoa).replace(',', '.')) || 0;
+                            });
+                        });
+                    }
                     return total.toFixed(2).replace('.', ',');
                 },
                 totalArrecadadoAvulsos: function () {
@@ -778,13 +781,7 @@
                     if (this.fechamento.totalAvulsos !== undefined) {
                         return this.fechamento.totalAvulsos.toFixed(2).replace('.', ',');
                     }
-                    var total = 0;
-                    this.pagamentosGlobal.forEach(function (p) {
-                        if (p.mesAno && p.mesAno.length > 7) {
-                            total += parseFloat(String(p.valor).replace(',', '.')) || 0;
-                        }
-                    });
-                    return total.toFixed(2).replace('.', ',');
+                    return "0,00"; // Fallback para modelo antigo se houver
                 }
             },
             watch: {
@@ -810,6 +807,13 @@
                 });
             },
             methods: {
+                somaCustosConfig: function () {
+                    let sum = 0;
+                    Object.values(this.custosConfig).forEach(v => {
+                        sum += parseFloat(String(v).replace(',', '.')) || 0;
+                    });
+                    return sum;
+                },
                 fetchDashboardData: function () {
                     var self = this;
                     this.runGoogleScript('getDashboardData').then(function (res) {
@@ -997,31 +1001,32 @@
                         self.presencas = res;
                     });
                 },
-                prepararEdicao: function (jogador) {
-                    // Normaliza o tipo para garantir que o select carregue corretamente
-                    var tipoRaw = String(jogador.tipo || '').trim().toUpperCase();
-                    var tipoNormalizado = jogador.tipo; // default: mantém o original
-                    if (tipoRaw === 'MENS' || tipoRaw === 'MENSALISTA' || tipoRaw === 'MENSALISTA SEG E SEX' || tipoRaw === 'MENSALISTA SEG' && tipoRaw.includes('SEX')) {
-                        tipoNormalizado = 'Mensalista Seg e Sex';
-                    } else if (tipoRaw.includes('SEG') && !tipoRaw.includes('SEX')) {
-                        tipoNormalizado = 'Mensalista Seg';
-                    } else if (tipoRaw.includes('SEX') && !tipoRaw.includes('SEG')) {
-                        tipoNormalizado = 'Mensalista Sex';
-                    } else if (tipoRaw.includes('AVULSO')) {
-                        tipoNormalizado = 'Avulso';
+                prepararEdicao: function (j) {
+                    this.originalTelefone = j.telefone;
+                    this.originalDataNascimento = j.dataNascimento;
+
+                    // Parseia o 'tipo' de volta para o UI
+                    let isAvulso = String(j.tipo).toLowerCase().includes('avulso');
+                    let diasM = [];
+                    if (!isAvulso) {
+                        let tipoStr = String(j.tipo).toUpperCase();
+                        this.diasDaSemana.forEach(d => {
+                            if (tipoStr.includes(d.substring(0, 3).toUpperCase())) diasM.push(d);
+                        });
+                        // Suporte legado MENSALISTA SEG E SEX (hardcoded legacy resolve)
+                        if (tipoStr.includes('SEG') && !diasM.includes('Segunda')) diasM.push('Segunda');
+                        if (tipoStr.includes('SEX') && !diasM.includes('Sexta')) diasM.push('Sexta');
                     }
 
-                    // Salva valores originais para não sobrescrever com asteriscos ao salvar
-                    this.originalTelefone = jogador.telefone;
-                    this.originalDataNascimento = jogador.dataNascimento || '';
-
                     this.novoJogador = {
-                        id: jogador.id,
-                        nome: jogador.nome,
-                        telefone: this.mascararTelefone(jogador.telefone),
-                        nivel: String(jogador.nivel), // String garante que o select de nivel também bata
-                        tipo: tipoNormalizado,
-                        dataNascimento: this.mascararData(jogador.dataNascimento)
+                        id: j.id,
+                        nome: j.nome,
+                        telefone: this.mascararTelefone(j.telefone),
+                        nivel: String(j.nivel),
+                        tipo: j.tipo, // Mantém o tipo original para referência, mas o UI usa isAvulso/diasMensalista
+                        isAvulso: isAvulso,
+                        diasMensalista: diasM.length > 0 ? diasM : ['Segunda'], // Garante ao menos um dia selecionado se não for avulso
+                        dataNascimento: this.mascararData(j.dataNascimento)
                     };
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 },
@@ -1040,18 +1045,28 @@
                     return '****-**-' + partes[2];
                 },
                 cancelarEdicao: function () {
-                    this.novoJogador = { nome: '', telefone: '', nivel: '3', tipo: 'Mensalista Seg', dataNascimento: '' };
+                    this.novoJogador = { id: null, nome: '', telefone: '', nivel: '3', tipo: '', isAvulso: false, diasMensalista: ['Segunda'], dataNascimento: '' };
                     this.originalTelefone = '';
                     this.originalDataNascimento = '';
                 },
                 salvarJogador: function () {
-                    if (!this.novoJogador.nome) return alert("Preencha o nome!");
-                    var self = this;
+                    if (!this.novoJogador.nome) return alert('Nome é obrigatório');
+
+                    // Constrói a string "tipo" baseado no checkbox
+                    if (this.novoJogador.isAvulso) {
+                        this.novoJogador.tipo = "Avulso";
+                    } else {
+                        if (this.novoJogador.diasMensalista.length === 0) return alert('Selecione ao menos um dia para o mensalista ou marque como Avulso.');
+                        this.novoJogador.tipo = "Mensalista: " + this.novoJogador.diasMensalista.map(d => d.substring(0, 3)).join(', ');
+                    }
+
+                    this.loading = true;
 
                     // Desmascara os dados: se contém asteriscos, usa o valor original salvo
                     var telFinal = (this.novoJogador.id && this.novoJogador.telefone.includes('*')) ? this.originalTelefone : this.novoJogador.telefone;
                     var dataFinal = (this.novoJogador.id && this.novoJogador.dataNascimento && this.novoJogador.dataNascimento.includes('*')) ? this.originalDataNascimento : this.novoJogador.dataNascimento;
 
+                    var self = this;
                     if (this.novoJogador.id) {
                         this.runGoogleScript('editarJogador', [this.novoJogador.id, this.novoJogador.nome, telFinal, this.novoJogador.nivel, this.novoJogador.tipo, dataFinal]).then(function (res) {
                             self.jogadores = res;
@@ -1093,15 +1108,13 @@
                     window.open("https://wa.me/?text=" + encodeURIComponent(texto), '_blank');
                 },
                 notificarTodos: function () {
-                    var texto = "*🏐 VOLEIZINDOSCRIA - CHAMADA 🏐*\n\nFala galera! Já está aberta a lista para o jogo de *" + this.diaSelecionado + "* (" + this.dataJogo + ").\n\nPor favor, confirmem sua presença no link abaixo:\n🔗 " + this.appUrl;
+                    var texto = "*🏐 VOLEIZINDOSCRIA - CHAMADA 🏐*\n\nFala galera! Já está aberta a lista para o jogo de *" + this.diaSelecionado + "* (" + this.dataJogo + ").\n\nPor favor, confirmem sua presença no link abaixo:\n🔗 https://script.google.com/macros/s/AKfycbzL5nQ_W7s8VnNIfb0h_aVzX1z_W_K7o2m_yW-jIuO1E-8vA7zM_1lX7o5r/exec";
                     window.open("https://wa.me/?text=" + encodeURIComponent(texto), '_blank');
                 },
                 calcularFechamento: function () {
-                    if (!this.custoSegunda && !this.custoSexta) return alert("Preencha ao menos um custo.");
-                    var cSeg = this.custoSegunda || 0;
-                    var cSex = this.custoSexta || 0;
+                    if (this.somaCustosConfig() === 0) return alert("Preencha ao menos um custo no fechamento.");
                     var self = this;
-                    return this.runGoogleScript('calcularFechamento', [this.mesReferencia, cSeg, cSex]).then(function (res) {
+                    return this.runGoogleScript('calcularFechamento', [this.mesReferencia, JSON.stringify(this.custosConfig)]).then(function (res) {
                         self.fechamento = res;
                         return res;
                     });
@@ -1109,24 +1122,23 @@
                 checkFinanceiro: function () {
                     var self = this;
                     this.runGoogleScript('getConfigFinanceira', [this.mesReferencia]).then(function (res) {
-                        if (res) {
-                            self.custoSegunda = res.custoSegunda || '';
-                            self.custoSexta = res.custoSexta || '';
-                            self.calcularFechamento();
+                        if (res && res.custosJsonStr) {
+                            try {
+                                var configLocal = JSON.parse(res.custosJsonStr);
+                                self.custosConfig = configLocal;
+                                self.calcularFechamento();
+                            } catch (e) {
+                                console.error('Erro ao parsear custos', e);
+                            }
                         } else {
                             self.fechamento = null;
                         }
                     });
                 },
                 limparTelaFinanceiro: function () {
-                    if (!confirm("Deseja realmente limpar os custos deste mês e iniciar um novo cálculo?")) return;
-                    var self = this;
-                    this.runGoogleScript('deletarConfigFinanceira', [this.mesReferencia]).then(function () {
-                        self.custoSegunda = '';
-                        self.custoSexta = '';
-                        self.fechamento = null;
-                        alert("Dados do mês limpos com sucesso!");
-                    });
+                    if (!confirm("Deseja realmente limpar a visualização dos custos deste mês e refazer o cálculo local?\n\n(Os pagamentos registrados no Google Sheets NÃO serão apagados, apenas a configuração da tela).")) return;
+                    for (var d in this.custosConfig) { this.custosConfig[d] = ''; }
+                    this.fechamento = null;
                 },
                 cobrarIndividual: function (jogador, valor, dia) {
                     var texto = "*💳 MENSALIDADE VÔLEI - " + dia.toUpperCase() + "*\n\nFala " + jogador.nome + ", o rateio desse mês ficou em *R$ " + valor + "*.\n\nPode mandar o PIX para o organizador quando conseguir! Valeu! 🏐";
@@ -1134,7 +1146,7 @@
                 },
                 fazerPagamento: function (jogador, dia) {
                     var self = this;
-                    var valor = dia === 'Segunda' ? this.fechamento.segunda.valorPorPessoa : this.fechamento.sexta.valorPorPessoa;
+                    var valor = this.fechamento.dias && this.fechamento.dias[dia] ? this.fechamento.dias[dia].valorPorPessoa : 0;
 
                     // UI Otimista: Muda o estado local antes de ir pro servidor
                     jogador.pago = !jogador.pago;
@@ -1144,14 +1156,11 @@
                         var promise = self.calcularFechamento();
                         if (promise && promise.then) {
                             promise.then(function (res) {
-                                // Se todos pagaram, exibe sucesso e limpa a tela automaticamente
+                                // Se todos pagaram, exibe sucesso e não limpa a tela (pedido do usuário p/ limpar apenas manualmente)
                                 if (res && res.statusGeral === 'Pago Totalmente') {
                                     self.toastMsg = 'Fechamento de ' + self.mesReferencia + ' concluído! Todos os pagamentos confirmados. ✅';
                                     setTimeout(function () {
                                         self.toastMsg = '';
-                                        self.fechamento = null;
-                                        self.custoSegunda = '';
-                                        self.custoSexta = '';
                                     }, 3500);
                                 }
                             });
