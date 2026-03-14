@@ -1,4 +1,4 @@
-﻿/* codigo.gs */
+/* codigo.gs */
 const SHEET_JOGADORES = 'Jogadores';
 const SHEET_PRESENCAS = 'Presenças_Geral';
 const SHEET_PAGAMENTOS = 'Pagamentos';
@@ -51,9 +51,24 @@ function setupInicial() {
       sheet.getRange(1, 1, 1, 3).setValues([['Mes/Ano', 'Status', 'Custos_JSON']]).setFontWeight("bold");
     }
   }
+}
 
+
+/**
+ * Gera dados de teste fictícios para validar o funcionamento do sistema.
+ * Deve ser executado manualmente pelo administrador se desejar popular a planilha.
+ */
+function gerarDadosDeTeste() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  
   // --- DADOS DE TESTE INICIAIS (MOCK) ---
   let sheetJogadores = ss.getSheetByName(SHEET_JOGADORES);
+  if (!sheetJogadores) {
+    setupInicial();
+    sheetJogadores = ss.getSheetByName(SHEET_JOGADORES);
+  }
+
+  // Só adiciona se estiver vazio (apenas cabeçalho)
   if (sheetJogadores && sheetJogadores.getLastRow() === 1) {
     // Adiciona Jogadores Fictícios
     let jogadoresMock = [
@@ -72,8 +87,8 @@ function setupInicial() {
     if (sheetConfigFin && sheetConfigFin.getLastRow() === 1) {
       let hoje = new Date();
       let mesAno = ('0' + (hoje.getMonth() + 1)).slice(-2) + '/' + hoje.getFullYear();
-      let custosMock = JSON.stringify({"Domingo": 100, "Segunda": 120, "Sexta": 150});
-      sheetConfigFin.appendRow([mesAno, 'Aberto', custosMock]);
+      let custosMock = JSON.stringify({"Domingo": 100, "Segunda": 120, "Sexta": 150, "Avulso": 10});
+      sheetConfigFin.appendRow([mesAno, 'Em Aberto', custosMock]);
     }
 
     // Adiciona Presenças para o dia atual para ter algo no Próximo Jogo
@@ -91,6 +106,7 @@ function setupInicial() {
     }
   }
 }
+
 
 function doGet(e) {
   return HtmlService.createHtmlOutputFromFile('index')
@@ -252,35 +268,61 @@ function sortearTimes(diaDaSemana, dataJogo, jogadoresPorTime) {
     };
   });
   
-  // Ordena por nível (decrescente) para os melhores sempre serem draftados primeiro e servirem de base
-  confirmados.sort((a,b) => b.nivel - a.nivel);
+  // Separa jogadores em dois grupos: Elite/Medio (Nível >= 3) e Baixo (Nível <= 2)
+  let grupoEliteMedio = confirmados.filter(j => j.nivel >= 3);
+  let grupoBaixo = confirmados.filter(j => j.nivel <= 2);
   
   const numTimes = Math.ceil(confirmados.length / jogadoresPorTime) || 1;
   let times = Array.from({length: numTimes}, () => []);
   let divisoes = Array.from({length: numTimes}, () => 0); // Soma de niveis por time
   
-  // SNAKE DRAFT REAL: 0, 1, 2, 2, 1, 0, 0, 1, 2... 
-  // Distribui equilibrando a força dos Cabeças de Chave
+  // 1. Distribui Grupo ELITE/MEDIO usando SNAKE DRAFT
+  // Ordena por nível (decrescente)
+  grupoEliteMedio.sort((a,b) => b.nivel - a.nivel);
+  
   let direcaoAscendente = true;
   let timeAtual = 0;
 
-  for (let i = 0; i < confirmados.length; i++) {
-     times[timeAtual].push(confirmados[i]);
-     divisoes[timeAtual] += confirmados[i].nivel;
+  for (let i = 0; i < grupoEliteMedio.length; i++) {
+     times[timeAtual].push(grupoEliteMedio[i]);
+     divisoes[timeAtual] += grupoEliteMedio[i].nivel;
 
      if (direcaoAscendente) {
         timeAtual++;
         if (timeAtual >= numTimes) {
            timeAtual = numTimes - 1;
-           direcaoAscendente = false; // Inverte e volta do último pro primeiro
+           direcaoAscendente = false;
         }
      } else {
         timeAtual--;
         if (timeAtual < 0) {
            timeAtual = 0;
-           direcaoAscendente = true; // Bateu no primeiro, inverte e sobe de novo
+           direcaoAscendente = true;
         }
      }
+  }
+
+  // 2. Distribui Grupo BAIXO usando ROUND ROBIN (para dispersar ao máximo)
+  // Sorteia a ordem inicial de quem começa a receber jogadores nível baixo (baseado no time com menor peso atual)
+  // Mas para garantir dispersão pura, usamos um round robin simples seguindo a ordem de menor ocupação
+  grupoBaixo.sort((a,b) => b.nivel - a.nivel); // Maior nível baixo (2) primeiro
+
+  for (let i = 0; i < grupoBaixo.length; i++) {
+     // Encontra o time com MENOS jogadores atualmente
+     // Se empatarem em número de jogadores, escolhe o que tem MENOR nível total
+     let melhorTimeIdx = 0;
+     for (let t = 1; t < times.length; t++) {
+        if (times[t].length < times[melhorTimeIdx].length) {
+           melhorTimeIdx = t;
+        } else if (times[t].length === times[melhorTimeIdx].length) {
+           if (divisoes[t] < divisoes[melhorTimeIdx]) {
+              melhorTimeIdx = t;
+           }
+        }
+     }
+     
+     times[melhorTimeIdx].push(grupoBaixo[i]);
+     divisoes[melhorTimeIdx] += grupoBaixo[i].nivel;
   }
   
   return times;

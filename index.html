@@ -320,29 +320,29 @@
                     </div>
                     <div class="space-y-2">
                         <div v-for="j in jogadores" :key="j.id"
-                            class="flex items-center justify-between p-3 bg-slate-800/50 rounded-xl border border-slate-700/50">
-                            <div>
-                                <div class="flex items-center gap-2">
-                                    <p class="font-semibold"
+                            class="flex items-center justify-between gap-2 p-3 bg-slate-800/50 rounded-xl border border-slate-700/50">
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <p class="font-semibold truncate"
                                         :class="getPresenca(j.id) === 'Confirmado' ? 'text-emerald-400' : (getPresenca(j.id) === 'Falta' ? 'text-red-400 line-through opacity-50' : '')">
                                         {{j.nome}}</p>
                                     <span v-if="getPresenca(j.id) === 'Confirmado'"
                                         :class="j.tipo.includes('Avulso') ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'"
-                                        class="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase">{{
+                                        class="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0">{{
                                         j.tipo.includes('Avulso') ? 'Avulso' : 'Mensalista' }}</span>
                                 </div>
-                                <p class="text-[10px] text-slate-400 uppercase tracking-wider">{{j.tipo}} | ⭐
+                                <p class="text-[10px] text-slate-400 uppercase tracking-wider truncate">{{j.tipo}} | ⭐
                                     {{j.nivel}}</p>
                             </div>
-                            <div class="flex gap-1.5 text-sm items-center">
+                            <div class="flex gap-1.5 text-sm items-center shrink-0">
                                 <!-- Botão de Pagamento para Avulsos (Case-Insensitive) -->
                                 <button v-if="j.tipo.toLowerCase().includes('avulso') && !getPagamentoHoje(j.id)"
                                     @click="pagarAvulso(j)"
-                                    class="bg-amber-500 hover:bg-amber-400 text-white px-3 py-1.5 rounded-lg transition-all font-black text-[10px] uppercase shadow-lg shadow-amber-500/20 border border-amber-400/50">
-                                    Pagar R${{ costsAvulsoLabel }}
+                                    class="bg-amber-500 hover:bg-amber-400 text-white px-2 py-1.5 rounded-lg transition-all font-black text-[9px] uppercase shadow-lg shadow-amber-500/20 border border-amber-400/50 whitespace-nowrap">
+                                    💰 R${{ costsAvulsoLabel }}
                                 </button>
                                 <span v-else-if="j.tipo.toLowerCase().includes('avulso')"
-                                    class="text-[9px] font-black text-amber-400 bg-amber-400/10 px-2 py-1 rounded-md border border-amber-400/20 mr-1">PAGO
+                                    class="text-[9px] font-black text-amber-400 bg-amber-400/10 px-2 py-1 rounded-md border border-amber-400/20 shrink-0">PAGO
                                     ✅</span>
 
                                 <button @click="marcar(j, 'Confirmado')"
@@ -350,10 +350,10 @@
                                     :class="[
                                         getPresenca(j.id) === 'Confirmado' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-slate-700 text-slate-300 hover:bg-slate-600',
                                         (j.tipo.toLowerCase().includes('avulso') && !getPagamentoHoje(j.id)) ? 'opacity-30 cursor-not-allowed grayscale' : ''
-                                    ]" class="px-3 py-1.5 rounded-lg transition-all font-semibold">Vou</button>
+                                    ]" class="px-3 py-1.5 rounded-lg transition-all font-semibold shrink-0">Vou</button>
                                 <button @click="marcar(j, 'Falta')"
                                     :class="getPresenca(j.id) === 'Falta' ? 'bg-red-500 text-white shadow-lg shadow-red-500/20' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'"
-                                    class="px-3 py-1.5 rounded-lg transition-all font-semibold">Falto</button>
+                                    class="px-3 py-1.5 rounded-lg transition-all font-semibold shrink-0">Falto</button>
                             </div>
                         </div>
                     </div>
@@ -820,7 +820,8 @@
             },
             created: function () {
                 var d = new Date();
-                this.diaSelecionado = (d.getDay() === 2 || d.getDay() === 3 || d.getDay() === 4 || d.getDay() === 5) ? 'Sexta' : 'Segunda';
+                var diasMap = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+                this.diaSelecionado = diasMap[d.getDay()];
                 this.dataJogo = this.descobrirProximaData(this.diaSelecionado);
             },
             mounted: function () {
@@ -848,14 +849,18 @@
                     });
                 },
                 descobrirProximaData: function (diaSemana) {
-                    var targetDay = diaSemana === 'Segunda' ? 1 : 5; // 1 for Monday, 5 for Friday
+                    var diasMap = {
+                        'Domingo': 0, 'Segunda': 1, 'Terça': 2, 'Quarta': 3, 
+                        'Quinta': 4, 'Sexta': 5, 'Sábado': 6
+                    };
+                    var targetDay = diasMap[diaSemana] !== undefined ? diasMap[diaSemana] : 5;
                     var d = new Date();
-                    d.setHours(0, 0, 0, 0); // Reset time to start of day
-                    var day = d.getDay(); // 0 for Sunday, 1 for Monday, ..., 6 for Saturday
+                    d.setHours(0, 0, 0, 0);
+                    var day = d.getDay();
                     var diff = targetDay - day;
-                    if (diff < 0) { // If target day has already passed this week
+                    if (diff < 0) {
                         diff += 7;
-                    } else if (diff === 0 && d.getHours() >= 18) { // If it's the target day but after 6 PM, consider next week
+                    } else if (diff === 0 && new Date().getHours() >= 18) {
                         diff += 7;
                     }
                     d.setDate(d.getDate() + diff);
