@@ -98,7 +98,7 @@ O VoleizinDosCria é **100% gratuito e open source**. Se ele te ajudou a organiz
     <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50">
   </a>
   &nbsp;&nbsp;
-  <a href="https://ko-fi.com/hectornet" target="_blank">
+  <a href="https://ko-fi.com/hectornetf" target="_blank">
     <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Ko-fi" height="50">
   </a>
 </p>
