@@ -63,7 +63,6 @@ O **VoleizinDosCria** foi minuciosamente desenvolvido para resolver o caos e as 
 ```text
 ├── codigo.gs          # Backend (Lógica de API hospedada pelo Google Apps Script)
 ├── index.html         # Frontend (Template reativo em Vue 3.js + TailwindCSS)
-├── demo_voleizin.webp # Captura animada demonstrativa da versão Web do sistema
 ├── README.md          # Documentação do projeto principal (Visão Geral)
 └── INSTRUCOES.md      # Tabela com as instruções mais aprofundadas sobre como fazer o Deploy
 ```
