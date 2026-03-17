@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <img src="./demo_voleizin.gif" alt="Preview do VoleizinDosCria" width="380">
+  <img src="./minha_foto.png" alt="Preview do VoleizinDosCria" width="380">
 </p>
 
 > **Demo:** Interface real do Web App rodando via Google Apps Script. Siga o [INSTRUCOES.md](./INSTRUCOES.md) para configurar o seu próprio painel em minutos.
