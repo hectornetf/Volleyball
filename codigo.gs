@@ -78,20 +78,20 @@ function gerarDadosDeTeste() {
   if (sheetJogadores && sheetJogadores.getLastRow() <= 1) {
     let jogadoresMock = [
       // Mensalistas de Segunda
-      ['1710000000001', 'Carlos (Mens Seg)', '11999990001', '5', 'Mensalista: Seg', '15/03/1990'],
-      ['1710000000002', 'Fernanda (Mens Seg)', '11999990002', '4', 'Mensalista: Seg', '22/07/1993'],
-      ['1710000000003', 'Roberto (Mens Seg)', '11999990003', '4', 'Mensalista: Seg', '10/11/1988'],
-      ['1710000000004', 'Camila (Mens Seg)', '11999990004', '3', 'Mensalista: Seg', '05/02/1997'],
+      ['1710000000001', 'Carlos (Mens Seg)', '11999990001', '5', 'Mensalista: Seg', "'15/03/1990"],
+      ['1710000000002', 'Fernanda (Mens Seg)', '11999990002', '4', 'Mensalista: Seg', "'22/07/1993"],
+      ['1710000000003', 'Roberto (Mens Seg)', '11999990003', '4', 'Mensalista: Seg', "'10/11/1988"],
+      ['1710000000004', 'Camila (Mens Seg)', '11999990004', '3', 'Mensalista: Seg', "'05/02/1997"],
       // Mensalistas de Sexta
-      ['1710000000005', 'Thiago (Mens Sex)', '11999990005', '5', 'Mensalista: Sex', '30/09/1991'],
-      ['1710000000006', 'Patrícia (Mens Sex)', '11999990006', '3', 'Mensalista: Sex', '18/04/1994'],
-      ['1710000000007', 'Diego (Mens Sex)', '11999990007', '4', 'Mensalista: Seg, Sex', '27/06/1986'],
-      ['1710000000008', 'Larissa (Mens Seg/Sex)', '11999990008', '3', 'Mensalista: Seg, Sex', '12/01/1999'],
+      ['1710000000005', 'Thiago (Mens Sex)', '11999990005', '5', 'Mensalista: Sex', "'30/09/1991"],
+      ['1710000000006', 'Patrícia (Mens Sex)', '11999990006', '3', 'Mensalista: Sex', "'18/04/1994"],
+      ['1710000000007', 'Diego (Mens Sex)', '11999990007', '4', 'Mensalista: Seg, Sex', "'27/06/1986"],
+      ['1710000000008', 'Larissa (Mens Seg/Sex)', '11999990008', '3', 'Mensalista: Seg, Sex', "'12/01/1999"],
       // Avulsos
-      ['1710000000009', 'João (Avulso)', '11999990009', '2', 'Avulso', '08/08/1995'],
-      ['1710000000010', 'Mariana (Avulso)', '11999990010', '2', 'Avulso', '20/12/2000'],
-      ['1710000000011', 'Rafael (Avulso)', '11999990011', '1', 'Avulso', '14/05/1998'],
-      ['1710000000012', 'Beatriz (Avulso)', '11999990012', '1', 'Avulso', '03/09/2001']
+      ['1710000000009', 'João (Avulso)', '11999990009', '2', 'Avulso', "'08/08/1995"],
+      ['1710000000010', 'Mariana (Avulso)', '11999990010', '2', 'Avulso', "'20/12/2000"],
+      ['1710000000011', 'Rafael (Avulso)', '11999990011', '1', 'Avulso', "'14/05/1998"],
+      ['1710000000012', 'Beatriz (Avulso)', '11999990012', '1', 'Avulso', "'03/09/2001"]
     ];
     jogadoresMock.forEach(j => sheetJogadores.appendRow(j));
     Logger.log('✅ Jogadores de teste inseridos.');
@@ -113,7 +113,7 @@ function gerarDadosDeTeste() {
   // 3. Presenças fictícias — todos 12 confirmados para testar o sorteio
   if (sheetPresencas && sheetPresencas.getLastRow() <= 1) {
     let hoje = new Date();
-    let hojeLocal = ('0' + hoje.getDate()).slice(-2) + '/' + ('0' + (hoje.getMonth() + 1)).slice(-2) + '/' + hoje.getFullYear();
+    let hojeLocal = "'" + ('0' + hoje.getDate()).slice(-2) + '/' + ('0' + (hoje.getMonth() + 1)).slice(-2) + '/' + hoje.getFullYear();
     let diaSemanaStr = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"][hoje.getDay()];
     
     let presencasMock = [
@@ -142,7 +142,7 @@ function gerarDadosDeTeste() {
   let sheetPagamentos = ss.getSheetByName(SHEET_PAGAMENTOS);
   if (sheetPagamentos && sheetPagamentos.getLastRow() <= 1) {
     let hoje = new Date();
-    let hojeCompleto = ('0' + hoje.getDate()).slice(-2) + '/' + ('0' + (hoje.getMonth() + 1)).slice(-2) + '/' + hoje.getFullYear();
+    let hojeCompleto = "'" + ('0' + hoje.getDate()).slice(-2) + '/' + ('0' + (hoje.getMonth() + 1)).slice(-2) + '/' + hoje.getFullYear();
     let diaSemanaStr = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"][hoje.getDay()];
 
     let pagamentosMock = [
@@ -191,13 +191,26 @@ function getJogadores() {
   }));
 }
 
-// Helper para formatar data do Sheets (Date object) para string YYYY-MM-DD (input date)
+// Helper para formatar data do Sheets (pode ser Date object ou string DD/MM/YYYY) para string YYYY-MM-DD (input date)
 function formatarParaInputData(data) {
-  if (!(data instanceof Date)) return String(data);
-  let d = data.getDate().toString().padStart(2, '0');
-  let m = (data.getMonth() + 1).toString().padStart(2, '0');
-  let y = data.getFullYear();
-  return `${y}-${m}-${d}`;
+  if (!data) return '';
+  
+  // Se for objeto Date do Google Sheets
+  if (data instanceof Date) {
+    let d = data.getDate().toString().padStart(2, '0');
+    let m = (data.getMonth() + 1).toString().padStart(2, '0');
+    let y = data.getFullYear();
+    return `${y}-${m}-${d}`;
+  }
+  
+  // Se for string DD/MM/YYYY (com ou sem apóstrofo)
+  let str = String(data).replace(/^'/, '').trim();
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
+    let partes = str.split('/');
+    return `${partes[2]}-${partes[1]}-${partes[0]}`;
+  }
+  
+  return str;
 }
 
 // Adiciona jogador
@@ -206,8 +219,8 @@ function adicionarJogador(nome, telefone, nivel, tipo, dataNascimento) {
   let sheet = ss.getSheetByName(SHEET_JOGADORES);
   if (!sheet) { setupInicial(); sheet = ss.getSheetByName(SHEET_JOGADORES); }
   const id = new Date().getTime().toString();
-  // Se houver data, salva como Date object para o Sheets formatar corretamente
-  let dataSalvar = dataNascimento ? new Date(dataNascimento + 'T00:00:00') : '';
+  // Salva como string com apóstrofo para garantir DD/MM/YYYY na planilha
+  let dataSalvar = dataNascimento ? "'" + dataNascimento : '';
   sheet.appendRow([id, nome, telefone, nivel, tipo, dataSalvar]);
   return getJogadores();
 }
@@ -225,7 +238,8 @@ function editarJogador(id, nome, telefone, nivel, tipo, dataNascimento) {
       sheet.getRange(i+1, 3).setValue(telefone);
       sheet.getRange(i+1, 4).setValue(nivel);
       sheet.getRange(i+1, 5).setValue(tipo);
-      let dataSalvar = dataNascimento ? new Date(dataNascimento + 'T00:00:00') : '';
+      // Salva como string com apóstrofo
+      let dataSalvar = dataNascimento ? "'" + dataNascimento : '';
       sheet.getRange(i+1, 6).setValue(dataSalvar);
       return getJogadores();
     }
