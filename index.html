@@ -518,9 +518,7 @@
                         <p class="text-xl font-black text-emerald-400">R$ {{ totalArrecadado }}</p>
                     </div>
                     <div class="glass p-4 rounded-2xl border-b-2 border-slate-500/30">
-                        <p class="text-[10px] text-slate-400 font-bold uppercase mb-1">Custo Total</p>
-                        <p class="text-xl font-black text-white">R$ {{ (somaCustosConfig()).toFixed(2).replace('.', ',')
-                            }}</p>
+                        <p class="text-xl font-black text-white">R$ {{ metaArrecadacao }}</p>
                     </div>
                 </div>
 
@@ -536,8 +534,7 @@
                     <div class="flex justify-between items-end">
                         <div>
                             <p class="text-[10px] text-slate-400 font-bold uppercase">Meta de Arrecadação</p>
-                            <p class="text-2xl font-black text-white">R$ {{ (somaCustosConfig()).toFixed(2).replace('.',
-                                ',') }}</p>
+                            <p class="text-2xl font-black text-white">R$ {{ metaArrecadacao }}</p>
                             <p class="text-[9px] text-indigo-300 font-bold mt-1">Já Arrecadado: R$ {{
                                 totalArrecadadoMensalistas }}</p>
                         </div>
@@ -592,10 +589,15 @@
                                     nomeDia === 'Quinta' ? 'text-pink-400' :
                                     'text-emerald-400'
                                 ]">Rateio {{ nomeDia }}</h3>
-                            <span class="font-black text-white text-xl">R$ {{dadosDia.valorPorPessoa}}</span>
+                            <span class="font-black text-white text-xl">R$ {{ (dadosDia.valorPorPessoa || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) }}</span>
                         </div>
-                        <p class="text-xs text-slate-400 mb-4">Total: {{dadosDia.totalMensalistas}} mensalistas | Custo
-                            Quadra: R$ {{dadosDia.custo}}</p>
+                        <p class="text-xs text-slate-400 mb-2">Mensalistas: {{dadosDia.totalMensalistas}} | Custo: R$ {{ (dadosDia.custo || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) }}</p>
+
+                        <!-- Aviso de erro no cadastro -->
+                        <div v-if="dadosDia.aviso" class="mb-4 p-2 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2">
+                            <i class="fa-solid fa-triangle-exclamation text-red-400 text-[10px]"></i>
+                            <span class="text-[10px] text-red-300 font-bold italic">{{ dadosDia.aviso }}</span>
+                        </div>
 
                         <div class="space-y-2 mb-4 max-h-48 overflow-y-auto pr-1">
                             <div v-for="jog in dadosDia.jogadores" :key="jog.id"
@@ -803,38 +805,20 @@
                     return count;
                 },
                 totalArrecadado: function () {
-                    if (!this.fechamento) return "0.00";
-                    if (this.fechamento.totalArrecadado !== undefined) {
-                        return this.fechamento.totalArrecadado.toFixed(2).replace('.', ',');
-                    }
-                    var total = 0;
-                    if (this.fechamento.dias) {
-                        Object.keys(this.fechamento.dias).forEach(dia => {
-                            this.fechamento.dias[dia].jogadores.forEach(j => {
-                                if (j.pago) total += parseFloat(String(this.fechamento.dias[dia].valorPorPessoa).replace(',', '.')) || 0;
-                            });
-                        });
-                    }
-                    return total.toFixed(2).replace('.', ',');
+                    if (!this.fechamento) return "0,00";
+                    return (this.fechamento.totalArrecadadoMensalistas || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
                 },
                 totalArrecadadoMensalistas: function () {
-                    if (!this.fechamento) return "0.00";
-                    var total = 0;
-                    if (this.fechamento.dias) {
-                        Object.keys(this.fechamento.dias).forEach(dia => {
-                            this.fechamento.dias[dia].jogadores.forEach(j => {
-                                if (j.pago) total += parseFloat(String(this.fechamento.dias[dia].valorPorPessoa).replace(',', '.')) || 0;
-                            });
-                        });
-                    }
-                    return total.toFixed(2).replace('.', ',');
+                    if (!this.fechamento) return "0,00";
+                    return (this.fechamento.totalArrecadadoMensalistas || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
                 },
                 totalArrecadadoAvulsos: function () {
-                    if (!this.fechamento) return "0.00";
-                    if (this.fechamento.totalAvulsos !== undefined) {
-                        return this.fechamento.totalAvulsos.toFixed(2).replace('.', ',');
-                    }
-                    return "0,00"; // Fallback para modelo antigo se houver
+                    if (!this.fechamento) return "0,00";
+                    return (this.fechamento.totalArrecadadoAvulsos || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                },
+                metaArrecadacao: function () {
+                    if (!this.fechamento) return "0,00";
+                    return (this.fechamento.metaArrecadacao || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
                 },
                 costsAvulsoLabel: function () {
                     let v = parseFloat(this.custosConfig['Avulso']) || 10;
@@ -1259,7 +1243,8 @@
                     this.fechamento = null;
                 },
                 cobrarIndividual: function (jogador, valor, dia) {
-                    var texto = "*💳 MENSALIDADE VÔLEI - " + dia.toUpperCase() + "*\n\nFala " + jogador.nome + ", o rateio desse mês ficou em *R$ " + valor + "*.\n\nPode mandar o PIX para o organizador quando conseguir! Valeu! 🏐";
+                    var valorFormatado = (valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                    var texto = "*💳 MENSALIDADE VÔLEI - " + dia.toUpperCase() + "*\n\nFala " + jogador.nome + ", o rateio desse mês ficou em *R$ " + valorFormatado + "*.\n\nPode mandar o PIX para o organizador quando conseguir! Valeu! 🏐";
                     window.open("https://wa.me/" + jogador.telefone + "?text=" + encodeURIComponent(texto), '_blank');
                 },
                 fazerPagamento: function (jogador, dia) {
@@ -1289,7 +1274,8 @@
                     });
                 },
                 cobrarMensalidade: function (valor, dia) {
-                    var texto = "*💳 FECHAMENTO DO MÊS - " + dia.toUpperCase() + " 💳*\n\nA mensalidade da quadra fechou em *R$ " + valor + "* por pessoa este mês.\n\nPor favor, realizem o PIX para o organizador. Valeu! 🏐";
+                    var valorFormatado = (valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                    var texto = "*💳 FECHAMENTO DO MÊS - " + dia.toUpperCase() + " 💳*\n\nA mensalidade da quadra fechou em *R$ " + valorFormatado + "* por pessoa este mês.\n\nPor favor, realizem o PIX para o organizador. Valeu! 🏐";
                     window.open("https://wa.me/?text=" + encodeURIComponent(texto), '_blank');
                 }
             }

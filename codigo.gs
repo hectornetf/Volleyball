@@ -396,7 +396,7 @@ function sortearTimes(diaDaSemana, dataJogo, jogadoresPorTime) {
   return times;
 }
 
-// Calcula Fechamento (Dinamico para múltiplos dias)
+// Calcula Fechamento (Dinâmico para múltiplos dias)
 function calcularFechamento(mesAno, custosJsonStr) {
   const todos = getJogadores();
   const pagamentos = getPagamentos(mesAno);
@@ -407,85 +407,88 @@ function calcularFechamento(mesAno, custosJsonStr) {
   } catch(e) { /* silent fail */ }
 
   let relatorio = {
-    dias: {}, // { "Segunda": { custo: X, totalMensalistas: Y, valorPorPessoa: Z, jogadores: [] } }
+    dias: {}, // { "Segunda": { custo: X, totalMensalistas: Y, valorPorPessoa: Z, jogadores: [], aviso: '' } }
     statusGeral: "Em Aberto",
-    totalArrecadado: 0,
-    totalAvulsos: 0
+    metaArrecadacao: 0,
+    totalArrecadadoMensalistas: 0,
+    totalArrecadadoAvulsos: 0,
+    mesAno: mesAno
   };
 
-  // Inicializa o objeto do relatório com os dias que têm custo > 0
+  // 1. Inicializa o objeto com os dias que têm custo > 0
   Object.keys(custosObj).forEach(dia => {
-    if (dia === 'Avulso') return; // Pula a configuração de preço do avulso (é receita)
-    let c = parseFloat(custosObj[dia]) || 0;
+    if (dia === 'Avulso') return;
+    let c = parseFloat(String(custosObj[dia]).replace(',', '.')) || 0;
     if (c > 0) {
-      relatorio.dias[dia] = { custo: c, totalMensalistas: 0, valorPorPessoa: 0, jogadores: [] };
+      relatorio.dias[dia] = { 
+        custo: c, 
+        totalMensalistas: 0, 
+        valorPorPessoa: 0, 
+        jogadores: [],
+        aviso: ''
+      };
+      relatorio.metaArrecadacao += c;
     }
   });
 
+  // 2. Mapeia Mensalistas para cada dia
   todos.forEach(j => {
-    let tipoUpper = String(j.tipo).toUpperCase(); // Ex: "MENSALISTA SEG, QUA, SEX"
-    
-    // Para cada dia configurado com custo, checamos se o jogador é mensalista desse dia
-    Object.keys(relatorio.dias).forEach(dia => {
-      // Suporte legado MENSALISTA SEG E SEX map
-      let ehMensalistaDiaVelho = (dia === 'Segunda' && (tipoUpper.includes('SEG') || tipoUpper === 'MENS' || tipoUpper === 'MENSALISTA')) ||
-                                 (dia === 'Sexta' && (tipoUpper.includes('SEX') || tipoUpper === 'MENS' || tipoUpper === 'MENSALISTA'));
-      // Novo formato: Mensalista "DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SAB"
-      let ehMensalistaDiaNovo = tipoUpper.includes(dia.substring(0, 3).toUpperCase()) && !tipoUpper.includes('AVULSO');
-      
-      let ehMensalista = ehMensalistaDiaVelho || ehMensalistaDiaNovo;
+    let tipoStr = String(j.tipo).toUpperCase();
+    if (tipoStr.includes('AVULSO')) return;
 
-      if(ehMensalista) {
-        let pago = pagamentos.some(p => String(p.idJogador) === String(j.id) && p.diaSemana === dia && p.status === 'Pago');
+    Object.keys(relatorio.dias).forEach(dia => {
+      let sigla = dia.substring(0, 3).toUpperCase();
+      // Verifica se o tipo contém a sigla do dia (SEG, TER, etc)
+      // Ou suporte legado para MENSALISTA puro que cai no padrão SEG/SEX dependendo do dia configurado
+      let ehMensalista = tipoStr.includes(sigla) || 
+                         (tipoStr === 'MENSALISTA' && (dia === 'Segunda' || dia === 'Sexta')) ||
+                         (tipoStr === 'MENS' && (dia === 'Segunda' || dia === 'Sexta'));
+
+      if (ehMensalista) {
+        let registroPagamento = pagamentos.find(p => String(p.idJogador) === String(j.id) && p.diaSemana === dia && p.status === 'Pago');
+        let valorPago = registroPagamento ? parseFloat(String(registroPagamento.valor).replace(',', '.')) || 0 : 0;
+        
         relatorio.dias[dia].totalMensalistas++;
         relatorio.dias[dia].jogadores.push({
           id: j.id, 
           nome: j.nome, 
-          telefone: j.telefone,
-          pago: pago
+          pago: !!registroPagamento,
+          valorPago: valorPago
         });
+        relatorio.totalArrecadadoMensalistas += valorPago;
       }
     });
   });
   
-  let custoTotalQuadra = 0;
-  
-  // Calcula rateios por pessoa
+  // 3. Calcula rateios e gera avisos
   Object.keys(relatorio.dias).forEach(dia => {
     let d = relatorio.dias[dia];
-    custoTotalQuadra += d.custo;
-    if(d.totalMensalistas > 0 && d.custo > 0) {
-      d.valorPorPessoa = (d.custo / d.totalMensalistas).toFixed(2);
+    if (d.totalMensalistas > 0) {
+      d.valorPorPessoa = d.custo / d.totalMensalistas;
+    } else {
+      d.aviso = 'Nenhum jogador vinculado a este dia no cadastro.';
     }
   });
-  
-  // Salva a configuração (sempre que houver custos configurados ou status alterado)
-  let temQualquerCusto = Object.keys(custosObj).some(k => parseFloat(custosObj[k]) > 0);
-  
-  if (temQualquerCusto || custoTotalQuadra > 0) {
-    let arrecadadoMensalistas = 0;
-    let arrecadadoAvulsos = 0;
-    
-    // Só contabiliza pagamentos com status 'Pago' (ignora 'Cancelado')
-    pagamentos.forEach(p => { 
-      if (p.status !== 'Pago') return;
-      let valor = parseFloat(String(p.valor).replace(',', '.')) || 0;
-      // Se a data tem mais de 7 caracteres (ex: 06/03/2026), é pagamento diário de avulso
-      if (p.mesAno && p.mesAno.length > 7) {
-        arrecadadoAvulsos += valor;
-      } else {
-        arrecadadoMensalistas += valor;
-      }
-    });
 
-    // O status (para pagar a quadra) agora depende apenas da arrecadação dos mensalistas
-    let status = (custoTotalQuadra > 0 && arrecadadoMensalistas >= (custoTotalQuadra - 0.01)) ? "Pago Totalmente" : "Em Aberto";
-    
-    salvarConfigFinanceira(mesAno, custosJsonStr, status);
-    relatorio.statusGeral = status;
-    relatorio.totalArrecadado = arrecadadoMensalistas; // Arrecadação para a quadra
-    relatorio.totalAvulsos = arrecadadoAvulsos; // Caixa de equipamentos
+  // 4. Calcula Receita de Avulsos (Caixa de Equipamentos)
+  // Contabiliza apenas pagamentos diários (mesAno longo ex: 17/03/2026) que não são de mensalistas
+  pagamentos.forEach(p => {
+    if (p.status !== 'Pago') return;
+    if (p.mesAno && p.mesAno.length > 7) {
+      relatorio.totalArrecadadoAvulsos += parseFloat(String(p.valor).replace(',', '.')) || 0;
+    }
+  });
+
+  // 5. Determina Status Geral (baseado apenas na meta da quadra)
+  let margemErro = 0.05; // 5 centavos de tolerância
+  if (relatorio.metaArrecadacao > 0 && relatorio.totalArrecadadoMensalistas >= (relatorio.metaArrecadacao - margemErro)) {
+    relatorio.statusGeral = "Pago Totalmente";
+  } else if (relatorio.totalArrecadadoMensalistas > 0) {
+    relatorio.statusGeral = "Em Aberto";
   }
+
+  // 6. Sincroniza com a planilha
+  salvarConfigFinanceira(mesAno, custosJsonStr, relatorio.statusGeral);
   
   return relatorio;
 }
