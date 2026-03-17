@@ -57,54 +57,108 @@ function setupInicial() {
 /**
  * Gera dados de teste fictícios para validar o funcionamento do sistema.
  * Deve ser executado manualmente pelo administrador se desejar popular a planilha.
+ * Execute APÓS o setupInicial().
  */
 function gerarDadosDeTeste() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   
-  // --- DADOS DE TESTE INICIAIS (MOCK) ---
+  // Garante que as abas existem antes de tentar inserir dados
   let sheetJogadores = ss.getSheetByName(SHEET_JOGADORES);
-  if (!sheetJogadores) {
+  let sheetPresencas = ss.getSheetByName(SHEET_PRESENCAS);
+  let sheetConfigFin = ss.getSheetByName(SHEET_CONFIG_FINANCEIRA);
+  
+  if (!sheetJogadores || !sheetPresencas || !sheetConfigFin) {
     setupInicial();
     sheetJogadores = ss.getSheetByName(SHEET_JOGADORES);
+    sheetPresencas = ss.getSheetByName(SHEET_PRESENCAS);
+    sheetConfigFin = ss.getSheetByName(SHEET_CONFIG_FINANCEIRA);
   }
 
-  // Só adiciona se estiver vazio (apenas cabeçalho)
-  if (sheetJogadores && sheetJogadores.getLastRow() === 1) {
-    // Adiciona Jogadores Fictícios
+  // 1. Jogadores fictícios (só se a aba estiver vazia)
+  if (sheetJogadores && sheetJogadores.getLastRow() <= 1) {
     let jogadoresMock = [
-      ['1710000000001', 'João (Avulso)', '11999999999', '3', 'Avulso', '1990-01-01'],
-      ['1710000000002', 'Maria (Mensalista Seg)', '11988888888', '4', 'Mensalista: Seg', '1995-05-10'],
-      ['1710000000003', 'Pedro (Mensalista Seg/Sex)', '11977777777', '5', 'Mensalista: Seg, Sex', '1988-12-20'],
-      ['1710000000004', 'Ana (Mensalista Dom)', '11966666666', '2', 'Mensalista: Dom', '2000-10-30'],
-      ['1710000000005', 'Lucas (Avulso)', '11955555555', '3', 'Avulso', '1992-06-15'],
-      ['1710000000006', 'Julia (Mensalista Sex)', '11944444444', '4', 'Mensalista: Sex', '1998-03-25']
+      // Mensalistas de Segunda
+      ['1710000000001', 'Carlos (Mens Seg)', '11999990001', '5', 'Mensalista: Seg', '15/03/1990'],
+      ['1710000000002', 'Fernanda (Mens Seg)', '11999990002', '4', 'Mensalista: Seg', '22/07/1993'],
+      ['1710000000003', 'Roberto (Mens Seg)', '11999990003', '4', 'Mensalista: Seg', '10/11/1988'],
+      ['1710000000004', 'Camila (Mens Seg)', '11999990004', '3', 'Mensalista: Seg', '05/02/1997'],
+      // Mensalistas de Sexta
+      ['1710000000005', 'Thiago (Mens Sex)', '11999990005', '5', 'Mensalista: Sex', '30/09/1991'],
+      ['1710000000006', 'Patrícia (Mens Sex)', '11999990006', '3', 'Mensalista: Sex', '18/04/1994'],
+      ['1710000000007', 'Diego (Mens Sex)', '11999990007', '4', 'Mensalista: Seg, Sex', '27/06/1986'],
+      ['1710000000008', 'Larissa (Mens Seg/Sex)', '11999990008', '3', 'Mensalista: Seg, Sex', '12/01/1999'],
+      // Avulsos
+      ['1710000000009', 'João (Avulso)', '11999990009', '2', 'Avulso', '08/08/1995'],
+      ['1710000000010', 'Mariana (Avulso)', '11999990010', '2', 'Avulso', '20/12/2000'],
+      ['1710000000011', 'Rafael (Avulso)', '11999990011', '1', 'Avulso', '14/05/1998'],
+      ['1710000000012', 'Beatriz (Avulso)', '11999990012', '1', 'Avulso', '03/09/2001']
     ];
-    // Adiciona as linhas na aba de jogadores
     jogadoresMock.forEach(j => sheetJogadores.appendRow(j));
-
-    // Adiciona Configuração Financeira Fictícia para o mês atual
-    let sheetConfigFin = ss.getSheetByName(SHEET_CONFIG_FINANCEIRA);
-    if (sheetConfigFin && sheetConfigFin.getLastRow() === 1) {
-      let hoje = new Date();
-      let mesAno = ('0' + (hoje.getMonth() + 1)).slice(-2) + '/' + hoje.getFullYear();
-      let custosMock = JSON.stringify({"Domingo": 100, "Segunda": 120, "Sexta": 150, "Avulso": 10});
-      sheetConfigFin.appendRow([mesAno, 'Em Aberto', custosMock]);
-    }
-
-    // Adiciona Presenças para o dia atual para ter algo no Próximo Jogo
-    let sheetPresencas = ss.getSheetByName(SHEET_PRESENCAS);
-    if (sheetPresencas && sheetPresencas.getLastRow() === 1) {
-      let hojeLocal = new Date().toLocaleDateString('pt-BR');
-      let diaSemanaStr = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"][new Date().getDay()];
-      
-      let presencasMock = [
-        [hojeLocal, diaSemanaStr, '1710000000001', 'João (Avulso)', 'Confirmado', 'Avulso'],
-        [hojeLocal, diaSemanaStr, '1710000000002', 'Maria (Mensalista Seg)', 'Ausente', 'Mensalista: Seg'],
-        [hojeLocal, diaSemanaStr, '1710000000004', 'Ana (Mensalista Dom)', 'Confirmado', 'Mensalista: Dom']
-      ];
-      presencasMock.forEach(p => sheetPresencas.appendRow(p));
-    }
+    Logger.log('✅ Jogadores de teste inseridos.');
+  } else {
+    Logger.log('⚠️ Aba de Jogadores já possui dados. Pulando inserção.');
   }
+
+  // 2. Configuração Financeira fictícia para o mês atual
+  if (sheetConfigFin && sheetConfigFin.getLastRow() <= 1) {
+    let hoje = new Date();
+    let mesAno = ('0' + (hoje.getMonth() + 1)).slice(-2) + '/' + hoje.getFullYear();
+    let custosMock = JSON.stringify({"Segunda": 120, "Sexta": 150, "Avulso": 10});
+    sheetConfigFin.appendRow(["'" + mesAno, 'Em Aberto', custosMock]);
+    Logger.log('✅ Configuração financeira de teste inserida para ' + mesAno);
+  } else {
+    Logger.log('⚠️ Config Financeira já possui dados. Pulando inserção.');
+  }
+
+  // 3. Presenças fictícias — todos 12 confirmados para testar o sorteio
+  if (sheetPresencas && sheetPresencas.getLastRow() <= 1) {
+    let hoje = new Date();
+    let hojeLocal = ('0' + hoje.getDate()).slice(-2) + '/' + ('0' + (hoje.getMonth() + 1)).slice(-2) + '/' + hoje.getFullYear();
+    let diaSemanaStr = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"][hoje.getDay()];
+    
+    let presencasMock = [
+      // Mensalistas — confirmados
+      [hojeLocal, diaSemanaStr, '1710000000001', 'Carlos (Mens Seg)', 'Confirmado', 'Mensalista: Seg'],
+      [hojeLocal, diaSemanaStr, '1710000000002', 'Fernanda (Mens Seg)', 'Confirmado', 'Mensalista: Seg'],
+      [hojeLocal, diaSemanaStr, '1710000000003', 'Roberto (Mens Seg)', 'Confirmado', 'Mensalista: Seg'],
+      [hojeLocal, diaSemanaStr, '1710000000004', 'Camila (Mens Seg)', 'Confirmado', 'Mensalista: Seg'],
+      [hojeLocal, diaSemanaStr, '1710000000005', 'Thiago (Mens Sex)', 'Confirmado', 'Mensalista: Sex'],
+      [hojeLocal, diaSemanaStr, '1710000000006', 'Patrícia (Mens Sex)', 'Confirmado', 'Mensalista: Sex'],
+      [hojeLocal, diaSemanaStr, '1710000000007', 'Diego (Mens Sex)', 'Confirmado', 'Mensalista: Seg, Sex'],
+      [hojeLocal, diaSemanaStr, '1710000000008', 'Larissa (Mens Seg/Sex)', 'Confirmado', 'Mensalista: Seg, Sex'],
+      // Avulsos — confirmados (pagamento será inserido na aba de Pagamentos abaixo)
+      [hojeLocal, diaSemanaStr, '1710000000009', 'João (Avulso)', 'Confirmado', 'Avulso'],
+      [hojeLocal, diaSemanaStr, '1710000000010', 'Mariana (Avulso)', 'Confirmado', 'Avulso'],
+      [hojeLocal, diaSemanaStr, '1710000000011', 'Rafael (Avulso)', 'Confirmado', 'Avulso'],
+      [hojeLocal, diaSemanaStr, '1710000000012', 'Beatriz (Avulso)', 'Confirmado', 'Avulso']
+    ];
+    presencasMock.forEach(p => sheetPresencas.appendRow(p));
+    Logger.log('✅ Presenças de teste inseridas para ' + hojeLocal + ' (' + diaSemanaStr + ')');
+  } else {
+    Logger.log('⚠️ Aba de Presenças já possui dados. Pulando inserção.');
+  }
+
+  // 4. Pagamentos dos avulsos (para que o sistema libere a confirmação)
+  let sheetPagamentos = ss.getSheetByName(SHEET_PAGAMENTOS);
+  if (sheetPagamentos && sheetPagamentos.getLastRow() <= 1) {
+    let hoje = new Date();
+    let hojeCompleto = ('0' + hoje.getDate()).slice(-2) + '/' + ('0' + (hoje.getMonth() + 1)).slice(-2) + '/' + hoje.getFullYear();
+    let diaSemanaStr = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"][hoje.getDay()];
+
+    let pagamentosMock = [
+      ['1710000000009', 'João (Avulso)',    diaSemanaStr, hojeCompleto, 10, 'Pago'],
+      ['1710000000010', 'Mariana (Avulso)', diaSemanaStr, hojeCompleto, 10, 'Pago'],
+      ['1710000000011', 'Rafael (Avulso)',  diaSemanaStr, hojeCompleto, 10, 'Pago'],
+      ['1710000000012', 'Beatriz (Avulso)', diaSemanaStr, hojeCompleto, 10, 'Pago']
+    ];
+    pagamentosMock.forEach(p => sheetPagamentos.appendRow(p));
+    Logger.log('✅ Pagamentos de avulsos inseridos.');
+  } else {
+    Logger.log('⚠️ Aba de Pagamentos já possui dados. Pulando inserção.');
+  }
+
+  Logger.log('🏐 gerarDadosDeTeste() concluído! 12 jogadores, 2 times possíveis de 6.');
+
 }
 
 

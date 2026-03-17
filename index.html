@@ -641,9 +641,11 @@
                             class="w-full bg-slate-800 rounded-xl p-3 outline-none focus:ring-2 focus:ring-purple-500 font-semibold">
                         <div class="relative">
                             <i class="fa-brands fa-whatsapp absolute top-3.5 left-3 text-slate-400"></i>
-                            <input type="text" v-model="novoJogador.telefone"
+                            <input type="tel" v-model="novoJogador.telefone"
                                 @focus="novoJogador.telefone.includes('*') && (novoJogador.telefone = '')"
-                                placeholder="DDD + Número"
+                                @input="mascaraTelefone"
+                                placeholder="(11) 99999-9999"
+                                maxlength="15"
                                 class="w-full bg-slate-800 rounded-xl p-3 pl-9 outline-none focus:ring-2 focus:ring-purple-500">
                         </div>
                         <div class="flex gap-2">
@@ -1103,17 +1105,62 @@
                 },
                 mascararData: function (data) {
                     if (!data) return '';
-                    var partes = data.split('-');
-                    if (partes.length < 3) return data;
-                    return '****-**-' + partes[2];
+                    // Suporta DD/MM/YYYY (salvo pelo app) e YYYY-MM-DD (legado)
+                    var dia = '';
+                    if (/^\d{2}\/\d{2}\/\d{4}$/.test(data)) {
+                        dia = data.substring(0, 2); // pega o dia
+                    } else if (/^\d{4}-\d{2}-\d{2}$/.test(data)) {
+                        dia = data.split('-')[2]; // pega o dia do YYYY-MM-DD
+                    } else {
+                        return '**/**/****';
+                    }
+                    return dia + '/**/****';
                 },
                 cancelarEdicao: function () {
                     this.novoJogador = { id: null, nome: '', telefone: '', nivel: '3', tipo: '', isAvulso: false, diasMensalista: ['Segunda'], dataNascimento: '' };
                     this.originalTelefone = '';
                     this.originalDataNascimento = '';
                 },
+                mascaraTelefone: function () {
+                    var v = this.novoJogador.telefone.replace(/\D/g, '').substring(0, 11);
+                    if (v.length <= 10) {
+                        v = v.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3');
+                    } else {
+                        v = v.replace(/^(\d{2})(\d{5})(\d{0,4}).*/, '($1) $2-$3');
+                    }
+                    this.novoJogador.telefone = v;
+                },
                 salvarJogador: function () {
-                    if (!this.novoJogador.nome) return alert('Nome é obrigatório');
+                    if (!this.novoJogador.nome || !this.novoJogador.nome.trim()) return alert('Nome é obrigatório.');
+
+                    // Valida e normaliza o telefone
+                    var telRaw = this.novoJogador.telefone;
+                    var telFinal;
+                    if (this.novoJogador.id && telRaw.includes('*')) {
+                        telFinal = this.originalTelefone;
+                    } else {
+                        // Remove tudo que não for dígito
+                        var telDigits = telRaw.replace(/\D/g, '');
+                        if (!telDigits || (telDigits.length !== 10 && telDigits.length !== 11)) {
+                            return alert('Telefone inválido. Use o formato (11) 99999-9999 com DDD.');
+                        }
+                        telFinal = telDigits;
+                    }
+
+                    // Normaliza a data de nascimento
+                    var dataFinal = '';
+                    if (this.novoJogador.id && this.novoJogador.dataNascimento && this.novoJogador.dataNascimento.includes('*')) {
+                        dataFinal = this.originalDataNascimento;
+                    } else if (this.novoJogador.dataNascimento) {
+                        var d = this.novoJogador.dataNascimento;
+                        // Se vier do input type="date" (YYYY-MM-DD), converte para DD/MM/YYYY
+                        if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+                            var partes = d.split('-');
+                            dataFinal = partes[2] + '/' + partes[1] + '/' + partes[0];
+                        } else {
+                            dataFinal = d; // já está no formato certo
+                        }
+                    }
 
                     // Constrói a string "tipo" baseado no checkbox
                     if (this.novoJogador.isAvulso) {
@@ -1124,23 +1171,19 @@
                     }
 
                     this.loading = true;
-
-                    // Desmascara os dados: se contém asteriscos, usa o valor original salvo
-                    var telFinal = (this.novoJogador.id && this.novoJogador.telefone.includes('*')) ? this.originalTelefone : this.novoJogador.telefone;
-                    var dataFinal = (this.novoJogador.id && this.novoJogador.dataNascimento && this.novoJogador.dataNascimento.includes('*')) ? this.originalDataNascimento : this.novoJogador.dataNascimento;
-
                     var self = this;
                     if (this.novoJogador.id) {
-                        this.runGoogleScript('editarJogador', [this.novoJogador.id, this.novoJogador.nome, telFinal, this.novoJogador.nivel, this.novoJogador.tipo, dataFinal]).then(function (res) {
+                        this.runGoogleScript('editarJogador', [this.novoJogador.id, this.novoJogador.nome.trim(), telFinal, this.novoJogador.nivel, this.novoJogador.tipo, dataFinal]).then(function (res) {
                             self.jogadores = res;
                             self.cancelarEdicao();
                             alert("Jogador atualizado com sucesso!");
                         });
                     } else {
-                        this.runGoogleScript('adicionarJogador', [this.novoJogador.nome, telFinal, this.novoJogador.nivel, this.novoJogador.tipo, dataFinal]).then(function (res) {
+                        this.runGoogleScript('adicionarJogador', [this.novoJogador.nome.trim(), telFinal, this.novoJogador.nivel, this.novoJogador.tipo, dataFinal]).then(function (res) {
                             self.jogadores = res;
                             self.cancelarEdicao();
-                            alert("Jogador adicionado!");
+                            self.toastMsg = 'Jogador adicionado com sucesso! 🏀';
+                            setTimeout(function() { self.toastMsg = ''; }, 3000);
                         });
                     }
                 },
