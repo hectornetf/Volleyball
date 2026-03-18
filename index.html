@@ -787,7 +787,7 @@
                     mesReferencia: (new Date().getMonth() + 1).toString().padStart(2, '0') + '/' + new Date().getFullYear(),
                     pagamentosGlobal: [],
                     loading: false,
-                    appUrl: window.location.href,
+                    appUrl: '',
                     toastMsg: ''
                 };
             },
@@ -1198,7 +1198,11 @@
                     window.open("https://wa.me/?text=" + encodeURIComponent(texto), '_blank');
                 },
                 notificarTodos: function () {
-                    var texto = "*🏐 VOLEIZINDOSCRIA - CHAMADA 🏐*\n\nFala galera! Já está aberta a lista para o jogo de *" + this.diaSelecionado + "* (" + this.dataJogo + ").\n\nPor favor, confirmem sua presença no link abaixo:\n🔗 https://script.google.com/macros/s/AKfycbzL5nQ_W7s8VnNIfb0h_aVzX1z_W_K7o2m_yW-jIuO1E-8vA7zM_1lX7o5r/exec";
+                    if (!this.appUrl) {
+                        alert("Aguarde um instante, o link do aplicativo ainda está sendo carregado...");
+                        return;
+                    }
+                    var texto = "*🏐 VOLEIZINDOSCRIA - CHAMADA 🏐*\n\nFala galera! Já está aberta a lista para o jogo de *" + this.diaSelecionado + "* (" + this.dataJogo + ").\n\nPor favor, confirmem sua presença no link abaixo:\n🔗 " + this.appUrl;
                     window.open("https://wa.me/?text=" + encodeURIComponent(texto), '_blank');
                 },
                 calcularFechamento: function () {
