@@ -872,11 +872,13 @@
                     var d = new Date();
                     d.setHours(0, 0, 0, 0);
                     var day = d.getDay();
-                    var diff = targetDay - day;
-                    if (diff < 0) {
-                        diff += 7;
-                    } else if (diff === 0 && new Date().getHours() >= 18) {
-                        diff += 7;
+                    // Calcula a diferença em dias (0 a 6)
+                    var diff = (targetDay - day + 7) % 7;
+                    
+                    // Se o dia alvo foi ontem (diferença = 6), mantemos como -1.
+                    // Isso permite janela de 24h para fechamento do jogo do dia anterior.
+                    if (diff === 6) {
+                        diff = -1;
                     }
                     d.setDate(d.getDate() + diff);
                     return d.getDate().toString().padStart(2, '0') + '/' + (d.getMonth() + 1).toString().padStart(2, '0') + '/' + d.getFullYear();
