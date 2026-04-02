@@ -1,15 +1,19 @@
 import { initializeApp } from "firebase/app";
-// import { getFirestore } from "firebase/firestore";
+import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
-// Substitua pelas credenciais do seu projeto gratuito no Firebase
+// As chaves agora são carregadas do arquivo .env via prefixo EXPO_PUBLIC_
 const firebaseConfig = {
-  apiKey: "Sua_Api_Key",
-  authDomain: "Seu_App.firebaseapp.com",
-  projectId: "Seu_Project_Id",
-  storageBucket: "Seu_App.appspot.com",
-  messagingSenderId: "Id_Mensagem",
-  appId: "App_Id"
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
-const app = initializeApp(firebaseConfig);
-// export const db = getFirestore(app);
+export const app = initializeApp(firebaseConfig);
+export const db = getFirestore(app);
+export const auth = getAuth(app);
+
