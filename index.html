@@ -225,10 +225,12 @@
                                         d.dia }}</span>
                                     <span class="text-sm font-semibold text-slate-300">{{ d.nome }}</span>
                                 </div>
-                                <span class="text-xs font-bold text-slate-400 italic">R$ {{
-                                    d.valor.toFixed(2).replace('.',',') }}</span>
+                                <span class="text-xs font-bold text-slate-400 italic">R$ {{ d.valor.toFixed(2).replace('.',',') }}</span>
                             </div>
                         </div>
+                        <button @click="cobrarDevedoresGeral" class="mt-4 w-full bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition py-2 rounded-xl text-xs font-bold flex justify-center items-center gap-2 border border-emerald-500/30 active:scale-95">
+                            <i class="fa-brands fa-whatsapp text-sm"></i> Enviar Cobrança no Grupo
+                        </button>
                     </div>
                     <div v-else class="glass p-5 rounded-2xl border-l-4 border-emerald-500 flex items-center gap-3">
                         <i class="fa-solid fa-circle-check text-emerald-500 text-xl"></i>
@@ -506,19 +508,20 @@
 
                 <!-- Resumo Financeiro Superior -->
                 <div v-if="fechamento" class="grid grid-cols-2 gap-3 animate-in">
-                    <div class="glass p-4 rounded-2xl border-b-2 border-emerald-500/30">
-                        <div class="flex justify-between items-start mb-1">
-                            <p class="text-[10px] text-slate-400 font-bold uppercase">Arrecadação p/ Quadra</p>
+                    <div class="glass p-4 rounded-2xl border-b-2 border-emerald-500/30 flex flex-col justify-between">
+                        <div class="flex justify-between items-start gap-2 mb-2">
+                            <p class="text-[10px] text-slate-400 font-bold uppercase leading-tight">Arrecadado<br>(Quadra)</p>
                             <span
                                 :class="fechamento.statusGeral === 'Pago Totalmente' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50' : 'bg-amber-500/20 text-amber-400 border-amber-500/50'"
-                                class="text-[8px] px-1.5 py-0.5 rounded border font-black uppercase">
+                                class="text-[8px] px-1.5 py-0.5 rounded border font-black uppercase shrink-0 text-center">
                                 {{ fechamento.statusGeral }}
                             </span>
                         </div>
-                        <p class="text-xl font-black text-emerald-400">R$ {{ totalArrecadado }}</p>
+                        <p class="text-xl font-black text-emerald-400 leading-none">R$ {{ totalArrecadado }}</p>
                     </div>
-                    <div class="glass p-4 rounded-2xl border-b-2 border-slate-500/30">
-                        <p class="text-xl font-black text-white">R$ {{ metaArrecadacao }}</p>
+                    <div class="glass p-4 rounded-2xl border-b-2 border-slate-500/30 flex flex-col justify-between">
+                        <p class="text-[10px] text-slate-400 font-bold uppercase mb-2">Custo Total</p>
+                        <p class="text-xl font-black text-white leading-none">R$ {{ metaArrecadacao }}</p>
                     </div>
                 </div>
 
@@ -560,6 +563,12 @@
                         <p class="text-[10px] text-slate-500 italic max-w-[150px] text-right">Verba extra vinda
                             exclusivamente dos pagamentos dos avulsos (R$ 10).</p>
                     </div>
+                    <div class="flex justify-between items-end mt-3 pt-3 border-t border-amber-500/30">
+                        <p class="text-[10px] text-slate-500 font-bold max-w-[180px]">Utilize este botão ao gastar o fundo em compras para a quadra.</p>
+                        <button @click="liquidarCaixa" class="text-xs bg-slate-800 text-amber-400 px-3 py-1.5 rounded-lg font-bold border border-amber-500/30 hover:bg-amber-500/20 hover:text-amber-300 transition shadow">
+                            <i class="fa-solid fa-money-check-dollar"></i> Liquidar Gastos
+                        </button>
+                    </div>
                 </div>
 
                 <div v-if="fechamento" class="flex justify-center mt-3">
@@ -589,9 +598,9 @@
                                     nomeDia === 'Quinta' ? 'text-pink-400' :
                                     'text-emerald-400'
                                 ]">Rateio {{ nomeDia }}</h3>
-                            <span class="font-black text-white text-xl">R$ {{ (dadosDia.valorPorPessoa || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) }}</span>
+                            <span class="font-black text-white text-xl">R$ {{ (dadosDia.valorPorPessoa || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</span>
                         </div>
-                        <p class="text-xs text-slate-400 mb-2">Mensalistas: {{dadosDia.totalMensalistas}} | Custo: R$ {{ (dadosDia.custo || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) }}</p>
+                        <p class="text-xs text-slate-400 mb-2">Mensalistas: {{dadosDia.totalMensalistas}} | Custo: R$ {{ (dadosDia.custo || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</p>
 
                         <!-- Aviso de erro no cadastro -->
                         <div v-if="dadosDia.aviso" class="mb-4 p-2 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2">
@@ -604,10 +613,6 @@
                                 class="flex items-center justify-between p-2 bg-slate-800/40 rounded-lg border border-slate-700/30 text-xs">
                                 <span :class="jog.pago ? 'text-white font-bold' : 'text-slate-400'">{{jog.nome}}</span>
                                 <div class="flex gap-2">
-                                    <button @click="cobrarIndividual(jog, dadosDia.valorPorPessoa, nomeDia)"
-                                        class="w-7 h-7 bg-emerald-500/10 text-emerald-400 rounded-md hover:bg-emerald-500/20 transition">
-                                        <i class="fa-brands fa-whatsapp"></i>
-                                    </button>
                                     <button @click="fazerPagamento(jog, nomeDia)"
                                         :class="jog.pago ? 'bg-emerald-500 text-white shadow shadow-emerald-500/30' : 'bg-slate-700 text-slate-500 hover:bg-slate-600'"
                                         :title="jog.pago ? 'Cancelar pagamento' : 'Marcar como pago'"
@@ -806,19 +811,19 @@
                 },
                 totalArrecadado: function () {
                     if (!this.fechamento) return "0,00";
-                    return (this.fechamento.totalArrecadadoMensalistas || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                    return (this.fechamento.totalArrecadadoMensalistas || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 },
                 totalArrecadadoMensalistas: function () {
                     if (!this.fechamento) return "0,00";
-                    return (this.fechamento.totalArrecadadoMensalistas || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                    return (this.fechamento.totalArrecadadoMensalistas || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 },
                 totalArrecadadoAvulsos: function () {
                     if (!this.fechamento) return "0,00";
-                    return (this.fechamento.totalArrecadadoAvulsos || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                    return (this.fechamento.totalArrecadadoAvulsos || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 },
                 metaArrecadacao: function () {
                     if (!this.fechamento) return "0,00";
-                    return (this.fechamento.metaArrecadacao || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                    return (this.fechamento.metaArrecadacao || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 },
                 costsAvulsoLabel: function () {
                     let v = parseFloat(this.custosConfig['Avulso']) || 10;
@@ -962,6 +967,8 @@
                             google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getPagamentos(args[0]);
                         } else if (funcName === 'getAppUrl') {
                             google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getAppUrl();
+                        } else if (funcName === 'liquidarCaixaEquipamentos') {
+                            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).liquidarCaixaEquipamentos(args[0]);
                         } else {
                             reject('Função não encontrada');
                         }
@@ -1248,10 +1255,43 @@
                     for (var d in this.custosConfig) { this.custosConfig[d] = ''; }
                     this.fechamento = null;
                 },
-                cobrarIndividual: function (jogador, valor, dia) {
-                    var valorFormatado = (valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-                    var texto = "*💳 MENSALIDADE VÔLEI - " + dia.toUpperCase() + "*\n\nFala " + jogador.nome + ", o rateio desse mês ficou em *R$ " + valorFormatado + "*.\n\nPode mandar o PIX para o organizador quando conseguir! Valeu! 🏐";
-                    window.open("https://wa.me/" + jogador.telefone + "?text=" + encodeURIComponent(texto), '_blank');
+                liquidarCaixa: function () {
+                    var valorRaw = prompt("Digite o valor que foi gasto em equipamentos ou custos (Apenas números e vírgula, ex: 150,00):");
+                    if (!valorRaw) return;
+                    
+                    var valorTratado = parseFloat(valorRaw.replace(',', '.'));
+                    if (isNaN(valorTratado) || valorTratado <= 0) {
+                        return alert("Valor inválido.");
+                    }
+                    
+                    if (!confirm("Tem certeza que deseja liquidar R$ " + valorTratado.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " do caixa global de equipamentos? Essa ação será guardada no histórico de pagamentos.")) {
+                        return;
+                    }
+                    
+                    this.loading = true;
+                    var self = this;
+                    this.runGoogleScript('liquidarCaixaEquipamentos', [valorTratado]).then(function (novoSaldo) {
+                        if (self.fechamento) {
+                            self.fechamento.totalArrecadadoAvulsos = novoSaldo;
+                        }
+                        self.toastMsg = 'Caixa liquidado com sucesso! Novo saldo: R$ ' + novoSaldo.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        setTimeout(function () { self.toastMsg = ''; }, 4500);
+                        self.fetchDashboardData();
+                    });
+                },
+                cobrarDevedoresGeral: function () {
+                    var devedores = this.dashboardData && this.dashboardData.financeiro ? this.dashboardData.financeiro.devedores : [];
+                    if (devedores.length === 0) return;
+                    
+                    var texto = "*💳 PENDÊNCIAS DO MÊS (" + this.mesReferencia + ") 💳*\n\nPessoal, ainda temos algumas mensalidades da quadra em aberto. Por favor, realizem o PIX da sua cota:\n\n";
+                    
+                    for (var i = 0; i < devedores.length; i++) {
+                        var d = devedores[i];
+                        texto += "• *" + d.nome + "* (" + d.dia + "): R$ " + (d.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "\n";
+                    }
+                    
+                    texto += "\nObrigado! 🏐";
+                    window.open("https://wa.me/?text=" + encodeURIComponent(texto), '_blank');
                 },
                 fazerPagamento: function (jogador, dia) {
                     var self = this;

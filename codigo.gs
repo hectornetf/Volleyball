@@ -149,7 +149,8 @@ function gerarDadosDeTeste() {
       ['1710000000009', 'João (Avulso)',    diaSemanaStr, hojeCompleto, 10, 'Pago'],
       ['1710000000010', 'Mariana (Avulso)', diaSemanaStr, hojeCompleto, 10, 'Pago'],
       ['1710000000011', 'Rafael (Avulso)',  diaSemanaStr, hojeCompleto, 10, 'Pago'],
-      ['1710000000012', 'Beatriz (Avulso)', diaSemanaStr, hojeCompleto, 10, 'Pago']
+      ['1710000000012', 'Beatriz (Avulso)', diaSemanaStr, hojeCompleto, 10, 'Pago'],
+      ['CAIXA', 'Compra de Bolas (Teste)',  'Saída',      hojeCompleto, -15.50, 'Pago']
     ];
     pagamentosMock.forEach(p => sheetPagamentos.appendRow(p));
     Logger.log('✅ Pagamentos de avulsos inseridos.');
@@ -470,14 +471,9 @@ function calcularFechamento(mesAno, custosJsonStr) {
     }
   });
 
-  // 4. Calcula Receita de Avulsos (Caixa de Equipamentos)
-  // Contabiliza apenas pagamentos diários (mesAno longo ex: 17/03/2026) que não são de mensalistas
-  pagamentos.forEach(p => {
-    if (p.status !== 'Pago') return;
-    if (p.mesAno && p.mesAno.length > 7) {
-      relatorio.totalArrecadadoAvulsos += parseFloat(String(p.valor).replace(',', '.')) || 0;
-    }
-  });
+  // 4. Saldo Caixa de Equipamentos (Receita Global de Avulsos - Saídas)
+  // Invés de pegar só as do mês, puxamos o saldo vivo global inteiro
+  relatorio.totalArrecadadoAvulsos = getHistoricoCaixaEquipamentos();
 
   // 5. Determina Status Geral (baseado apenas na meta da quadra)
   let margemErro = 0.05; // 5 centavos de tolerância
@@ -586,6 +582,61 @@ function getPagamentos(mesAno) {
   }).filter(p => p !== null);
 }
 
+// Obtém o histórico global (todas as entradas e saídas) do caixa de equipamentos/avulsos
+function getHistoricoCaixaEquipamentos() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_PAGAMENTOS);
+  if (!sheet) return 0;
+  
+  const data = sheet.getDataRange().getValues();
+  let total = 0;
+  
+  // Começa do índice 1 p/ pular cabeçalho
+  for (let i = 1; i < data.length; i++) {
+    let row = data[i];
+    let status = row.length >= 6 && row[5] ? row[5] : 'Pago';
+    if (status !== 'Pago') continue;
+    
+    let isAvulsoOrDespesa = false;
+    let mesAnoData = row.length >= 5 ? tratarMesAno(row[3]) : tratarMesAno(row[2]);
+    let idJog = String(row[0]);
+    
+    // Entradas: Têm data completa (length > 7) e não são criadas pela regra de liquidação (CAIXA)
+    if (mesAnoData.length > 7 && idJog !== 'CAIXA') {
+      isAvulsoOrDespesa = true;
+    }
+    // Saídas: ID é explicitamente 'CAIXA'
+    else if (idJog === 'CAIXA') {
+      isAvulsoOrDespesa = true;
+    }
+    
+    if (isAvulsoOrDespesa) {
+      let valor = row.length >= 5 ? row[4] : (row[3] || 0);
+      total += (parseFloat(String(valor).replace(',', '.')) || 0);
+    }
+  }
+  return total;
+}
+
+// Registra uma saída (liquidação) do caixa de equipamentos
+function liquidarCaixaEquipamentos(valorLiquidar) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_PAGAMENTOS);
+  if (!sheet) { setupInicial(); sheet = ss.getSheetByName(SHEET_PAGAMENTOS); }
+  
+  let valorDouble = Math.abs(parseFloat(String(valorLiquidar).replace(',', '.')) || 0);
+  if (valorDouble === 0) return getHistoricoCaixaEquipamentos();
+  
+  const dataHoje = new Date();
+  const dataStr = dataHoje.getDate().toString().padStart(2, '0') + '/' + (dataHoje.getMonth() + 1).toString().padStart(2, '0') + '/' + dataHoje.getFullYear();
+  
+  // Gravamos o valor como negativo para subtrair do montante
+  // ID=CAIXA, Nome=Compra Equipamentos, Dia=Saída, MesAno=Data de Hoje, Valor=-valorDouble
+  sheet.appendRow(['CAIXA', 'Compra de Equipamento / Saída', 'Saída', "'" + dataStr, -valorDouble, 'Pago']);
+  
+  return getHistoricoCaixaEquipamentos();
+}
+
 // Registra um pagamento (Toggle de status: Pago <-> Cancelado, mas NUNCA deleta o registro)
 function registrarPagamento(idJogador, nome, diaSemana, mesAno, valor) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -655,14 +706,12 @@ function getDashboardData() {
   const configFin = getConfigFinanceira(mesRef);
   
   let arrecadadoMensalistas = 0;
-  let arrecadadoAvulsos = 0;
+  let arrecadadoAvulsos = getHistoricoCaixaEquipamentos();
   
   pagamentos.forEach(p => {
     if (p.status !== 'Pago') return;
     let valor = parseFloat(String(p.valor).replace(',', '.')) || 0;
-    if (p.mesAno && p.mesAno.length > 7) {
-      arrecadadoAvulsos += valor;
-    } else {
+    if (!(p.mesAno && p.mesAno.length > 7)) {
       arrecadadoMensalistas += valor;
     }
   });
