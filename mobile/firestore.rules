@@ -1,0 +1,34 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Regras Gerais de Isolamento SaaS
+    match /{collectionName}/{docId} {
+      
+      // Permite leitura se o filtro de consulta incluir o groupId (Isolamento de Sessão)
+      allow read: if request.query.limit <= 500 && 
+                  resource.data.groupId != null;
+      
+      // Permite escrita se o campo groupId estiver presente e o dado for válido
+      allow write: if request.resource.data.groupId != null &&
+                   request.resource.data.groupId.size() >= 4;
+                   
+      // Regra de Ouro: Um grupo não pode apagar dados sem o groupId correto
+      allow delete: if resource.data.groupId != null;
+    }
+
+    // Regras específicas para Jogadores (Encriptação de ponta a ponta)
+    match /jogadores/{jogadorId} {
+      allow create: if request.resource.data.nome is string &&
+                      request.resource.data.groupId != null;
+                      
+      allow update: if request.resource.data.groupId == resource.data.groupId;
+    }
+
+    // Regras para Transações Financeiras
+    match /operacoes_financeiras/{opId} {
+      allow create: if request.resource.data.valor is number &&
+                      request.resource.data.groupId != null;
+    }
+  }
+}

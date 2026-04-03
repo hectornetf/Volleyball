@@ -1,35 +1,108 @@
-import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, getDocs } from "firebase/firestore";
-import { db } from "../config/firebase";
+import { db } from '../config/firebase';
+import { collection, addDoc, updateDoc, doc, onSnapshot, query, getDocs, where, writeBatch } from 'firebase/firestore';
+import { encryptData, decryptData } from '../utils/crypto';
 
-const COLLECTION_NAME = "jogadores";
+const JOGADORES_COLLECTION = 'jogadores';
+const FINANCEIRO_OP_COLLECTION = 'operacoes_financeiras';
 
-// Função para CADASTRAR novo jogador
-export const addJogador = async (jogadorData) => {
-  return await addDoc(collection(db, COLLECTION_NAME), jogadorData);
-};
+/**
+ * Funções de Sanitização Criptográfica
+ */
+const encryptPlayer = (jogador, groupId) => ({
+  ...jogador,
+  nome: encryptData(jogador.nome, groupId),
+  celular: encryptData(jogador.celular, groupId),
+  dataNascimento: encryptData(jogador.dataNascimento, groupId)
+});
 
-// Listener REAL-TIME para retornar o elenco na tela sempre que algo mudar na nuvem
-export const subscribeJogadores = (callback, onError) => {
-  const collectionRef = collection(db, COLLECTION_NAME);
-  // O onSnapshot ouve ativamente. Toda vez que o Firestore muda, o callback é chamado!
-  return onSnapshot(collectionRef, (snapshot) => {
-    const lista = [];
-    snapshot.forEach((doc) => {
-      lista.push({ id: doc.id, ...doc.data() });
-    });
-    // Ordenar alfabeticamente ou por nível
-    lista.sort((a, b) => b.nivel - a.nivel || a.nome.localeCompare(b.nome));
-    callback(lista);
-  }, (error) => {
-    if (onError) onError(error);
+const decryptPlayer = (docData, groupId) => ({
+  id: docData.id,
+  ...docData,
+  nome: decryptData(docData.nome, groupId),
+  celular: decryptData(docData.celular, groupId),
+  dataNascimento: decryptData(docData.dataNascimento, groupId)
+});
+
+// Funções de Escrita com Criptografia
+export const addJogador = async (jogador, groupId) => {
+  if (!groupId) throw new Error("ID do Grupo obrigatório!");
+  const encrypted = encryptPlayer(jogador, groupId);
+  return await addDoc(collection(db, JOGADORES_COLLECTION), {
+    ...encrypted,
+    groupId,
+    historicoPresencas: jogador.historicoPresencas || 0,
+    mensalidadePaga: jogador.mensalidadePaga || false,
+    diariaPaga: jogador.diariaPaga || false,
+    presencaAtual: jogador.presencaAtual || 'Falto'
   });
 };
 
-// Funções para futuras edições/exclusões
-export const updateJogador = async (id, data) => {
-  return await updateDoc(doc(db, COLLECTION_NAME, id), data);
+export const updateJogador = async (id, dados, groupId) => {
+  const docRef = doc(db, JOGADORES_COLLECTION, id);
+  // Se o dado tiver campos sensíveis, encripta eles antes do update
+  const encrypted = { ...dados };
+  if (dados.nome) encrypted.nome = encryptData(dados.nome, groupId);
+  if (dados.celular) encrypted.celular = encryptData(dados.celular, groupId);
+  
+  return await updateDoc(docRef, encrypted);
 };
 
-export const deleteJogador = async (id) => {
-  return await deleteDoc(doc(db, COLLECTION_NAME, id));
+// Funções de Leitura com Descriptografia
+export const subscribeJogadores = (groupId, callback, errorCallback) => {
+  if (!groupId) return () => {};
+  const q = query(
+    collection(db, JOGADORES_COLLECTION), 
+    where('groupId', '==', groupId)
+  );
+  return onSnapshot(q, (snapshot) => {
+    const lista = snapshot.docs
+      .map(doc => decryptPlayer({ id: doc.id, ...doc.data() }, groupId))
+      .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+    callback(lista);
+  }, errorCallback);
+};
+
+export const registrarOperacaoFinanceira = async (tipo, valor, descricao, groupId) => {
+  if (!groupId) throw new Error("ID do Grupo obrigatório!");
+  return await addDoc(collection(db, FINANCEIRO_OP_COLLECTION), {
+    tipo,
+    groupId,
+    valor: tipo === 'SAIDA_DESPESA' ? -Math.abs(valor) : Math.abs(valor),
+    descricao: encryptData(descricao, groupId), // Criptografa descrição por segurança
+    data: new Date().toISOString()
+  });
+};
+
+export const getSaldoGlobalEquipamentos = async (groupId) => {
+  if (!groupId) return 0;
+  try {
+    const q = query(
+        collection(db, FINANCEIRO_OP_COLLECTION),
+        where('groupId', '==', groupId)
+    );
+    const snapshot = await getDocs(q);
+    let saldo = 0;
+    snapshot.forEach(doc => {
+      saldo += doc.data().valor || 0;
+    });
+    return saldo;
+  } catch (e) {
+    return 0;
+  }
+};
+
+export const resetDadosGrupo = async (groupId) => {
+  if (!groupId) return;
+  try {
+    const batch = writeBatch(db);
+    const qJ = query(collection(db, JOGADORES_COLLECTION), where('groupId', '==', groupId));
+    const snapJ = await getDocs(qJ);
+    snapJ.forEach(d => batch.delete(d.ref));
+    const qF = query(collection(db, FINANCEIRO_OP_COLLECTION), where('groupId', '==', groupId));
+    const snapF = await getDocs(qF);
+    snapF.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+  } catch (_e) {
+    // Erro ignorado intencionalmente no reset
+  }
 };

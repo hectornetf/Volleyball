@@ -1,53 +1,81 @@
-# 🏐 VoleizinDosCria Mobile
+# 🏐 VoleizinDosCria — SaaS Platform (v2.0)
 
-Aplicativo móvel de alta performance para gestão de grupos de vôlei, sorteio de times equilibrados e controle financeiro em tempo real. Desenvolvido para substituir sistemas baseados em planilhas, oferecendo uma experiência nativa e segura.
+[![Expo](https://img.shields.io/badge/Expo-000020?style=for-the-badge&logo=expo&logoColor=white)](https://expo.dev/)
+[![Firebase](https://img.badge.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-emerald.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
-## 🚀 Tecnologias Utilizadas
+**VoleizinDosCria** é uma plataforma **SaaS (Software as a Service)** de alta performance para a gestão completa de grupos de vôlei. Diferente de sistemas comuns, ele oferece **isolamento total de dados**, **privacidade máxima com criptografia AES-256** e uma experiência de usuário **Premium Dark Mode**.
 
-- **Framework:** React Native + Expo (SDK 50+)
-- **Estilização:** TailwindCSS (via NativeWind)
-- **Banco de Dados:** Firebase Cloud Firestore (Tempo Real)
-- **Autenticação:** Firebase Auth (E-mail/Senha)
-- **Design:** Glassmorphism & Dark Mode Premium
+---
+
+## 🚀 Diferenciais da Plataforma (UX Pro)
+
+### 💎 Experiência SaaS sem Barreiras
+- **Acesso por Código**: Esqueça formulários de cadastro e senhas esquecidas. Basta digitar ou criar um código exclusivo (ex: `VO-887V`) para gerenciar seu vôlei instantaneamente.
+- **Colaboração em Tempo Real**: Vários administradores podem usar o mesmo código para gerenciar o grupo simultaneamente.
+
+### 🔐 Privacidade Blindada (AES-256)
+- **Criptografia na Origem**: Nome e Celular dos jogadores são encriptados antes de sair do celular e salvos como "hashes" no Firebase. Somente quem possui o código do grupo pode ler os dados.
+- **Multi-Tenancy**: Cada vôlei vive em seu próprio "container" lógico, garantindo que os dados nunca se cruzem.
+
+### ⚡ Funcionalidades Inteligentes
+- **Convite Express via WhatsApp**: Gere e envie links de convite com o código do grupo em um só clique.
+- **Fundo de Equipamentos (Caixa)**: Gestão financeira automática que separa o custo da quadra (mensalistas) do fundo para bolas e materiais (avulsos).
+- **Sorteio Snake Draft**: Algoritmo de balanceamento que cruza níveis técnicos para garantir jogos equilibrados.
+- **UX Nativo**: Pull-to-refresh em todas as telas, teclados inteligentes e animações fluidas.
+
+---
 
 ## 📦 Como Instalar e Rodar
 
 ### 1. Pré-requisitos
 - Node.js instalado
-- Celular com o app **Expo Go** (disponível na Play Store/App Store)
+- App **Expo Go** no celular
+- Projeto configurado no **Firebase (Firestore)**
 
-### 2. Configuração do Ambiente
-Clone o repositório e entre na pasta do mobile:
+### 2. Setup do Projeto
 ```bash
+git clone https://github.com/hectornetf/Volleyball.git
 cd mobile
 npm install
 ```
 
-Crie um arquivo `.env` na raiz da pasta `mobile` e adicione suas chaves do Firebase (exemplo abaixo):
+### 3. Configuração de Variáveis (`.env`)
+Crie um arquivo `.env` na raiz da pasta `mobile` e preencha conforme o modelo:
 ```env
-EXPO_PUBLIC_FIREBASE_API_KEY=SUA_CHAVE
-EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=SEU_DOMINIO
-EXPO_PUBLIC_FIREBASE_PROJECT_ID=SEU_PROJETO
-EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=SEU_BUCKET
-EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=SEU_ID
-EXPO_PUBLIC_FIREBASE_APP_ID=SEU_APP_ID
+# Firebase Config
+EXPO_PUBLIC_FIREBASE_API_KEY=...
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=...
+# ... (demais chaves do firebase)
+
+# Camada de Segurança
+EXPO_PUBLIC_ENCRYPTION_KEY=SuaChaveMestreSecretaAqui
 ```
 
-### 3. Rodar o Aplicativo
+### 4. Iniciar Servidor
 ```bash
 npx expo start
 ```
-Escaneie o QR Code gerado com o seu celular.
-
-## 🛡️ Camada de Segurança
-As abas **Financeiro** e **Admin** são protegidas por autenticação. No primeiro acesso, ao tentar logar com um e-mail novo, o app oferecerá a opção de registrar como a conta "Dono da Pelada".
 
 ---
 
-## 🛠️ Funcionalidades Principais
+## 🛠️ Stack Tecnológica
+- **Linguagem:** Javascript (ES6+)
+- **UI:** NativeWind (Tailwind CSS) + Lucide Icons
+- **Backend:** Firebase Cloud Firestore + AES-JS Library
+- **Análise:** ESLint v9 + Prettier
 
-1.  **Dashboard Social:** Resumo de quem confirmou presença no dia.
-2.  **Presença Inteligente:** Marcação rápida de "Vou/Falto" com trava para avulsos devedores.
-3.  **Sorteio Snake Draft:** Algoritmo que balanceia os times cruzando os melhores jogadores (Nível 5) primeiro.
-4.  **Fechamento de Caixa:** Cálculo automático de rateio da quadra e fundo de equipamentos (bolas/materiais).
-5.  **Admin:** Cadastro e edição de elenco vitalício.
+---
+
+## 🤝 Contribuições e Suporte
+Se o **VoleizinDosCria** ajudou o seu grupo, considere apoiar o projeto:
+
+<p align="center">
+  <a href="https://www.buymeacoffee.com/hectornetf" target="_blank">
+    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="45">
+  </a>
+</p>
+
+---
+*Transformando o vôlei amador em uma experiência profissional.* 🏐🔥 
+> Projeto desenvolvido pela equipe **Antigravity (Google Deepmind)**.

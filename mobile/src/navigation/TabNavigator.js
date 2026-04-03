@@ -1,16 +1,36 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { View, ActivityIndicator } from 'react-native';
 
 import DashboardScreen from '../screens/DashboardScreen';
 import PresencaScreen from '../screens/PresencaScreen';
 import TimesScreen from '../screens/TimesScreen';
 import FinanceiroScreen from '../screens/FinanceiroScreen';
 import AdminScreen from '../screens/AdminScreen';
+import WelcomeScreen from '../screens/WelcomeScreen';
+
+import { useSession } from '../context/SessionContext';
 
 const Tab = createBottomTabNavigator();
 
 export default function TabNavigator() {
+  const { activeGroupId, loading } = useSession();
+
+  if (loading) {
+    return (
+      <View className="flex-1 bg-[#0b0f1a] justify-center items-center">
+        <ActivityIndicator size="large" color="#22d3ee" />
+      </View>
+    );
+  }
+
+  // Se o App não tem uma sessão ativa (Código de Grupo), aparece a tela de boas-vindas
+  // Sem login e senha - apenas o código agora!
+  if (!activeGroupId) {
+    return <WelcomeScreen />;
+  }
+
   return (
     <Tab.Navigator
       screenOptions={{
