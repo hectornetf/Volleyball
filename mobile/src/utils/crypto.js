@@ -27,7 +27,7 @@ export const decryptData = (ciphertext, groupId) => {
   if (!ciphertext || !groupId) return ciphertext;
   // Se o dado não parecer um hash (não tiver espaços e for curto), retorna original
   if (ciphertext.length < 10 && !ciphertext.includes(' ')) return ciphertext;
-  
+
   try {
     const secret = SECRET_KEY_BASE + groupId;
     const bytes = CryptoJS.AES.decrypt(ciphertext, secret);

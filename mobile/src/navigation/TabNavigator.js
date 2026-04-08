@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { View, ActivityIndicator } from 'react-native';
 
 import DashboardScreen from '../screens/DashboardScreen';
@@ -16,6 +17,7 @@ const Tab = createBottomTabNavigator();
 
 export default function TabNavigator() {
   const { activeGroupId, loading } = useSession();
+  const insets = useSafeAreaInsets();
 
   if (loading) {
     return (
@@ -34,9 +36,26 @@ export default function TabNavigator() {
   return (
     <Tab.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: '#0b0f1a' },
-        headerTintColor: '#f1f5f9',
-        tabBarStyle: { backgroundColor: '#1e293b', borderTopColor: '#334155' },
+        headerShown: false,
+        tabBarStyle: { 
+          position: 'absolute',
+          bottom: Math.max(insets.bottom + 10, 20),
+          left: 20,
+          right: 20,
+          elevation: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.97)',
+          borderRadius: 25,
+          height: 65,
+          borderTopWidth: 0,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 10 },
+          shadowOpacity: 0.35,
+          shadowRadius: 20,
+          borderWidth: 1,
+          borderColor: 'rgba(255,255,255,0.05)',
+          paddingBottom: 0,
+        },
+        tabBarShowLabel: false,
         tabBarActiveTintColor: '#10b981',
         tabBarInactiveTintColor: '#64748b'
       }}

@@ -1,180 +1,217 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, Linking } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, Linking, Animated, ActivityIndicator } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { subscribeJogadores } from '../services/jogadorService';
 import { useSession } from '../context/SessionContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TimesScreen() {
+  const insets = useSafeAreaInsets();
   const { activeGroupId } = useSession();
   const [jogadoresPorTime, setJogadoresPorTime] = useState(6);
   const [times, setTimes] = useState([]);
   const [confirmados, setConfirmados] = useState([]);
+  const [carregando, setCarregando] = useState(true);
+
+  // Estados Animados
+  const [fadeAnim] = useState(new Animated.Value(0));
+  const [slideAnim] = useState(new Animated.Value(20));
 
   useEffect(() => {
     if (!activeGroupId) return;
     const unsub = subscribeJogadores(activeGroupId, (dados) => {
       setConfirmados(dados.filter(j => j.presencaAtual === 'Confirmado'));
+      setCarregando(false);
     });
+
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 600, useNativeDriver: true })
+    ]).start();
+
     return () => unsub();
   }, [activeGroupId]);
 
   const gerarTimes = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     if (confirmados.length === 0) {
-      return Alert.alert('Ops!', 'Nenhum jogador confirmou presença ainda na segunda tela.');
+      return Alert.alert('Ops!', 'Ninguém confirmou presença para o sorteio.');
     }
 
-    // GS LOGIC: Separa Elite (>=3) de Iniciante (<3)
-    const elite = confirmados.filter(j => j.nivel >= 3).sort((a, b) => b.nivel - a.nivel || 0.5 - Math.random());
-    const iniciantes = confirmados.filter(j => j.nivel < 3).sort((a, b) => b.nivel - a.nivel || 0.5 - Math.random());
+    // Lógica Snake Draft para Balanceamento
+    const elite = [...confirmados].filter(j => (j.nivel || 3) >= 3).sort((a, b) => b.nivel - a.nivel || 0.5 - Math.random());
+    const iniciantes = [...confirmados].filter(j => (j.nivel || 3) < 3).sort((a, b) => b.nivel - a.nivel || 0.5 - Math.random());
 
     const qtdTimes = Math.max(2, Math.ceil(confirmados.length / jogadoresPorTime));
     const novosTimes = Array.from({ length: qtdTimes }, () => []);
     const pesosTimes = Array.from({ length: qtdTimes }, () => 0);
 
-    // 1. SNAKE DRAFT para os ELITES
     let direcaoIda = true;
     let indiceTime = 0;
 
+    // Distribuir Elite
     for (let i = 0; i < elite.length; i++) {
         novosTimes[indiceTime].push(elite[i]);
-        pesosTimes[indiceTime] += elite[i].nivel;
-        
+        pesosTimes[indiceTime] += elite[i].nivel || 3;
         if (direcaoIda) {
             indiceTime++;
-            if (indiceTime === qtdTimes) {
-              indiceTime--;
-              direcaoIda = false;
-            }
+            if (indiceTime === qtdTimes) { indiceTime--; direcaoIda = false; }
         } else {
             indiceTime--;
-            if (indiceTime < 0) {
-              indiceTime = 0;
-              direcaoIda = true;
-            }
+            if (indiceTime < 0) { indiceTime = 0; direcaoIda = true; }
         }
     }
 
-    // 2. ROUND ROBIN para os INICIANTES (Garante dispersão por peso atual)
+    // Distribuir Iniciantes para balancear o peso total
     for (let i = 0; i < iniciantes.length; i++) {
-        // Encontra o time com menos jogadores e menor peso
         let melhorTimeIdx = 0;
         for (let t = 1; t < novosTimes.length; t++) {
-           if (novosTimes[t].length < novosTimes[melhorTimeIdx].length) {
-              melhorTimeIdx = t;
-           } else if (novosTimes[t].length === novosTimes[melhorTimeIdx].length) {
-              if (pesosTimes[t] < pesosTimes[melhorTimeIdx]) {
-                 melhorTimeIdx = t;
-              }
+           if (novosTimes[t].length < novosTimes[melhorTimeIdx].length) { melhorTimeIdx = t; }
+           else if (novosTimes[t].length === novosTimes[melhorTimeIdx].length) {
+              if (pesosTimes[t] < pesosTimes[melhorTimeIdx]) { melhorTimeIdx = t; }
            }
         }
         novosTimes[melhorTimeIdx].push(iniciantes[i]);
-        pesosTimes[melhorTimeIdx] += iniciantes[i].nivel;
+        pesosTimes[melhorTimeIdx] += iniciantes[i].nivel || 3;
     }
-    
     setTimes(novosTimes);
   };
 
   const enviarWhatsApp = () => {
-    let mensagem = `🏆 *TIMES GERADOS - VOLEIZIN DOS CRIA* 🏆\n\n`;
-    
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const dataH = new Date().toLocaleDateString('pt-BR');
+    let mensagem = `🏆 *VOLEIZIN: TIMES SORTEADOS* 🏆\n📅 _${dataH}_\n\n`;
     times.forEach((time, index) => {
-      const somaLvl = time.reduce((acc, j) => acc + j.nivel, 0);
+      const somaLvl = time.reduce((acc, j) => acc + (j.nivel || 3), 0);
       mensagem += `*Time ${index + 1}* [Poder: ${somaLvl}]\n`;
-      time.forEach(j => {
-         mensagem += `- ${j.nome} (⭐ ${j.nivel})\n`;
-      });
+      time.forEach(j => { mensagem += `- ${j.nome} (Lvl ${j.nivel || 3})\n`; });
       mensagem += `\n`;
     });
-
-    const msgEncode = encodeURIComponent(mensagem);
-    // Tenta abrir o WhatsApp
-    Linking.openURL(`whatsapp://send?text=${msgEncode}`).catch(() => {
-      Alert.alert("Erro", "Você precisa ter o WhatsApp instalado no aparelho.");
-    });
+    Linking.openURL(`whatsapp://send?text=${encodeURIComponent(mensagem)}`).catch(() => Alert.alert("Erro", "WhatsApp não instalado."));
   };
 
-  const somaNivel = (time) => time.reduce((acc, j) => acc + j.nivel, 0);
+  const somaNivel = (time) => time.reduce((acc, j) => acc + (j.nivel || 3), 0);
 
   return (
-    <ScrollView className="flex-1 bg-[#0b0f1a]" contentContainerStyle={{ padding: 16, paddingBottom: 60 }}>
-      {/* Sorteador Global */}
-      <View className="bg-slate-800 p-5 rounded-2xl shadow-md mb-4 mt-6">
-        <View className="flex-row items-center mb-4">
-          <FontAwesome5 name="users" size={20} color="#22d3ee" />
-          <Text className="text-xl font-bold text-white ml-2">Sortear Times</Text>
-        </View>
+    <ScrollView 
+        className="flex-1 bg-[#0b0f1a]" 
+        contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
+    >
+      <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
         
-        <View className="mb-4 flex-row items-center bg-cyan-900/40 p-3 rounded-lg border border-cyan-800">
-           <FontAwesome5 name="info-circle" size={12} color="#22d3ee" />
-           <Text className="text-xs text-cyan-200 ml-2">Total de confirmados lidos: {confirmados.length}</Text>
-        </View>
-
-        {/* Counter */}
-        <View className="bg-[#0b0f1a] p-4 rounded-xl flex-row justify-between items-center mb-5 border border-slate-700">
-          <View className="flex-1 mr-2">
-            <Text className="text-xs text-slate-400 font-black uppercase tracking-tighter">Jogadores por time:</Text>
+        {/* Header Hero */}
+        <View 
+          style={{ marginTop: Math.max(insets.top, 20) }}
+          className="flex-row items-center justify-between mb-8"
+        >
+          <View>
+            <Text className="text-slate-500 text-[10px] font-black uppercase tracking-[4px]">Sorteio</Text>
+            <Text className="text-white text-3xl font-black mt-1">Montar <Text className="text-cyan-400">Times</Text></Text>
           </View>
-          <View className="flex-row items-center bg-slate-800 p-1 rounded-xl border border-slate-700">
-            <TouchableOpacity 
-              onPress={() => setJogadoresPorTime(j => Math.max(1, j-1))} 
-              className="w-10 h-10 rounded-lg bg-slate-900 items-center justify-center"
-            >
-              <Text className="text-white font-black text-xl">-</Text>
-            </TouchableOpacity>
-            
-            <View className="w-12 items-center">
-              <Text className="text-xl font-black text-emerald-400">{jogadoresPorTime}</Text>
-            </View>
-
-            <TouchableOpacity 
-              onPress={() => setJogadoresPorTime(j => j+1)} 
-              className="w-10 h-10 rounded-lg bg-slate-900 items-center justify-center"
-            >
-              <Text className="text-white font-black text-xl">+</Text>
-            </TouchableOpacity>
+          <View className="bg-cyan-500/20 p-4 rounded-[24px]">
+            <FontAwesome5 name="random" size={20} color="#22d3ee" />
           </View>
         </View>
 
-        <TouchableOpacity onPress={gerarTimes} className="w-full bg-cyan-500 py-3.5 rounded-xl items-center shadow shadow-cyan-500/50 flex-row justify-center">
-          <FontAwesome5 name="random" size={16} color="white" />
-          <Text className="text-white font-black text-base ml-2">Gerar Times Balanceados</Text>
-        </TouchableOpacity>
-      </View>
+        {/* Card Configuração */}
+        <View className="bg-slate-800/40 p-6 rounded-[32px] border border-white/5 mb-8 shadow-2xl">
+          <View className="flex-row justify-between items-center mb-6">
+             <View>
+                <Text className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Capacidade</Text>
+                <Text className="text-white text-lg font-black">Jogadores por Time</Text>
+             </View>
+             <View className="bg-slate-900/60 flex-row items-center p-1.5 rounded-2xl border border-white/5">
+                <TouchableOpacity 
+                   onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setJogadoresPorTime(j => Math.max(1, j-1)); }}
+                   className="w-10 h-10 rounded-xl bg-slate-800 items-center justify-center border border-white/5 active:scale-90"
+                >
+                  <FontAwesome5 name="minus" size={10} color="white" />
+                </TouchableOpacity>
+                <View className="w-12 items-center">
+                   <Text className="text-xl font-black text-white">{jogadoresPorTime}</Text>
+                </View>
+                <TouchableOpacity 
+                   onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setJogadoresPorTime(j => j+1); }}
+                   className="w-10 h-10 rounded-xl bg-slate-800 items-center justify-center border border-white/5 active:scale-90"
+                >
+                  <FontAwesome5 name="plus" size={10} color="white" />
+                </TouchableOpacity>
+             </View>
+          </View>
 
-      {/* Resultados dos Times */}
-      {times.length > 0 && (
-        <View className="space-y-4">
-          <TouchableOpacity onPress={enviarWhatsApp} className="w-full bg-[#25D366] py-3.5 rounded-xl shadow-lg flex-row justify-center items-center mb-4">
-            <FontAwesome5 name="whatsapp" size={20} color="white" />
-            <Text className="text-white font-black text-base ml-2">Enviar no Grupo do WhatsApp</Text>
+          <View className="bg-cyan-500/10 p-4 rounded-2xl border border-cyan-500/20 mb-6 flex-row items-center">
+             <FontAwesome5 name="info-circle" size={14} color="#22d3ee" />
+             <Text className="text-cyan-100 text-[10px] font-bold ml-3 flex-1">
+                {confirmados.length} atletas confirmados. Serão gerados {Math.max(2, Math.ceil(confirmados.length / jogadoresPorTime))} times.
+             </Text>
+          </View>
+
+          <TouchableOpacity 
+            onPress={gerarTimes} 
+            className="w-full bg-cyan-600 py-4.5 rounded-2xl items-center shadow-lg shadow-cyan-500/30 active:scale-[0.98]"
+          >
+            <Text className="text-white font-black text-sm uppercase tracking-widest">Executar Sorteio</Text>
           </TouchableOpacity>
+        </View>
 
-          {times.map((time, index) => (
-            <View key={index} className="bg-slate-800 p-4 rounded-2xl border-t-4 border-t-cyan-400 mb-4 shadow">
-              <View className="flex-row justify-between items-center mb-3">
-                <Text className="font-bold text-cyan-400 text-lg">Time {index + 1}</Text>
-                <View className="bg-[#0b0f1a] px-2 py-1 rounded border border-slate-700">
-                  <Text className="text-xs text-cyan-300 font-bold">Lvl Total: {somaNivel(time)}</Text>
+        {/* Listagem de Times */}
+        {carregando ? (
+           <ActivityIndicator size="large" color="#22d3ee" />
+        ) : (
+          <View className="space-y-6">
+            {times.length > 0 && (
+              <TouchableOpacity 
+                onPress={enviarWhatsApp} 
+                className="w-full bg-[#25D366] p-4.5 rounded-[24px] shadow-lg shadow-emerald-500/20 flex-row justify-center items-center mb-6 active:scale-[0.98]"
+              >
+                <FontAwesome5 name="whatsapp" size={18} color="white" />
+                <Text className="text-white font-black text-xs uppercase tracking-widest ml-3">Enviar Escalação</Text>
+              </TouchableOpacity>
+            )}
+
+            {times.map((time, index) => (
+              <View key={index} className="bg-slate-800/60 rounded-[32px] border border-white/5 overflow-hidden shadow-sm mb-4">
+                <View className="p-5 bg-cyan-500/10 flex-row justify-between items-center border-b border-white/10">
+                   <Text className="text-cyan-400 font-black uppercase text-xs tracking-widest">Time {index + 1}</Text>
+                   <View className="bg-cyan-500/20 px-3 py-1.5 rounded-xl border border-cyan-500/20">
+                      <Text className="text-cyan-300 font-black text-[10px]">PODER: {somaNivel(time)}</Text>
+                   </View>
+                </View>
+
+                <View className="p-4">
+                  {time.map((j, i) => (
+                    <View key={j.id} className="flex-row items-center justify-between p-3.5 mb-2 bg-slate-900/40 rounded-2xl border border-white/5">
+                      <Text numberOfLines={1} className="flex-1 text-slate-100 font-black text-xs mr-4">{j.nome}</Text>
+                      
+                      {/* Nível Responsivo */}
+                      <View className="flex-row items-center bg-slate-800/80 px-2.5 py-1 rounded-lg border border-white/5">
+                        {[...Array(5)].map((_, s) => (
+                          <FontAwesome5 
+                            key={s} 
+                            name="star" 
+                            solid={s < (j.nivel || 3)} 
+                            size={8} 
+                            color={s < (j.nivel || 3) ? "#fbbf24" : "#1e293b"} 
+                            style={{ marginHorizontal: 1 }} 
+                          />
+                        ))}
+                      </View>
+                    </View>
+                  ))}
                 </View>
               </View>
+            ))}
 
-              {time.map((j, i) => (
-                <View key={i} className="flex-row justify-between items-center py-2.5 border-b border-slate-700/30 last:border-0 px-1">
-                  <View className="flex-1 pr-2">
-                    <Text numberOfLines={1} className="font-bold text-slate-200 text-sm">{j.nome}</Text>
-                  </View>
-                  <View className="flex-row items-center bg-slate-900/50 px-2 py-1 rounded-lg">
-                    {[...Array(j.nivel)].map((_, star) => (
-                      <FontAwesome5 key={star} name="star" solid size={8} color="#fbbf24" style={{ marginLeft: 2 }} />
-                    ))}
-                    <Text className="text-[9px] text-slate-500 font-black ml-2 uppercase">Lvl {j.nivel}</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          ))}
-        </View>
-      )}
+            {times.length === 0 && !carregando && (
+              <View className="py-20 items-center opacity-40">
+                <FontAwesome5 name="layer-group" size={48} color="#1e293b" />
+                <Text className="text-slate-600 font-black text-xs mt-4 uppercase tracking-[4px]">Aguardando Sorteio</Text>
+              </View>
+            )}
+          </View>
+        )}
+      </Animated.View>
     </ScrollView>
   );
 }

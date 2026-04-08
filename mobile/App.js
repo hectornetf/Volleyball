@@ -4,12 +4,16 @@ import { NavigationContainer } from '@react-navigation/native';
 import TabNavigator from './src/navigation/TabNavigator';
 import { SessionProvider } from './src/context/SessionContext';
 
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
 export default function App() {
   return (
-    <SessionProvider>
-      <NavigationContainer>
-        <TabNavigator />
-      </NavigationContainer>
-    </SessionProvider>
+    <SafeAreaProvider>
+      <SessionProvider>
+        <NavigationContainer>
+          <TabNavigator />
+        </NavigationContainer>
+      </SessionProvider>
+    </SafeAreaProvider>
   );
 }
