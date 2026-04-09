@@ -162,12 +162,6 @@ export default function AdminScreen() {
     setEditandoId(j.id);
   };
 
-  const copiarCodigo = async () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    await ExpoClipboard.setStringAsync(activeGroupId);
-    Alert.alert("Sucesso", "Código copiado! ✅");
-  };
-
   return (
     <ScrollView className="flex-1 bg-[#0b0f1a]" contentContainerStyle={{ padding: 16, paddingBottom: 120 }}>
       <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
@@ -259,12 +253,20 @@ export default function AdminScreen() {
                </View>
                <View className="flex-1">
                   <Text className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-2 ml-1">Categoria</Text>
-                  <TouchableOpacity 
-                     onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setNovoJogador({...novoJogador, tipo: novoJogador.tipo === 'MENSALISTA' ? 'AVULSO' : 'MENSALISTA'}); }}
-                     className={`flex-1 h-11 rounded-2xl border items-center justify-center ${novoJogador.tipo === 'MENSALISTA' ? 'bg-indigo-500/10 border-indigo-500/50' : 'bg-amber-500/10 border-amber-500/50'}`}
-                  >
-                     <Text className={`text-[10px] font-black ${novoJogador.tipo === 'MENSALISTA' ? 'text-indigo-400' : 'text-amber-400'}`}>{novoJogador.tipo}</Text>
-                  </TouchableOpacity>
+                  <View className="bg-slate-900/60 border border-white/5 rounded-2xl p-1.5 flex-row">
+                    <TouchableOpacity 
+                      onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setNovoJogador({...novoJogador, tipo: 'MENSALISTA'}); }}
+                      className={`flex-1 h-11 rounded-xl items-center justify-center ${novoJogador.tipo === 'MENSALISTA' ? 'bg-indigo-600 shadow-lg shadow-indigo-500/40' : 'bg-transparent'}`}
+                    >
+                      <Text className={`text-[9.5px] font-black ${novoJogador.tipo === 'MENSALISTA' ? 'text-white' : 'text-slate-500'}`}>MENSAL</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setNovoJogador({...novoJogador, tipo: 'AVULSO'}); }}
+                      className={`flex-1 h-11 rounded-xl items-center justify-center ${novoJogador.tipo === 'AVULSO' ? 'bg-amber-600 shadow-lg shadow-amber-500/40' : 'bg-transparent'}`}
+                    >
+                      <Text className={`text-[9.5px] font-black ${novoJogador.tipo === 'AVULSO' ? 'text-white' : 'text-slate-500'}`}>AVULSO</Text>
+                    </TouchableOpacity>
+                  </View>
                </View>
             </View>
 

@@ -1,43 +1,49 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, Linking, Alert, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import * as ExpoClipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { subscribeJogadores, getSaldoGlobalEquipamentos, getConfigFinanceira } from '../services/jogadorService';
 import { useSession } from '../context/SessionContext';
+import { computarFechamento } from '../utils/financeiroUtils';
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const { activeGroupId, logout: logoutSession } = useSession();
   const [elenco, setElenco] = useState([]);
-  const [saldoEquipamentos, setSaldoEquipamentos] = useState(0); // Avulsos (Equipamentos)
-  const [totalQuadra, setTotalQuadra] = useState(0); // Mensalistas (Quadra)
+  const [saldoEquipamentos, setSaldoEquipamentos] = useState(0); 
+  const [custosMes, setCustosMes] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(30));
 
-  const carregarDados = async () => {
+  const hoje = new Date();
+  const mesAtualNome = hoje.toLocaleString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, (c) => c.toUpperCase());
+
+  const carregarDados = useCallback(async () => {
     if (!activeGroupId) return;
     try {
-      // Saldo real do fundo de equipamentos (operações ENTRADA_AVULSO)
       const saldo = await getSaldoGlobalEquipamentos(activeGroupId);
       setSaldoEquipamentos(saldo);
+      
+      const conf = await getConfigFinanceira(activeGroupId, mesAtualNome);
+      setCustosMes({
+        Segunda: conf.Segunda, Terça: conf.Terca ?? conf.Terça, Quarta: conf.Quarta, Quinta: conf.Quinta, 
+        Sexta: conf.Sexta, Sábado: conf.Sabado ?? conf.Sábado, Domingo: conf.Domingo, Avulso: conf.Avulso
+      });
     } catch (e) {
       console.error(e);
     } finally {
       setRefreshing(false);
     }
-  };
+  }, [activeGroupId]);
 
   useEffect(() => {
     if (!activeGroupId) return;
     const unsub = subscribeJogadores(activeGroupId, (dados) => {
       setElenco(dados);
-      // Calcula total da quadra: mensalistas que pagaram mensalidade (R$10 cada por simplificação legado)
-      // O legado usa operações ENTRADA_MENSALISTA — aqui aproximamos via mensalidadePaga
-      const pago = dados.filter(j => j.tipo === 'MENSALISTA' && j.mensalidadePaga).length;
-      setTotalQuadra(pago * 10);
     });
     carregarDados();
 
@@ -47,7 +53,13 @@ export default function DashboardScreen() {
     ]).start();
 
     return () => unsub();
-  }, [activeGroupId]);
+  }, [activeGroupId, carregarDados]);
+
+  useFocusEffect(
+    useCallback(() => {
+      carregarDados();
+    }, [carregarDados])
+  );
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -58,7 +70,6 @@ export default function DashboardScreen() {
   // CÁLCULOS (Paridade com Legado)
   // ============================================================
 
-  const hoje = new Date();
   const mesAtual = (hoje.getMonth() + 1).toString().padStart(2, '0');
   const diaAtual = hoje.getDate().toString().padStart(2, '0');
 
@@ -78,15 +89,33 @@ export default function DashboardScreen() {
     : '—';
 
   // Financeiro — paridade legado
+  const fechamento = custosMes && elenco.length > 0 ? computarFechamento(custosMes, elenco, mesAtualNome) : null;
+  const totalQuadra = fechamento ? fechamento.totalArrecadadoMensalistas : 0;
+  const metaCustoQuadra = fechamento ? fechamento.metaArrecadacao : 0;
+  
   const totalGeral = totalQuadra + saldoEquipamentos;
-  const progQuadra = totalGeral > 0 ? (totalQuadra / totalGeral) * 100 : 0;
-  const progEquipamentos = totalGeral > 0 ? (saldoEquipamentos / totalGeral) * 100 : 0;
+  
+  const progQuadra = metaCustoQuadra > 0 ? (totalQuadra / metaCustoQuadra) * 100 : 0;
+  const progEquipamentos = saldoEquipamentos > 0 ? 100 : 0; // Fundo acumulado não tem meta fixa
 
-  // Pendências — mensalistas com mensalidade em aberto (paridade legado: devedores com valor)
-  const devedores = elenco
-    .filter(j => j.tipo === 'MENSALISTA' && !j.mensalidadePaga)
-    .sort((a, b) => a.nome.localeCompare(b.nome))
-    .map(j => ({ ...j, valor: 10 })); // R$10 por mensalista (padrão legado)
+  // Pendências — mensalistas com mensalidade em aberto no mês atual com seus valores REAIS rateados
+  const devedoresMap = {};
+  if (fechamento) {
+    Object.keys(fechamento.dias).forEach(dia => {
+       const infoDia = fechamento.dias[dia];
+       infoDia.jogadores.forEach(j => {
+          const pagamentoDaChaveConsta = j.pagamentosMensais && j.pagamentosMensais[`${dia}_${mesAtualNome}`];
+          if (!pagamentoDaChaveConsta) {
+             if (!devedoresMap[j.id]) {
+                 devedoresMap[j.id] = { ...j, valor: 0 };
+             }
+             devedoresMap[j.id].valor += infoDia.valorPorPessoa;
+          }
+       });
+    });
+  }
+  
+  const devedores = Object.values(devedoresMap).sort((a, b) => a.nome.localeCompare(b.nome));
 
   const saldoEmAberto = devedores.reduce((acc, d) => acc + d.valor, 0);
 
@@ -217,23 +246,23 @@ export default function DashboardScreen() {
         {/* ── Arrecadação Acumulada (paridade legado) ── */}
         <View className="bg-slate-800/45 p-5 rounded-2xl border border-white/5 mb-1">
           <View className="flex-row items-center gap-2 mb-4">
-            <FontAwesome5 name="vault" size={14} color="#facc15" />
+            <FontAwesome5 name="piggy-bank" size={14} color="#facc15" />
             <Text className="text-white font-bold text-sm">Arrecadação Acumulada</Text>
           </View>
           <View className="space-y-3">
             <View>
               <View className="flex-row justify-between mb-1.5">
                 <Text className="text-xs text-slate-400">Quadra (Mensalistas)</Text>
-                <Text className="text-xs text-white font-bold">R$ {totalQuadra.toFixed(2).replace('.', ',')}</Text>
+                <Text className="text-xs text-white font-bold">R$ {totalQuadra.toFixed(2).replace('.', ',')} <Text className="text-[10px] text-slate-500 font-normal">/ {metaCustoQuadra.toFixed(2).replace('.', ',')}</Text></Text>
               </View>
               <View className="w-full bg-slate-700/50 h-1.5 rounded-full overflow-hidden">
-                <View className="bg-blue-500 h-full rounded-full" style={{ width: `${progQuadra}%` }} />
+                <View className="bg-blue-500 h-full rounded-full" style={{ width: `${Math.min(progQuadra, 100)}%` }} />
               </View>
             </View>
             <View>
               <View className="flex-row justify-between mb-1.5">
-                <Text className="text-xs text-slate-400">Equipamentos (Avulsos)</Text>
-                <Text className="text-xs text-white font-bold">R$ {saldoEquipamentos.toFixed(2).replace('.', ',')}</Text>
+                <Text className="text-xs text-slate-400">Fundo Equipamentos (Avulsos)</Text>
+                <Text className="text-xs text-emerald-400 font-bold">R$ {saldoEquipamentos.toFixed(2).replace('.', ',')}</Text>
               </View>
               <View className="w-full bg-slate-700/50 h-1.5 rounded-full overflow-hidden">
                 <View className="bg-emerald-500 h-full rounded-full" style={{ width: `${progEquipamentos}%` }} />
@@ -352,14 +381,16 @@ export default function DashboardScreen() {
             <FontAwesome5 name="balance-scale" size={14} color="#22d3ee" />
             <Text className="text-white font-bold text-sm">Equilíbrio do Grupo</Text>
           </View>
-          <View className="flex-row items-end justify-between h-24 px-2">
+          <View className="flex-row items-center justify-between h-32 px-1">
             {niveis.map(n => (
-              <View key={n.nivel} className="flex-1 flex-col items-center gap-1">
-                <Text className="text-[9px] text-slate-400 font-bold">{n.qtd}</Text>
-                <View
-                  className="w-full bg-cyan-500/20 border-t border-cyan-500/50 rounded-t-sm"
-                  style={{ height: `${(n.qtd / maxNivel) * 100}%`, minHeight: n.qtd > 0 ? 4 : 0 }}
-                />
+              <View key={n.nivel} className="flex-1 items-center h-full">
+                <Text className="text-[10px] text-slate-400 font-bold">{n.qtd}</Text>
+                <View className="flex-1 w-full justify-end px-1 mt-1 mb-1">
+                  <View
+                    className="w-full bg-cyan-500/20 border-t border-cyan-500/50 rounded-t-sm"
+                    style={{ height: `${(n.qtd / maxNivel) * 100}%`, minHeight: n.qtd > 0 ? 4 : 0 }}
+                  />
+                </View>
                 <Text className="text-[10px] font-black text-slate-500">⭐{n.nivel}</Text>
               </View>
             ))}

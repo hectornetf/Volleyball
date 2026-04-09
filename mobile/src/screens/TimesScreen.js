@@ -180,7 +180,7 @@ export default function TimesScreen() {
                 </View>
 
                 <View className="p-4">
-                  {time.map((j, i) => (
+                  {time.map((j, _i) => (
                     <View key={j.id} className="flex-row items-center justify-between p-3.5 mb-2 bg-slate-900/40 rounded-2xl border border-white/5">
                       <Text numberOfLines={1} className="flex-1 text-slate-100 font-black text-xs mr-4">{j.nome}</Text>
                       

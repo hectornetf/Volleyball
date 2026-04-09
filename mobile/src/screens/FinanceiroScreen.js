@@ -32,43 +32,8 @@ const mesOffsetFromConfig = (conf) => {
   return Number.isFinite(n) ? n : 0;
 };
 
+import { computarFechamento } from '../utils/financeiroUtils';
 const diasDaSemana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
-
-/** Mesma regra do botão "Iniciar Rateio" — extraída para reutilizar no mock automático. */
-function computarFechamento(custos, elenco) {
-  const dias = {};
-  let metaArrecadacao = 0;
-  let totalArrecadadoMensalistas = 0;
-
-  diasDaSemana.forEach((dia) => {
-    const custoDia = parseFloat(String(custos[dia]).replace(',', '.')) || 0;
-    const mensalistasNoDia = elenco.filter(
-      (j) => j.tipo === 'MENSALISTA' && (j.diasMensalista || []).includes(dia)
-    );
-    const totalMensalistas = mensalistasNoDia.length;
-    const valorPorPessoa = totalMensalistas > 0 ? custoDia / totalMensalistas : 0;
-    const arrecadadoDia = mensalistasNoDia.filter((j) => j.mensalidadePaga).length * valorPorPessoa;
-
-    dias[dia] = {
-      custo: custoDia,
-      totalMensalistas,
-      valorPorPessoa,
-      jogadores: mensalistasNoDia.map((j) => ({ ...j })),
-      aviso:
-        mensalistasNoDia.length === 0 && custoDia > 0
-          ? 'Nenhum mensalista cadastrado para este dia.'
-          : null,
-    };
-
-    metaArrecadacao += custoDia;
-    totalArrecadadoMensalistas += arrecadadoDia;
-  });
-
-  const statusGeral =
-    totalArrecadadoMensalistas >= metaArrecadacao ? 'Pago Totalmente' : 'Pendente';
-
-  return { dias, metaArrecadacao, totalArrecadadoMensalistas, statusGeral };
-}
 
 // Cor de destaque por dia da semana — paridade legado
 const corPorDia = {
@@ -118,7 +83,11 @@ export default function FinanceiroScreen() {
   const persistirMesReferencia = useCallback(
     (offset) => {
       if (!activeGroupId) return;
-      saveConfigFinanceira(activeGroupId, {
+      const d = new Date();
+      d.setMonth(d.getMonth() + offset);
+      const strMes = d.toLocaleString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, (c) => c.toUpperCase());
+      
+      saveConfigFinanceira(activeGroupId, strMes, {
         mesReferenciaOffset: offset,
         mesReferenciaYYYYMM: yyyymmFromMesOffset(offset),
       }).catch(() => {});
@@ -131,9 +100,13 @@ export default function FinanceiroScreen() {
     try {
       const s = await getSaldoGlobalEquipamentos(activeGroupId);
       setSaldoAvulsos(s);
-      const conf = await getConfigFinanceira(activeGroupId);
-      setMesOffset(mesOffsetFromConfig(conf));
-      setCustos({
+
+      const d = new Date();
+      d.setMonth(d.getMonth() + mesOffset);
+      const strMesAtual = d.toLocaleString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, (c) => c.toUpperCase());
+      const conf = await getConfigFinanceira(activeGroupId, strMesAtual);
+      
+      const novosCustos = {
         Segunda: strCampoCusto(conf.Segunda),
         Terça: strCampoCusto(
           conf.Terca !== undefined && conf.Terca !== null ? conf.Terca : conf.Terça
@@ -146,13 +119,27 @@ export default function FinanceiroScreen() {
         ),
         Domingo: strCampoCusto(conf.Domingo),
         Avulso: conf.Avulso !== undefined && conf.Avulso !== null ? String(conf.Avulso) : '10',
-      });
-      const querAutoRateio = conf.autoIniciarRateioMock === true;
-      consumiuAutoRateioMockRef.current = false;
-      setAutoRateioMockRequested(querAutoRateio);
+      };
+      
+      setCustos(novosCustos);
+      
+      const temCustoSempre = diasDaSemana.some(
+        (d) => (parseFloat(String(novosCustos[d]).replace(',', '.')) || 0) > 0
+      );
+      
+      // Auto-inicia o rateio se o mês de referência sendo carregado já possuir valores configurados,
+      // recriando o comportamento de 'checkFinanceiro' do legado.
+      if (temCustoSempre || conf.autoIniciarRateioMock === true) {
+        consumiuAutoRateioMockRef.current = false;
+        setAutoRateioMockRequested(true);
+      } else {
+        consumiuAutoRateioMockRef.current = false;
+        setAutoRateioMockRequested(false);
+        setFechamento(null); // Remove o rateio caso esteja navegando para um mês em branco ou acabou de sofrer um Zerar Grupo
+      }
     } catch (e) { console.error(e); }
     finally { setLoading(false); setRefreshing(false); }
-  }, [activeGroupId]);
+  }, [activeGroupId, mesOffset]);
 
   useEffect(() => {
     if (!activeGroupId) return;
@@ -182,18 +169,20 @@ export default function FinanceiroScreen() {
 
     consumiuAutoRateioMockRef.current = true;
     setAutoRateioMockRequested(false);
-    setFechamento(computarFechamento(custos, elenco));
+    setFechamento(computarFechamento(custos, elenco, mesRef));
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    if (activeGroupId) {
-      saveConfigFinanceira(activeGroupId, { autoIniciarRateioMock: false }).catch(() => {});
+    
+    // Agora remove o token mock (se existir) mas mantem as configuracoes
+    if (activeGroupId && custos.autoIniciarRateioMock) {
+      saveConfigFinanceira(activeGroupId, mesRef, { autoIniciarRateioMock: false }).catch(() => {});
     }
-  }, [autoRateioMockRequested, loading, elenco, custos, activeGroupId]);
+  }, [autoRateioMockRequested, loading, elenco, custos, activeGroupId, mesRef]);
 
   const salvarConfigSomente = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       setLoading(true);
-      await saveConfigFinanceira(activeGroupId, {
+      await saveConfigFinanceira(activeGroupId, mesRef, {
         ...custos,
         Terca: custos.Terça,
         Sabado: custos.Sábado,
@@ -208,26 +197,28 @@ export default function FinanceiroScreen() {
 
   const calcularFechamento = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    setFechamento(computarFechamento(custos, elenco));
+    setFechamento(computarFechamento(custos, elenco, mesRef));
   };
 
   // Marcar/desmarcar mensalidadePaga individualmente (paridade legado)
-  const fazerPagamento = async (jogador) => {
+  const fazerPagamento = async (jogador, dia) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
-      await updateJogador(jogador.id, { mensalidadePaga: !jogador.mensalidadePaga }, activeGroupId);
+      const key = `${dia}_${mesRef}`;
+      const valorAtual = !!(jogador.pagamentosMensais && jogador.pagamentosMensais[key]);
+      await updateJogador(jogador.id, { [`pagamentosMensais.${key}`]: !valorAtual }, activeGroupId);
       // Atualiza estado local no fechamento
       setFechamento(prev => {
         if (!prev) return prev;
         const novosDias = { ...prev.dias };
-        Object.keys(novosDias).forEach(dia => {
+        if (novosDias[dia]) {
           novosDias[dia] = {
             ...novosDias[dia],
             jogadores: novosDias[dia].jogadores.map(j =>
-              j.id === jogador.id ? { ...j, mensalidadePaga: !j.mensalidadePaga } : j
+              j.id === jogador.id ? { ...j, mensalidadePaga: !valorAtual } : j
             ),
           };
-        });
+        }
         return { ...prev, dias: novosDias };
       });
     } catch (e) { Alert.alert('Erro', e.message); }
@@ -305,6 +296,7 @@ export default function FinanceiroScreen() {
           <TouchableOpacity
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setFechamento(null); // Aqui: limpa taxa atual no mês novo
               setMesOffset((m) => {
                 const next = m - 1;
                 persistirMesReferencia(next);
@@ -324,6 +316,7 @@ export default function FinanceiroScreen() {
           <TouchableOpacity
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setFechamento(null); // Aqui: limpa taxa atual no mês novo
               setMesOffset((m) => {
                 const next = m + 1;
                 persistirMesReferencia(next);
@@ -540,7 +533,7 @@ export default function FinanceiroScreen() {
                           {jog.nome}
                         </Text>
                         <TouchableOpacity
-                          onPress={() => fazerPagamento(jog)}
+                          onPress={() => fazerPagamento(jog, dia)}
                           className={`w-7 h-7 rounded-lg items-center justify-center ${jog.mensalidadePaga ? 'bg-emerald-500 shadow-sm shadow-emerald-500/30' : 'bg-slate-700'}`}
                         >
                           <FontAwesome5 name={jog.mensalidadePaga ? 'check' : 'minus'} size={10} color="white" />

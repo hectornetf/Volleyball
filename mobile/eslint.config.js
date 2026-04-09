@@ -15,7 +15,7 @@ module.exports = [
       'react-native': reactNativePlugin
     },
     languageOptions: {
-      ecmaVersion: 2018,
+      ecmaVersion: 2022,
       sourceType: 'module',
       parserOptions: {
         ecmaFeatures: {
@@ -23,29 +23,42 @@ module.exports = [
         }
       },
       globals: {
-        __dirname: 'readonly',
         process: 'readonly',
         console: 'readonly',
-        module: 'readonly',
-        require: 'readonly',
         setTimeout: 'readonly',
         clearTimeout: 'readonly',
         Alert: 'readonly',
         fetch: 'readonly',
-        window: 'readonly'
+        window: 'readonly',
+        __dirname: 'readonly'
       }
     },
     rules: {
+      ...reactPlugin.configs.recommended.rules,
       'react/prop-types': 'off',
       'react/react-in-jsx-scope': 'off',
       'react-native/no-unused-styles': 'error',
       'react-native/split-platform-components': 'error',
-      'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      'no-unused-vars': ['warn', { 
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: 'React'
+      }],
       'no-console': ['warn', { allow: ['warn', 'error'] }]
     },
     settings: {
       react: {
         version: 'detect'
+      }
+    }
+  },
+  {
+    files: ['*.config.js'],
+    languageOptions: {
+      globals: {
+        module: 'writable',
+        require: 'readonly',
+        process: 'readonly',
+        __dirname: 'readonly'
       }
     }
   },

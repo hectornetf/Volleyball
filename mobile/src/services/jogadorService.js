@@ -1,5 +1,5 @@
 import { db } from '../config/firebase';
-import { collection, addDoc, updateDoc, doc, onSnapshot, query, getDocs, where, writeBatch, setDoc } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, onSnapshot, query, getDocs, where, writeBatch, setDoc, increment } from 'firebase/firestore';
 import { encryptData, decryptData } from '../utils/crypto';
 
 const JOGADORES_COLLECTION = 'jogadores';
@@ -99,7 +99,7 @@ export const getSaldoGlobalEquipamentos = async (groupId) => {
       saldo += doc.data().valor || 0;
     });
     return saldo;
-  } catch (e) {
+  } catch (_e) {
     return 0;
   }
 };
@@ -108,12 +108,27 @@ export const resetDadosGrupo = async (groupId) => {
   if (!groupId) return;
   try {
     const batch = writeBatch(db);
-    const qJ = query(collection(db, JOGADORES_COLLECTION), where('groupId', '==', groupId));
-    const snapJ = await getDocs(qJ);
-    snapJ.forEach(d => batch.delete(d.ref));
-    const qF = query(collection(db, FINANCEIRO_OP_COLLECTION), where('groupId', '==', groupId));
-    const snapF = await getDocs(qF);
-    snapF.forEach(d => batch.delete(d.ref));
+    
+    // Queries via groupId
+    const queries = [
+      query(collection(db, JOGADORES_COLLECTION), where('groupId', '==', groupId)),
+      query(collection(db, FINANCEIRO_OP_COLLECTION), where('groupId', '==', groupId)),
+      query(collection(db, CONFIG_FINANCEIRA_COLLECTION), where('groupId', '==', groupId))
+    ];
+
+    for (const q of queries) {
+      const snap = await getDocs(q);
+      snap.forEach(d => batch.delete(d.ref));
+    }
+
+    // Garante exclusão do global "legacy" ou dos meses gerados no último teste (órfãos de property)
+    batch.delete(doc(db, CONFIG_FINANCEIRA_COLLECTION, groupId));
+    const mesesParaLimpar = [0, -1, 1].map(offset => {
+      const d = new Date(); d.setMonth(d.getMonth() + offset); 
+      return d.toLocaleString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase());
+    });
+    mesesParaLimpar.forEach(mes => batch.delete(doc(db, CONFIG_FINANCEIRA_COLLECTION, `${groupId}_${mes}`)));
+
     await batch.commit();
   } catch (_e) {
     // Erro ignorado intencionalmente no reset
@@ -125,25 +140,21 @@ export const resetDadosGrupo = async (groupId) => {
  */
 export const incrementarPresencaHistorica = async (id, valor) => {
   const docRef = doc(db, JOGADORES_COLLECTION, id);
-  // Usamos fieldValue.increment ou buscamos o valor atual se o SDK estiver limitado
-  // Para simplificar e garantir precisão:
-  const snap = await getDocs(query(collection(db, JOGADORES_COLLECTION), where('__name__', '==', id)));
-  if (!snap.empty) {
-    const atual = parseInt(snap.docs[0].data().historicoPresencas) || 0;
-    return await updateDoc(docRef, { historicoPresencas: Math.max(0, atual + valor) });
-  }
+  return await updateDoc(docRef, { 
+    historicoPresencas: increment(valor) 
+  });
 };
 
 // --- CONFIGURAÇÃO FINANCEIRA (COSTS PER DAY) ---
 
-export const saveConfigFinanceira = async (groupId, config) => {
-  const docRef = doc(db, CONFIG_FINANCEIRA_COLLECTION, groupId);
-  return await setDoc(docRef, { ...config, updatedAt: new Date() }, { merge: true });
+export const saveConfigFinanceira = async (groupId, mes, config) => {
+  const docRef = doc(db, CONFIG_FINANCEIRA_COLLECTION, `${groupId}_${mes}`);
+  return await setDoc(docRef, { ...config, groupId, updatedAt: new Date() }, { merge: true });
 };
 
-export const getConfigFinanceira = async (groupId) => {
-  const docRef = doc(db, CONFIG_FINANCEIRA_COLLECTION, groupId);
-  const q = query(collection(db, CONFIG_FINANCEIRA_COLLECTION), where('__name__', '==', groupId));
+export const getConfigFinanceira = async (groupId, mes) => {
+  const docRef = doc(db, CONFIG_FINANCEIRA_COLLECTION, `${groupId}_${mes}`);
+  const q = query(collection(db, CONFIG_FINANCEIRA_COLLECTION), where('__name__', '==', `${groupId}_${mes}`));
   const snapshot = await getDocs(q);
   
   if (!snapshot.empty) {
@@ -195,6 +206,17 @@ export const gerarDadosDeTestePro = async (groupId) => {
     'Larissa Motta',
   ];
 
+  const refDate = new Date();
+  const mesAtualNome = refDate.toLocaleString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase());
+  const mesReferenciaYYYYMM = `${refDate.getFullYear()}-${String(refDate.getMonth() + 1).padStart(2, '0')}`;
+
+  const avulsosPlain = [
+    { nome: 'Convidado Alpha', cel: '(11) 97755-1001', nivel: 4, diariaPaga: true, presencaAtual: 'Confirmado', historico: 14 },
+    { nome: 'Convidado Beta', cel: '(11) 97755-1002', nivel: 2, diariaPaga: true, presencaAtual: 'Confirmado', historico: 9 },
+    { nome: 'Convidado Gamma', cel: '(11) 97755-1003', nivel: 3, diariaPaga: false, presencaAtual: 'Falta', historico: 6 },
+    { nome: 'Convidado Delta', cel: '(11) 97755-1004', nivel: 1, diariaPaga: false, presencaAtual: 'Falta', historico: 3 },
+  ];
+
   const mensalistas = nomesMensalistas.map((nome, i) => {
     const nivel = (i % 5) + 1;
     const dataNascimento =
@@ -208,18 +230,11 @@ export const gerarDadosDeTestePro = async (groupId) => {
       diasMensalista: [...diasTreino],
       groupId,
       historicoPresencas: 58 - i * 3,
-      mensalidadePaga: i >= 4,
+      pagamentosMensais: i >= 4 ? { [`Segunda_${mesAtualNome}`]: true, [`Quarta_${mesAtualNome}`]: true } : {}, // Metade pagou este mês
       diariaPaga: false,
       presencaAtual: i < 9 ? 'Confirmado' : 'Falta',
     };
   });
-
-  const avulsosPlain = [
-    { nome: 'Convidado Alpha', cel: '(11) 97755-1001', nivel: 4, diariaPaga: true, presencaAtual: 'Confirmado', historico: 14 },
-    { nome: 'Convidado Beta', cel: '(11) 97755-1002', nivel: 2, diariaPaga: true, presencaAtual: 'Confirmado', historico: 9 },
-    { nome: 'Convidado Gamma', cel: '(11) 97755-1003', nivel: 3, diariaPaga: false, presencaAtual: 'Falta', historico: 6 },
-    { nome: 'Convidado Delta', cel: '(11) 97755-1004', nivel: 1, diariaPaga: false, presencaAtual: 'Falta', historico: 3 },
-  ];
 
   const avulsos = avulsosPlain.map((a, i) => ({
     nome: encryptData(a.nome, groupId),
@@ -230,7 +245,7 @@ export const gerarDadosDeTestePro = async (groupId) => {
     diasMensalista: [],
     groupId,
     historicoPresencas: a.historico,
-    mensalidadePaga: false,
+    pagamentosMensais: {},
     diariaPaga: a.diariaPaga,
     presencaAtual: a.presencaAtual,
   }));
@@ -241,13 +256,12 @@ export const gerarDadosDeTestePro = async (groupId) => {
     batch.set(doc(collection(db, JOGADORES_COLLECTION)), jogador);
   });
 
-  const refDate = new Date();
-  const mesReferenciaYYYYMM = `${refDate.getFullYear()}-${String(refDate.getMonth() + 1).padStart(2, '0')}`;
-
-  const configRef = doc(db, CONFIG_FINANCEIRA_COLLECTION, groupId);
+  // Salva config especificamente no Mês Atual
+  const configRef = doc(db, CONFIG_FINANCEIRA_COLLECTION, `${groupId}_${mesAtualNome}`);
   batch.set(
     configRef,
     {
+      groupId,
       Segunda: 160,
       Terca: 0,
       Terça: 120,

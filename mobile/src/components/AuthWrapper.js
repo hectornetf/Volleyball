@@ -3,12 +3,12 @@ import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, Keyb
 import { FontAwesome5 } from '@expo/vector-icons';
 import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { auth, db } from '../config/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { generateGroupCode } from '../services/sessionService';
 import { useSession } from '../context/SessionContext';
 
 export default function AuthWrapper({ children, title }) {
-  const { isAdmin, activeGroupId, logout } = useSession();
+  const { activeGroupId, logout } = useSession();
   const [currentUser, setCurrentUser] = useState(null);
   const [loadingApp, setLoadingApp] = useState(true);
   

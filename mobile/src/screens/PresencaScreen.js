@@ -12,6 +12,8 @@ import {
 } from '../services/jogadorService';
 import { useSession } from '../context/SessionContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback } from 'react';
 
 const diasDaSemana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 
@@ -42,17 +44,22 @@ export default function PresencaScreen() {
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(20));
 
+  const carregarValorAvulso = useCallback(() => {
+    if (!activeGroupId) return;
+    const hoje = new Date();
+    const strMesAtual = hoje.toLocaleString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, (c) => c.toUpperCase());
+    
+    getConfigFinanceira(activeGroupId, strMesAtual).then(conf => {
+      setValorAvulso(parseFloat(String(conf?.Avulso || 10).replace(',', '.')));
+    }).catch(console.error);
+  }, [activeGroupId]);
+
   useEffect(() => {
     if (!activeGroupId) return;
     const unsub = subscribeJogadores(activeGroupId, dados => {
       setTodosJogadores(dados);
       setCarregando(false);
     }, err => { console.error(err); setCarregando(false); });
-
-    // Carrega o valor avulso configurado
-    getConfigFinanceira(activeGroupId).then(conf => {
-      setValorAvulso(parseFloat(conf?.Avulso || 10));
-    });
 
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
@@ -61,6 +68,12 @@ export default function PresencaScreen() {
 
     return () => unsub();
   }, [activeGroupId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      carregarValorAvulso();
+    }, [carregarValorAvulso])
+  );
 
   const onRefresh = () => {
     setRefreshing(true);
