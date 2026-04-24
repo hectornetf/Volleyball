@@ -34,6 +34,7 @@
 ### 📊 Dashboard Analítico
 - **Visão do elenco:** Total de jogadores, divisão entre mensalistas e avulsos
 - **Saúde financeira:** Arrecadação acumulada com barras de progresso separando receita da quadra e caixa de equipamentos
+- **Aniversariantes do Mês:** Lista cronológica de quem apaga as velinhas no mês atual, com destaque pulsante para quem faz aniversário hoje! 🎂
 - **Ranking de assiduidade:** Top 5 presenças do mês
 - **Equilíbrio técnico:** Distribuição de níveis (⭐1 a ⭐5) do grupo
 
@@ -41,8 +42,9 @@
 - Suporte a **qualquer dia da semana** — não fica limitado a Segunda/Sexta
 - O app detecta automaticamente o dia atual e já seleciona o card correto
 - Status em tempo real: **Vou / Falto** com recálculo instantâneo de confirmados
-- **Trava financeira:** Avulsos só podem confirmar presença após o pagamento da diária ser registrado
-- Botão de cobrança em massa via WhatsApp
+- **Trava de Segurança:** Avulsos (e mensalistas fora de seu dia) só podem confirmar presença após o pagamento da diária ser registrado
+- **Múltiplas Categorias:** O sistema diferencia quem é mensalista "oficial" do dia de quem é visitante ou mensalista de outro dia
+- Botão de cobrança em massa via WhatsApp formatado para o grupo
 
 ### 🔀 Sorteio Inteligente de Times (Algoritmo Híbrido)
 - Jogadores **nível 3, 4 e 5** distribuídos via *Snake Draft* para equilibrar a base técnica
@@ -52,13 +54,14 @@
 ### 💰 Inteligência Financeira Completa
 - **Valor do avulso configurável por mês** — defina livremente quanto cobrar, sem valor fixo
 - **Rateio automático dos mensalistas** por dia de treino (cada dia tem seu custo independente)
-- **Fundo de Equipamentos:** receita dos avulsos vai para um caixa separado, nunca se mistura com o custo da quadra
+- **Fundo de Equipamentos:** Receita dos avulsos (e visitas) vai para um caixa separado, nunca se mistura com o custo da quadra
+- **Gestão Manual de Caixa:** Botões de Entrada e Saída para gerenciar o fundo de equipamentos (ex: doações ou compra de bolas) com histórico descritivo
 - Listagem dos devedores do mês com link de cobrança individual no WhatsApp
 - Botão de salvar configurações sem precisar fazer o fechamento completo
 
 ### 🔒 Privacidade e Segurança
-- Telefones e datas de nascimento são **mascarados** na tela de edição (`(11) *****-1234`)
-- Campo de telefone com **máscara automática** e validação de DDD + número
+- Telefones e datas de nascimento são **mascarados** na lista pública por privacidade (`(11) *****-1234`)
+- Campo de telefone e data de nascimento com **máscaras automáticas** (ex: digite 24041990 e vire 24/04/1990)
 - Dados sensíveis só armazenados no Google Sheets da conta do administrador
 
 ---

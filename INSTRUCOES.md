@@ -127,12 +127,20 @@ Se você atualizou o código e quer publicar as mudanças:
 
 ## Regras de Negócio do Sistema
 
-| Categoria | Mensalista | Avulso |
+| Categoria | Mensalista do Dia | Visita / Avulso |
 |---|---|---|
-| **Cobrança** | Rateio mensal do custo da quadra | Diária configurável pelo admin |
-| **Confirmação** | Pode confirmar livremente | Só confirma após pagamento registrado |
-| **Caixa** | Vai para o custo da quadra | Vai para o Fundo de Equipamentos |
-| **Cadastro** | Vinculado a dia(s) específico(s) | Sem vínculo de dia |
+| **Definição** | Jogador cadastrado para este dia da semana | Avulso fixo OU Mensalista de outro dia |
+| **Cobrança** | Rateio mensal do custo da quadra | Taxa diária fixa (Avulso) |
+| **Confirmação** | Pode confirmar livremente | Só confirma após o PIX ser registrado |
+| **Destino R$** | Custo da Quadra | Fundo de Equipamentos (Bolas/Redes) |
+| **WhatsApp** | Cobrança mensal individual | Cobrança de presença no grupo |
+
+### Gestão do Fundo de Equipamentos
+
+O sistema agora possui um controle de caixa global que acumula as taxas dos avulsos:
+- **💰 Entrada:** Use para registrar doações extras, lucros de vendas ou sobras.
+- **💸 Saída:** Use para registrar a compra de uma bola nova, rede ou outros custos extras.
+- **Histórico:** Todos os movimentos são registrados na aba `Pagamentos` com o ID `CAIXA`.
 
 ### Níveis de Jogador (usados no sorteio)
 

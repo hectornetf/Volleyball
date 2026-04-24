@@ -188,11 +188,33 @@ function getJogadores() {
     telefone: row[2],
     nivel: row[3],
     tipo: row[4],
-    dataNascimento: row[5] ? formatarParaInputData(row[5]) : ''
+    dataNascimento: row[5] ? formatarParaBR(row[5]) : ''
   }));
 }
 
-// Helper para formatar data do Sheets (pode ser Date object ou string DD/MM/YYYY) para string YYYY-MM-DD (input date)
+// Helper para formatar data do Sheets para string DD/MM/YYYY
+function formatarParaBR(data) {
+  if (!data) return '';
+  
+  // Se for objeto Date do Google Sheets
+  if (data instanceof Date) {
+    let d = data.getDate().toString().padStart(2, '0');
+    let m = (data.getMonth() + 1).toString().padStart(2, '0');
+    let y = data.getFullYear();
+    return `${d}/${m}/${y}`;
+  }
+  
+  // Se for string, remove apóstrofo e garante formato DD/MM/YYYY
+  let str = String(data).replace(/^'/, '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    let partes = str.split('-');
+    return `${partes[2]}/${partes[1]}/${partes[0]}`;
+  }
+  
+  return str;
+}
+
+// Mantém a função antiga para compatibilidade se necessário, mas getJogadores agora usa formatarParaBR
 function formatarParaInputData(data) {
   if (!data) return '';
   
@@ -637,6 +659,27 @@ function liquidarCaixaEquipamentos(valorLiquidar) {
   return getHistoricoCaixaEquipamentos();
 }
 
+// Registra uma entrada manual no caixa de equipamentos (ex: doações, vendas, etc)
+function registrarEntradaCaixaEquipamentos(valorEntrada, descricao) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_PAGAMENTOS);
+  if (!sheet) { setupInicial(); sheet = ss.getSheetByName(SHEET_PAGAMENTOS); }
+  
+  let valorDouble = Math.abs(parseFloat(String(valorEntrada).replace(',', '.')) || 0);
+  if (valorDouble === 0) return getHistoricoCaixaEquipamentos();
+  
+  const dataHoje = new Date();
+  const dataStr = dataHoje.getDate().toString().padStart(2, '0') + '/' + (dataHoje.getMonth() + 1).toString().padStart(2, '0') + '/' + dataHoje.getFullYear();
+  
+  let descFinal = descricao ? 'Entrada: ' + descricao : 'Entrada Manual Caixa';
+  
+  // Gravamos o valor como positivo
+  // ID=CAIXA, Nome=Descricao, Dia=Entrada, MesAno=Data de Hoje, Valor=valorDouble
+  sheet.appendRow(['CAIXA', descFinal, 'Entrada', "'" + dataStr, valorDouble, 'Pago']);
+  
+  return getHistoricoCaixaEquipamentos();
+}
+
 // Registra um pagamento (Toggle de status: Pago <-> Cancelado, mas NUNCA deleta o registro)
 function registrarPagamento(idJogador, nome, diaSemana, mesAno, valor) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -785,15 +828,20 @@ function getDashboardData() {
     mediaNivel: (jogadores.reduce((acc, j) => acc + (parseInt(j.nivel) || 0), 0) / (jogadores.length || 1)).toFixed(1)
   };
 
-  // 6. Aniversariantes do Mês (mantido)
-  // ... omitted (already inside earlier logic or untouched)
-  const hojeDia = dataHoje.getDate();
-  const hojeMes = dataHoje.getMonth();
+  const mesAtualNum = dataHoje.getMonth() + 1;
   aniversariantes = jogadores.filter(j => {
     if (!j.dataNascimento) return false;
-    let [ano, mes, dia] = j.dataNascimento.split('-');
-    return parseInt(dia) === hojeDia && parseInt(mes) === (hojeMes + 1);
-  }).map(j => j.nome);
+    let partes = j.dataNascimento.split('/');
+    if (partes.length < 2) return false;
+    let mes = parseInt(partes[1]);
+    return mes === mesAtualNum;
+  }).map(j => {
+    let partes = j.dataNascimento.split('/');
+    return {
+      nome: j.nome,
+      dia: parseInt(partes[0])
+    };
+  }).sort((a, b) => a.dia - b.dia);
 
   return {
     statsJogadores,

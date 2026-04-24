@@ -142,13 +142,15 @@
                     <div v-if="dashboardData.aniversariantes && dashboardData.aniversariantes.length > 0"
                         class="glass p-5 rounded-2xl border-l-4 border-pink-500 animate-in bg-gradient-to-r from-pink-500/10 to-transparent">
                         <h3 class="font-bold text-slate-100 mb-2 flex items-center gap-2">
-                            <i class="fa-solid fa-cake-candles text-pink-500"></i> Aniversariantes de Hoje! 🎂
+                            <i class="fa-solid fa-cake-candles text-pink-500"></i> Aniversariantes do Mês! 🎂
                         </h3>
                         <div class="flex flex-wrap gap-2">
-                            <span v-for="nome in dashboardData.aniversariantes" :key="nome"
-                                class="bg-pink-500 text-white text-xs font-black px-3 py-1.5 rounded-full shadow-lg shadow-pink-500/20">
-                                {{ nome }}
-                            </span>
+                            <div v-for="ani in dashboardData.aniversariantes" :key="ani.nome"
+                                :class="ani.dia === new Date().getDate() ? 'bg-pink-500 ring-2 ring-pink-300 ring-offset-2 ring-offset-slate-900 animate-pulse' : 'bg-slate-700/80 border border-pink-500/30'"
+                                class="text-white text-xs font-black px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
+                                <span class="bg-white/20 px-1.5 py-0.5 rounded text-[10px]">{{ ani.dia }}</span>
+                                {{ ani.nome }}
+                            </div>
                         </div>
                     </div>
 
@@ -343,9 +345,9 @@
                             </button>
                         </div>
                         <div class="flex gap-3 text-xs font-bold text-slate-400">
-                            <span>Mensalistas: <span class="text-emerald-400">{{ totalConfirmados.mensalista
+                            <span>Mensalistas do Dia: <span class="text-emerald-400">{{ totalConfirmados.mensalista
                                     }}</span></span>
-                            <span>Avulsos: <span class="text-amber-400">{{ totalConfirmados.avulso }}</span></span>
+                            <span>Visitantes/Avulsos: <span class="text-amber-400">{{ totalConfirmados.avulso }}</span></span>
                         </div>
                     </div>
                     <div class="space-y-2">
@@ -357,29 +359,29 @@
                                         :class="getPresenca(j.id) === 'Confirmado' ? 'text-emerald-400' : (getPresenca(j.id) === 'Falta' ? 'text-red-400 line-through opacity-50' : '')">
                                         {{j.nome}}</p>
                                     <span v-if="getPresenca(j.id) === 'Confirmado'"
-                                        :class="j.tipo.includes('Avulso') ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'"
+                                        :class="isMensalistaNoDia(j, diaSelecionado) ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'"
                                         class="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0">{{
-                                        j.tipo.includes('Avulso') ? 'Avulso' : 'Mensalista' }}</span>
+                                        isMensalistaNoDia(j, diaSelecionado) ? 'Mensalista' : 'Avulso' }}</span>
                                 </div>
                                 <p class="text-[10px] text-slate-400 uppercase tracking-wider truncate">{{j.tipo}} | ⭐
                                     {{j.nivel}}</p>
                             </div>
                             <div class="flex gap-1.5 text-sm items-center shrink-0">
-                                <!-- Botão de Pagamento para Avulsos (Case-Insensitive) -->
-                                <button v-if="j.tipo.toLowerCase().includes('avulso') && !getPagamentoHoje(j.id)"
+                                <!-- Botão de Pagamento para quem não é mensalista hoje ou é avulso fixo -->
+                                <button v-if="(!isMensalistaNoDia(j, diaSelecionado) || j.tipo.toLowerCase().includes('avulso')) && !getPagamentoHoje(j.id)"
                                     @click="pagarAvulso(j)"
                                     class="bg-amber-500 hover:bg-amber-400 text-white px-2 py-1.5 rounded-lg transition-all font-black text-[9px] uppercase shadow-lg shadow-amber-500/20 border border-amber-400/50 whitespace-nowrap">
                                     💰 R${{ costsAvulsoLabel }}
                                 </button>
-                                <span v-else-if="j.tipo.toLowerCase().includes('avulso')"
+                                <span v-else-if="(!isMensalistaNoDia(j, diaSelecionado) || j.tipo.toLowerCase().includes('avulso'))"
                                     class="text-[9px] font-black text-amber-400 bg-amber-400/10 px-2 py-1 rounded-md border border-amber-400/20 shrink-0">PAGO
                                     ✅</span>
 
                                 <button @click="marcar(j, 'Confirmado')"
-                                    :disabled="j.tipo.toLowerCase().includes('avulso') && !getPagamentoHoje(j.id)"
+                                    :disabled="(!isMensalistaNoDia(j, diaSelecionado) || j.tipo.toLowerCase().includes('avulso')) && !getPagamentoHoje(j.id)"
                                     :class="[
                                         getPresenca(j.id) === 'Confirmado' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-slate-700 text-slate-300 hover:bg-slate-600',
-                                        (j.tipo.toLowerCase().includes('avulso') && !getPagamentoHoje(j.id)) ? 'opacity-30 cursor-not-allowed grayscale' : ''
+                                        ((!isMensalistaNoDia(j, diaSelecionado) || j.tipo.toLowerCase().includes('avulso')) && !getPagamentoHoje(j.id)) ? 'opacity-30 cursor-not-allowed grayscale' : ''
                                     ]"
                                     class="px-3 py-1.5 rounded-lg transition-all font-semibold shrink-0">Vou</button>
                                 <button @click="marcar(j, 'Falta')"
@@ -563,11 +565,16 @@
                         <p class="text-[10px] text-slate-500 italic max-w-[150px] text-right">Verba extra vinda
                             exclusivamente dos pagamentos dos avulsos (R$ 10).</p>
                     </div>
-                    <div class="flex justify-between items-end mt-3 pt-3 border-t border-amber-500/30">
-                        <p class="text-[10px] text-slate-500 font-bold max-w-[180px]">Utilize este botão ao gastar o fundo em compras para a quadra.</p>
-                        <button @click="liquidarCaixa" class="text-xs bg-slate-800 text-amber-400 px-3 py-1.5 rounded-lg font-bold border border-amber-500/30 hover:bg-amber-500/20 hover:text-amber-300 transition shadow">
-                            <i class="fa-solid fa-money-check-dollar"></i> Liquidar Gastos
-                        </button>
+                    <div class="flex justify-between items-center mt-3 pt-3 border-t border-amber-500/30 gap-2">
+                        <p class="text-[10px] text-slate-500 font-bold max-w-[120px]">Gestão de verba extra para equipamentos.</p>
+                        <div class="flex gap-2 shrink-0">
+                            <button @click="lancarEntradaCaixa" class="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-1.5 rounded-lg font-bold border border-emerald-500/30 hover:bg-emerald-500/20 transition shadow">
+                                <i class="fa-solid fa-plus-circle"></i> Entrada
+                            </button>
+                            <button @click="liquidarCaixa" class="text-[10px] bg-red-500/10 text-red-400 px-2 py-1.5 rounded-lg font-bold border border-red-500/30 hover:bg-red-500/20 transition shadow">
+                                <i class="fa-solid fa-minus-circle"></i> Saída
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -710,10 +717,10 @@
                         <div class="flex-1">
                             <label class="text-[10px] text-slate-400 uppercase font-bold ml-1">Data de Nascimento
                                 (Opcional)</label>
-                            <input
-                                :type="novoJogador.dataNascimento && novoJogador.dataNascimento.includes('*') ? 'text' : 'date'"
-                                v-model="novoJogador.dataNascimento"
+                            <input type="text" v-model="novoJogador.dataNascimento"
+                                @input="mascaraData"
                                 @focus="novoJogador.dataNascimento && novoJogador.dataNascimento.includes('*') && (novoJogador.dataNascimento = '')"
+                                placeholder="DD/MM/AAAA"
                                 class="w-full bg-slate-800 rounded-xl p-3 outline-none mt-1 text-slate-300">
                         </div>
                     </div>
@@ -803,8 +810,8 @@
                         if (this.presencas[i].status === 'Confirmado') {
                             count.total++;
                             var jogador = this.jogadores.find(function (j) { return j.id == this.presencas[i].idJogador }.bind(this));
-                            if (jogador && jogador.tipo.includes('Avulso')) count.avulso++;
-                            else count.mensalista++;
+                            if (jogador && this.isMensalistaNoDia(jogador, this.diaSelecionado)) count.mensalista++;
+                            else count.avulso++;
                         }
                     }
                     return count;
@@ -969,6 +976,8 @@
                             google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getAppUrl();
                         } else if (funcName === 'liquidarCaixaEquipamentos') {
                             google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).liquidarCaixaEquipamentos(args[0]);
+                        } else if (funcName === 'registrarEntradaCaixaEquipamentos') {
+                            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).registrarEntradaCaixaEquipamentos(args[0], args[1]);
                         } else {
                             reject('Função não encontrada');
                         }
@@ -1096,6 +1105,18 @@
                     var mascarados = s.slice(0, s.length - 4).replace(/\d/g, '*');
                     return (mascarados + ultimos).replace(/(\*{2})(\*{2})(\d+)(\d{4})/, '$1 ($2) $3-$4');
                 },
+                isMensalistaNoDia: function (j, dia) {
+                    if (!j.tipo) return false;
+                    var tipoStr = String(j.tipo).toUpperCase();
+                    if (tipoStr.includes('AVULSO')) return false;
+                    if (!tipoStr.includes('MENSALISTA')) return false;
+                    
+                    var sigla = dia.substring(0, 3).toUpperCase();
+                    // Verifica se o tipo contém a sigla do dia (SEG, TER, etc)
+                    return tipoStr.includes(sigla) || 
+                           (tipoStr === 'MENSALISTA' && (dia === 'Segunda' || dia === 'Sexta')) ||
+                           (tipoStr === 'MENS' && (dia === 'Segunda' || dia === 'Sexta'));
+                },
                 mascararData: function (data) {
                     if (!data) return '';
                     // Suporta DD/MM/YYYY (salvo pelo app) e YYYY-MM-DD (legado)
@@ -1123,6 +1144,15 @@
                     }
                     this.novoJogador.telefone = v;
                 },
+                mascaraData: function () {
+                    var v = this.novoJogador.dataNascimento.replace(/\D/g, '').substring(0, 8);
+                    if (v.length >= 5) {
+                        v = v.replace(/^(\d{2})(\d{2})(\d{0,4}).*/, '$1/$2/$3');
+                    } else if (v.length >= 3) {
+                        v = v.replace(/^(\d{2})(\d{0,2}).*/, '$1/$2');
+                    }
+                    this.novoJogador.dataNascimento = v;
+                },
                 salvarJogador: function () {
                     if (!this.novoJogador.nome || !this.novoJogador.nome.trim()) return alert('Nome é obrigatório.');
 
@@ -1146,12 +1176,17 @@
                         dataFinal = this.originalDataNascimento;
                     } else if (this.novoJogador.dataNascimento) {
                         var d = this.novoJogador.dataNascimento;
-                        // Se vier do input type="date" (YYYY-MM-DD), converte para DD/MM/YYYY
-                        if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+                        // Valida se tem 10 caracteres (DD/MM/AAAA)
+                        if (d.length === 10 && /^\d{2}\/\d{2}\/\d{4}$/.test(d)) {
+                            dataFinal = d;
+                        } else if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+                            // Fallback se algum picker ainda retornar YYYY-MM-DD
                             var partes = d.split('-');
                             dataFinal = partes[2] + '/' + partes[1] + '/' + partes[0];
                         } else {
-                            dataFinal = d; // já está no formato certo
+                            // Se for algo incompleto, limpamos ou deixamos o usuário corrigir
+                            // Aqui vamos apenas aceitar o que foi digitado se tiver barras
+                            dataFinal = d;
                         }
                     }
 
@@ -1256,26 +1291,42 @@
                     this.fechamento = null;
                 },
                 liquidarCaixa: function () {
-                    var valorRaw = prompt("Digite o valor que foi gasto em equipamentos ou custos (Apenas números e vírgula, ex: 150,00):");
+                    var valorRaw = prompt("Digite o valor gasto (SAÍDA) do caixa (ex: 150,00):");
                     if (!valorRaw) return;
                     
                     var valorTratado = parseFloat(valorRaw.replace(',', '.'));
-                    if (isNaN(valorTratado) || valorTratado <= 0) {
-                        return alert("Valor inválido.");
-                    }
+                    if (isNaN(valorTratado) || valorTratado <= 0) return alert("Valor inválido.");
                     
-                    if (!confirm("Tem certeza que deseja liquidar R$ " + valorTratado.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " do caixa global de equipamentos? Essa ação será guardada no histórico de pagamentos.")) {
-                        return;
-                    }
+                    var motivo = prompt("Motivo da saída (Opcional):", "Compra de Equipamento");
+                    
+                    if (!confirm("Confirmar SAÍDA de R$ " + valorTratado.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "?")) return;
                     
                     this.loading = true;
                     var self = this;
-                    this.runGoogleScript('liquidarCaixaEquipamentos', [valorTratado]).then(function (novoSaldo) {
-                        if (self.fechamento) {
-                            self.fechamento.totalArrecadadoAvulsos = novoSaldo;
-                        }
-                        self.toastMsg = 'Caixa liquidado com sucesso! Novo saldo: R$ ' + novoSaldo.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                        setTimeout(function () { self.toastMsg = ''; }, 4500);
+                    this.runGoogleScript('liquidarCaixaEquipamentos', [valorTratado, motivo]).then(function (novoSaldo) {
+                        if (self.fechamento) self.fechamento.totalArrecadadoAvulsos = novoSaldo;
+                        self.toastMsg = 'Saída registrada! Novo saldo: R$ ' + novoSaldo.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        setTimeout(function () { self.toastMsg = ''; }, 3000);
+                        self.fetchDashboardData();
+                    });
+                },
+                lancarEntradaCaixa: function () {
+                    var valorRaw = prompt("Digite o valor recebido (ENTRADA) no caixa (ex: 50,00):");
+                    if (!valorRaw) return;
+                    
+                    var valorTratado = parseFloat(valorRaw.replace(',', '.'));
+                    if (isNaN(valorTratado) || valorTratado <= 0) return alert("Valor inválido.");
+                    
+                    var motivo = prompt("Motivo da entrada (Opcional):", "Doação / Extra");
+                    
+                    if (!confirm("Confirmar ENTRADA de R$ " + valorTratado.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "?")) return;
+                    
+                    this.loading = true;
+                    var self = this;
+                    this.runGoogleScript('registrarEntradaCaixaEquipamentos', [valorTratado, motivo]).then(function (novoSaldo) {
+                        if (self.fechamento) self.fechamento.totalArrecadadoAvulsos = novoSaldo;
+                        self.toastMsg = 'Entrada registrada! Novo saldo: R$ ' + novoSaldo.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        setTimeout(function () { self.toastMsg = ''; }, 3000);
                         self.fetchDashboardData();
                     });
                 },
