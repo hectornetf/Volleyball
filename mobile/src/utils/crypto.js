@@ -14,7 +14,7 @@ export const encryptData = (text, groupId) => {
     // Mas o ideal é que o polyfill resolva.
     const encrypted = CryptoJS.AES.encrypt(text.toString(), secret);
     return encrypted.toString();
-  } catch (_e) {
+  } catch {
     return text;
   }
 };
@@ -33,7 +33,7 @@ export const decryptData = (ciphertext, groupId) => {
     const originalText = bytes.toString(CryptoJS.enc.Utf8);
     // Se a descriptografia resultar em vazio, talvez o dado estivesse em texto puro
     return originalText || ciphertext;
-  } catch (_e) {
+  } catch {
     return ciphertext;
   }
 };

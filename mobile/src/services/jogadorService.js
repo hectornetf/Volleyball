@@ -86,6 +86,10 @@ export const registrarSaidaCaixa = async (valor, descricao, groupId) => {
   return await registrarOperacaoFinanceira('SAIDA_DESPESA', valor, descricao, groupId);
 };
 
+export const registrarEntradaCaixa = async (valor, descricao, groupId) => {
+  return await registrarOperacaoFinanceira('ENTRADA_MANUAL', valor, descricao, groupId);
+};
+
 export const getSaldoGlobalEquipamentos = async (groupId) => {
   if (!groupId) return 0;
   try {
@@ -99,7 +103,7 @@ export const getSaldoGlobalEquipamentos = async (groupId) => {
       saldo += doc.data().valor || 0;
     });
     return saldo;
-  } catch (_e) {
+  } catch {
     return 0;
   }
 };
@@ -109,7 +113,8 @@ export const resetDadosGrupo = async (groupId) => {
   try {
     const batch = writeBatch(db);
     
-    // Queries via groupId
+    // Deleta em lote todos os documentos de todas as coleções vinculadas ao grupo
+    // (Jogadores com nova arquitetura de presença, Finanças, Configuração multi-mês)
     const queries = [
       query(collection(db, JOGADORES_COLLECTION), where('groupId', '==', groupId)),
       query(collection(db, FINANCEIRO_OP_COLLECTION), where('groupId', '==', groupId)),
@@ -130,7 +135,7 @@ export const resetDadosGrupo = async (groupId) => {
     mesesParaLimpar.forEach(mes => batch.delete(doc(db, CONFIG_FINANCEIRA_COLLECTION, `${groupId}_${mes}`)));
 
     await batch.commit();
-  } catch (_e) {
+  } catch {
     // Erro ignorado intencionalmente no reset
   }
 };
@@ -153,7 +158,6 @@ export const saveConfigFinanceira = async (groupId, mes, config) => {
 };
 
 export const getConfigFinanceira = async (groupId, mes) => {
-  const docRef = doc(db, CONFIG_FINANCEIRA_COLLECTION, `${groupId}_${mes}`);
   const q = query(collection(db, CONFIG_FINANCEIRA_COLLECTION), where('__name__', '==', `${groupId}_${mes}`));
   const snapshot = await getDocs(q);
   
@@ -183,8 +187,8 @@ export const gerarDadosDeTestePro = async (groupId) => {
 
   const mm = String(new Date().getMonth() + 1).padStart(2, '0');
   const dd = String(new Date().getDate()).padStart(2, '0');
-  const anivHojeA = `1995-${mm}-${dd}`;
-  const anivHojeB = `2001-${mm}-${dd}`;
+  const anivHojeA = `${dd}/${mm}/1995`;
+  const anivHojeB = `${dd}/${mm}/2001`;
 
   /** Mesmo valor em config Avulso, diárias mock e ENTRADA_AVULSO no Firestore. */
   const valorDiariaAvulso = 20;
@@ -217,29 +221,46 @@ export const gerarDadosDeTestePro = async (groupId) => {
     { nome: 'Convidado Delta', cel: '(11) 97755-1004', nivel: 1, diariaPaga: false, presencaAtual: 'Falta', historico: 3 },
   ];
 
+  const arrDiasVariados = [
+    ['Segunda', 'Quarta'],
+    ['Terça', 'Quinta'],
+    ['Sexta', 'Sábado', 'Domingo'],
+    ['Segunda', 'Sexta'],
+    ['Quarta', 'Domingo'],
+    ['Terça', 'Sábado'],
+    ['Segunda', 'Quarta', 'Sexta']
+  ];
+
   const mensalistas = nomesMensalistas.map((nome, i) => {
     const nivel = (i % 5) + 1;
     const dataNascimento =
-      i === 0 ? anivHojeA : i === 1 ? anivHojeB : `199${i % 10}-${String(((i % 9) + 1)).padStart(2, '0')}-15`;
+      i === 0 ? anivHojeA : i === 1 ? anivHojeB : `15/${String(((i % 9) + 1)).padStart(2, '0')}/199${i % 10}`;
+    const diasDesteMensalista = arrDiasVariados[i % arrDiasVariados.length];
+    
     return {
       nome: encryptData(nome, groupId),
       celular: encryptData(`(11) 98765-${String(1000 + i).slice(-4)}`, groupId),
       dataNascimento: encryptData(dataNascimento, groupId),
       nivel,
       tipo: 'MENSALISTA',
-      diasMensalista: [...diasTreino],
+      diasMensalista: diasDesteMensalista,
       groupId,
       historicoPresencas: 58 - i * 3,
       pagamentosMensais: i >= 4 ? { [`Segunda_${mesAtualNome}`]: true, [`Quarta_${mesAtualNome}`]: true } : {}, // Metade pagou este mês
       diariaPaga: false,
-      presencaAtual: i < 9 ? 'Confirmado' : 'Falta',
+      presencaAtual: 'Falta', // Legado
+      presencas: diasTreino.reduce((acc, dia) => {
+        const isDiaDele = diasDesteMensalista.includes(dia);
+        acc[dia] = (isDiaDele && i < 9) ? 'Confirmado' : 'Falta';
+        return acc;
+      }, {})
     };
   });
 
   const avulsos = avulsosPlain.map((a, i) => ({
     nome: encryptData(a.nome, groupId),
     celular: encryptData(a.cel, groupId),
-    dataNascimento: encryptData(`200${i + 2}-06-10`, groupId),
+    dataNascimento: encryptData(`10/06/200${i + 2}`, groupId),
     nivel: a.nivel,
     tipo: 'AVULSO',
     diasMensalista: [],
@@ -248,6 +269,10 @@ export const gerarDadosDeTestePro = async (groupId) => {
     pagamentosMensais: {},
     diariaPaga: a.diariaPaga,
     presencaAtual: a.presencaAtual,
+    presencas: diasTreino.reduce((acc, dia) => {
+      acc[dia] = a.presencaAtual;
+      return acc;
+    }, {})
   }));
 
   const batch = writeBatch(db);

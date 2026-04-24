@@ -5,7 +5,7 @@ const GROUP_ID_KEY = '@voleizin_group_id';
 export const saveGroupId = async (id) => {
   try {
     await AsyncStorage.setItem(GROUP_ID_KEY, id);
-  } catch (_e) {
+  } catch {
     // Erro silenciado
   }
 };
@@ -13,7 +13,7 @@ export const saveGroupId = async (id) => {
 export const getSavedGroupId = async () => {
   try {
     return await AsyncStorage.getItem(GROUP_ID_KEY);
-  } catch (_e) {
+  } catch {
     return null;
   }
 };
@@ -21,7 +21,7 @@ export const getSavedGroupId = async () => {
 export const clearSession = async () => {
   try {
     await AsyncStorage.removeItem(GROUP_ID_KEY);
-  } catch (_e) {
+  } catch {
     // Erro silenciado
   }
 };

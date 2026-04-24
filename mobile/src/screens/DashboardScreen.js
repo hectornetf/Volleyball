@@ -73,13 +73,17 @@ export default function DashboardScreen() {
   const mesAtual = (hoje.getMonth() + 1).toString().padStart(2, '0');
   const diaAtual = hoje.getDate().toString().padStart(2, '0');
 
-  // Aniversariantes DO DIA (paridade legado — apenas hoje, como o original)
-  const aniversariantesHoje = elenco.filter(j => {
+  // Aniversariantes DO MÊS (destaque para o dia de hoje)
+  const aniversariantesMes = elenco.filter(j => {
     if (!j.dataNascimento) return false;
     const dn = j.dataNascimento;
-    return dn.includes(`-${mesAtual}-${diaAtual}`) ||
-           dn.startsWith(`${diaAtual}/${mesAtual}`);
-  });
+    return dn.includes(`-${mesAtual}-`) || dn.substring(3, 5) === mesAtual;
+  }).map(j => {
+    const dn = j.dataNascimento;
+    const isHoje = dn.includes(`-${mesAtual}-${diaAtual}`) || dn.startsWith(`${diaAtual}/${mesAtual}`);
+    const dia = dn.includes('-') ? dn.substring(8, 10) : dn.substring(0, 2);
+    return { ...j, isHoje, dia };
+  }).sort((a, b) => a.dia.localeCompare(b.dia));
 
   // Stats de jogadores
   const totalElenco = elenco.length;
@@ -189,7 +193,7 @@ export default function DashboardScreen() {
           <FontAwesome5 name="volleyball-ball" size={44} color="#10b981" />
         </View>
         <Text className="text-4xl font-black text-white mb-1">
-          Voleizin<Text className="text-emerald-400">Pro</Text>
+          Voleizin<Text className="text-emerald-400">DosCria</Text>
         </Text>
         <Text className="text-slate-500 text-[10px] font-bold uppercase tracking-[4px] mb-4">Organização, Times e Finanças</Text>
 
@@ -212,17 +216,20 @@ export default function DashboardScreen() {
 
       <View className="px-4 space-y-4">
 
-        {/* ── Aniversariantes do Dia (paridade legado) ── */}
-        {aniversariantesHoje.length > 0 && (
+        {/* ── Aniversariantes do Mês (paridade legado) ── */}
+        {aniversariantesMes.length > 0 && (
           <View className="bg-slate-800/45 p-5 rounded-2xl border-l-4 border-pink-500 border border-white/5 mb-1">
             <View className="flex-row items-center mb-3">
               <FontAwesome5 name="birthday-cake" size={15} color="#ec4899" />
-              <Text className="text-white font-bold ml-2 text-sm">Aniversariantes de Hoje! 🎂</Text>
+              <Text className="text-white font-bold ml-2 text-sm">Aniversariantes do Mês! 🎂</Text>
             </View>
             <View className="flex-row flex-wrap gap-2">
-              {aniversariantesHoje.map(a => (
-                <View key={a.id} className="bg-pink-500 px-3 py-1.5 rounded-full shadow-lg shadow-pink-500/20">
-                  <Text className="text-white text-[10px] font-black uppercase">{a.nome}</Text>
+              {aniversariantesMes.map(a => (
+                <View key={a.id} className={`${a.isHoje ? 'bg-pink-500 shadow-lg shadow-pink-500/50' : 'bg-slate-700/80 border border-pink-500/30'} px-3 py-1.5 rounded-full flex-row items-center`}>
+                  <View className="bg-white/20 px-1.5 py-0.5 rounded mr-1.5">
+                    <Text className="text-[10px] font-black text-white">{a.dia}</Text>
+                  </View>
+                  <Text className={`text-[10px] font-black uppercase ${a.isHoje ? 'text-white' : 'text-slate-200'}`}>{a.nome}</Text>
                 </View>
               ))}
             </View>
@@ -342,11 +349,20 @@ export default function DashboardScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          <View className="bg-slate-800/45 p-5 rounded-2xl border-l-4 border-emerald-500 border border-white/5 flex-row items-center gap-3 mb-1">
-            <FontAwesome5 name="check-circle" size={20} color="#10b981" />
-            <View className="ml-2">
-              <Text className="text-sm font-bold text-white">Tudo em dia!</Text>
-              <Text className="text-[10px] text-slate-400">Nenhuma mensalidade pendente para este mês.</Text>
+          <View className="bg-slate-800/45 p-5 rounded-2xl border-l-4 border-emerald-500 border border-white/5 mb-1">
+            <View className="flex-row flex-wrap justify-between items-start gap-x-3 gap-y-2 mb-4">
+              <View className="flex-row items-start gap-2" style={{ flex: 1, minWidth: 0 }}>
+                <FontAwesome5 name="hand-holding-usd" size={14} color="#10b981" style={{ marginTop: 2 }} />
+                <Text numberOfLines={2} className="text-white font-bold text-sm" style={{ flex: 1, minWidth: 0 }}>
+                  Pendências do Mês
+                </Text>
+              </View>
+              <Text className="text-lg font-black text-emerald-400">R$ 0,00</Text>
+            </View>
+            <View className="items-center py-6 bg-emerald-500/5 rounded-xl border border-emerald-500/10">
+              <FontAwesome5 name="check-circle" size={28} color="#10b981" />
+              <Text className="text-sm font-bold text-white mt-3">Tudo em dia!</Text>
+              <Text className="text-xs text-slate-400 mt-1">Nenhum atleta com mensalidade atrasada.</Text>
             </View>
           </View>
         )}

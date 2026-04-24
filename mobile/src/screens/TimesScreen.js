@@ -6,11 +6,19 @@ import { subscribeJogadores } from '../services/jogadorService';
 import { useSession } from '../context/SessionContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+const diasDaSemana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+
 export default function TimesScreen() {
   const insets = useSafeAreaInsets();
   const { activeGroupId } = useSession();
+  const [diaSelecionado, setDiaSelecionado] = useState(() => {
+    const hoje = new Date().getDay();
+    const mapa = [6, 0, 1, 2, 3, 4, 5];
+    return diasDaSemana[mapa[hoje]] ?? 'Segunda';
+  });
   const [jogadoresPorTime, setJogadoresPorTime] = useState(6);
   const [times, setTimes] = useState([]);
+  const [todosJogadores, setTodosJogadores] = useState([]);
   const [confirmados, setConfirmados] = useState([]);
   const [carregando, setCarregando] = useState(true);
 
@@ -21,7 +29,7 @@ export default function TimesScreen() {
   useEffect(() => {
     if (!activeGroupId) return;
     const unsub = subscribeJogadores(activeGroupId, (dados) => {
-      setConfirmados(dados.filter(j => j.presencaAtual === 'Confirmado'));
+      setTodosJogadores(dados);
       setCarregando(false);
     });
 
@@ -32,6 +40,14 @@ export default function TimesScreen() {
 
     return () => unsub();
   }, [activeGroupId]);
+
+  useEffect(() => {
+    if (todosJogadores.length > 0) {
+      setConfirmados(
+        todosJogadores.filter(j => (j.presencas?.[diaSelecionado] || j.presencaAtual) === 'Confirmado')
+      );
+    }
+  }, [diaSelecionado, todosJogadores]);
 
   const gerarTimes = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
@@ -113,6 +129,34 @@ export default function TimesScreen() {
             <FontAwesome5 name="random" size={20} color="#22d3ee" />
           </View>
         </View>
+
+        {/* Seletor de Dias Menor */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          className="mb-8"
+          contentContainerStyle={{ gap: 8 }}
+        >
+          {diasDaSemana.map(dia => {
+            const isActive = diaSelecionado === dia;
+            return (
+              <TouchableOpacity
+                key={dia}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setDiaSelecionado(dia);
+                }}
+                className={`px-4 py-2 rounded-xl border ${
+                  isActive ? 'bg-cyan-500 border-cyan-400 shadow-lg shadow-cyan-500/30' : 'bg-slate-800 border-slate-700/50'
+                }`}
+              >
+                <Text className={`text-xs font-bold ${isActive ? 'text-white' : 'text-slate-400'}`}>
+                  {dia}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
 
         {/* Card Configuração */}
         <View className="bg-slate-800/40 p-6 rounded-[32px] border border-white/5 mb-8 shadow-2xl">

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, RefreshControl, ActivityIndicator, Linking, Animated } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, RefreshControl, ActivityIndicator, Linking, Animated, Modal } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { subscribeJogadores, getSaldoGlobalEquipamentos, saveConfigFinanceira, getConfigFinanceira, registrarSaidaCaixa, updateJogador } from '../services/jogadorService';
+import { subscribeJogadores, getSaldoGlobalEquipamentos, saveConfigFinanceira, getConfigFinanceira, registrarSaidaCaixa, registrarEntradaCaixa, updateJogador } from '../services/jogadorService';
 import { useSession } from '../context/SessionContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -15,21 +15,6 @@ const yyyymmFromMesOffset = (offset) => {
   const d = new Date();
   d.setMonth(d.getMonth() + offset);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-};
-
-/**
- * Restaura o offset do seletor. Prioriza `mesReferenciaYYYYMM` (mock / persistência explícita).
- * `mesReferenciaOffset` vindo do Firestore pode ser Long — normaliza com Number().
- */
-const mesOffsetFromConfig = (conf) => {
-  const raw = conf.mesReferenciaYYYYMM;
-  if (typeof raw === 'string' && /^\d{4}-\d{2}$/.test(raw)) {
-    const [y, m] = raw.split('-').map(Number);
-    const hoje = new Date();
-    return (y - hoje.getFullYear()) * 12 + (m - 1 - hoje.getMonth());
-  }
-  const n = Number(conf.mesReferenciaOffset);
-  return Number.isFinite(n) ? n : 0;
 };
 
 import { computarFechamento } from '../utils/financeiroUtils';
@@ -71,6 +56,11 @@ export default function FinanceiroScreen() {
   /** Mock Data grava `autoIniciarRateioMock` na config para abrir o rateio ao entrar na tela. */
   const [autoRateioMockRequested, setAutoRateioMockRequested] = useState(false);
   const consumiuAutoRateioMockRef = useRef(false);
+
+  // Estados do Modal de Operação de Caixa
+  const [modalOp, setModalOp] = useState({ visible: false, tipo: '' });
+  const [modalVal, setModalVal] = useState('');
+  const [modalDesc, setModalDesc] = useState('');
 
   const mesRef = useMemo(() => {
     const d = new Date();
@@ -234,40 +224,37 @@ export default function FinanceiroScreen() {
     );
   };
 
-  // Liquidar caixa de equipamentos (paridade legado)
-  const liquidarCaixa = () => {
+  // Abrir Modal de Operação
+  const abrirModalOp = (tipo) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.prompt(
-      'Liquidar Gastos',
-      'Valor gasto em equipamentos/manutenção (ex: 150):',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Próximo',
-          onPress: valor => {
-            const v = parseFloat(String(valor).replace(',', '.'));
-            if (isNaN(v) || v <= 0) return Alert.alert('Erro', 'Valor inválido.');
-            Alert.prompt('Descrição', 'O que foi comprado/pago?', [
-              { text: 'Cancelar', style: 'cancel' },
-              {
-                text: 'Confirmar',
-                onPress: async desc => {
-                  try {
-                    setLoading(true);
-                    await registrarSaidaCaixa(v, desc || 'Gasto em Equipamentos', activeGroupId);
-                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                    Alert.alert('Sucesso', 'Saída registrada!');
-                    carregarDados();
-                  } catch (e) { Alert.alert('Erro', e.message); }
-                  finally { setLoading(false); }
-                },
-              },
-            ]);
-          },
-        },
-      ],
-      'plain-text'
-    );
+    setModalVal('');
+    setModalDesc('');
+    setModalOp({ visible: true, tipo });
+  };
+
+  // Confirmar Operação (Entrada/Saída) do Modal
+  const confirmarOperacao = async () => {
+    const v = parseFloat(modalVal.replace(',', '.'));
+    if (isNaN(v) || v <= 0) return Alert.alert('Erro', 'Valor inválido.');
+    
+    try {
+      setLoading(true);
+      if (modalOp.tipo === 'ENTRADA') {
+        await registrarEntradaCaixa(v, modalDesc || 'Entrada Manual', activeGroupId);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert('Sucesso', 'Entrada registrada com sucesso!');
+      } else {
+        await registrarSaidaCaixa(v, modalDesc || 'Gasto em Equipamentos', activeGroupId);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert('Sucesso', 'Saída registrada com sucesso!');
+      }
+      setModalOp({ visible: false, tipo: '' });
+      carregarDados();
+    } catch (e) {
+      Alert.alert('Erro', e.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const onRefresh = () => { setRefreshing(true); carregarDados(); };
@@ -470,17 +457,26 @@ export default function FinanceiroScreen() {
                 {(parseFloat(String(custos.Avulso).replace(',', '.')) || 0).toFixed(2).replace('.', ',')}).
               </Text>
             </View>
-            <View className="flex-row justify-between items-end pt-3 border-t border-amber-500/30">
-              <Text className="text-[10px] text-slate-500 font-bold" style={{ maxWidth: 180 }}>
-                Utilize ao gastar o fundo em compras para a quadra.
+            <View className="flex-row justify-between items-center pt-3 border-t border-amber-500/30">
+              <Text className="text-[10px] text-slate-500 font-bold" style={{ maxWidth: 140 }}>
+                Gestão de verba extra para equipamentos.
               </Text>
-              <TouchableOpacity
-                onPress={liquidarCaixa}
-                className="bg-slate-800 border border-amber-500/30 px-3 py-1.5 rounded-xl flex-row items-center gap-1"
-              >
-                <FontAwesome5 name="money-check-alt" size={11} color="#f59e0b" />
-                <Text className="text-amber-400 font-bold text-xs ml-1">Liquidar Gastos</Text>
-              </TouchableOpacity>
+              <View className="flex-row gap-2">
+                <TouchableOpacity
+                  onPress={() => abrirModalOp('ENTRADA')}
+                  className="bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 rounded-xl flex-row items-center gap-1"
+                >
+                  <FontAwesome5 name="plus-circle" size={11} color="#10b981" />
+                  <Text className="text-emerald-400 font-bold text-xs ml-1">Entrada</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => abrirModalOp('SAIDA')}
+                  className="bg-red-500/10 border border-red-500/30 px-3 py-1.5 rounded-xl flex-row items-center gap-1"
+                >
+                  <FontAwesome5 name="minus-circle" size={11} color="#ef4444" />
+                  <Text className="text-red-400 font-bold text-xs ml-1">Saída</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         )}
@@ -561,6 +557,54 @@ export default function FinanceiroScreen() {
             })}
           </View>
         )}
+
+        {/* Modal de Operação de Caixa (Substitui o Alert.prompt para funcionar no Android) */}
+        <Modal visible={modalOp.visible} transparent animationType="fade">
+          <View className="flex-1 justify-center items-center bg-black/80 px-4">
+            <View className="bg-slate-800 w-full p-6 rounded-3xl border border-white/10">
+              <View className="flex-row items-center gap-2 mb-6">
+                <FontAwesome5 name={modalOp.tipo === 'ENTRADA' ? "plus-circle" : "minus-circle"} size={20} color={modalOp.tipo === 'ENTRADA' ? "#10b981" : "#ef4444"} />
+                <Text className="text-white text-xl font-black">
+                  {modalOp.tipo === 'ENTRADA' ? 'Entrada Manual' : 'Liquidar Gastos'}
+                </Text>
+              </View>
+              
+              <Text className="text-slate-400 text-xs font-bold uppercase mb-2">Valor (R$)</Text>
+              <TextInput
+                keyboardType="numeric"
+                value={modalVal}
+                onChangeText={setModalVal}
+                placeholder="Ex: 50,00"
+                placeholderTextColor="#475569"
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl py-4 px-4 text-white font-bold text-lg mb-4"
+              />
+              
+              <Text className="text-slate-400 text-xs font-bold uppercase mb-2">Descrição</Text>
+              <TextInput
+                value={modalDesc}
+                onChangeText={setModalDesc}
+                placeholder={modalOp.tipo === 'ENTRADA' ? 'Ex: Doação / Venda de Bolas' : 'Ex: Compra de Bolas / Rede'}
+                placeholderTextColor="#475569"
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl py-4 px-4 text-white font-bold text-sm mb-8"
+              />
+              
+              <View className="flex-row gap-3">
+                <TouchableOpacity 
+                  onPress={() => setModalOp({ visible: false, tipo: '' })}
+                  className="flex-1 bg-slate-700 py-3.5 rounded-xl items-center"
+                >
+                  <Text className="text-white font-bold text-sm uppercase">Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  onPress={confirmarOperacao}
+                  className={`flex-1 py-3.5 rounded-xl items-center shadow-lg ${modalOp.tipo === 'ENTRADA' ? 'bg-emerald-500 shadow-emerald-500/30' : 'bg-red-500 shadow-red-500/30'}`}
+                >
+                  <Text className="text-white font-bold text-sm uppercase tracking-wider">Confirmar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
       </Animated.View>
     </ScrollView>

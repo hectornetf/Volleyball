@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Animated } from 'react-native';
-import * as ExpoClipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { subscribeJogadores, addJogador, updateJogador, gerarDadosDeTestePro, resetDadosGrupo } from '../services/jogadorService';
@@ -9,21 +8,36 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const diasDaSemana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 
-/** Formata só com dígitos → AAAA-MM-DD (máx. 10 caracteres). */
+/** Formata só com dígitos → DD/MM/AAAA (máx. 10 caracteres). */
 function formatarDataNascimentoDigitos(text) {
   const digits = text.replace(/\D/g, '').slice(0, 8);
-  if (digits.length <= 4) return digits;
-  if (digits.length <= 6) return `${digits.slice(0, 4)}-${digits.slice(4)}`;
-  return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4, 8)}`;
 }
+
+const mascaraTelefone = (text) => {
+  const digits = text.replace(/\D/g, '').slice(0, 11);
+  let res = digits;
+  if (digits.length > 2) {
+    res = `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  }
+  if (digits.length > 7) {
+    res = `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  }
+  return res;
+};
 
 function dataNascimentoValidaOuVazia(s) {
   const t = (s || '').trim();
   if (!t) return true;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) return false;
-  const y = Number(t.slice(0, 4));
-  const m = Number(t.slice(5, 7));
-  const d = Number(t.slice(8, 10));
+  // Suporta o formato ISO antigo e o novo formato DD/MM/AAAA
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return true;
+  
+  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(t)) return false;
+  const d = Number(t.slice(0, 2));
+  const m = Number(t.slice(3, 5));
+  const y = Number(t.slice(6, 10));
   if (m < 1 || m > 12 || d < 1 || d > 31) return false;
   const dt = new Date(y, m - 1, d);
   return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
@@ -45,6 +59,7 @@ export default function AdminScreen() {
   });
 
   const [editandoId, setEditandoId] = useState(null);
+  const [editandoOriginal, setEditandoOriginal] = useState({ celular: '', dataNascimento: '' });
   const [filtroBusca, setFiltroBusca] = useState('');
   const [abaAtiva, setAbaAtiva] = useState('TODOS'); 
   const [ordemNivel, setOrdemNivel] = useState(false);
@@ -113,23 +128,33 @@ export default function AdminScreen() {
   };
 
   const salvarJogador = async () => {
-    if (!novoJogador.nome || !novoJogador.celular) {
+    // Se não estiver editando, celular é obrigatório. Se estiver editando, só é obrigatório se o original também não existir (o que é impossível pela regra)
+    if (!novoJogador.nome || (!novoJogador.celular && !editandoId)) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         return Alert.alert('Erro', 'Nome e Celular são obrigatórios!');
     }
 
-    const dataNasc = (novoJogador.dataNascimento || '').trim();
-    if (!dataNascimentoValidaOuVazia(dataNasc)) {
+    let dataNascFinal = (novoJogador.dataNascimento || '').trim();
+    if (editandoId && !dataNascFinal) {
+      dataNascFinal = editandoOriginal.dataNascimento || '';
+    } else if (dataNascFinal && !dataNascimentoValidaOuVazia(dataNascFinal)) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      return Alert.alert('Erro', 'Data de nascimento inválida. Use AAAA-MM-DD ou deixe em branco.');
+      return Alert.alert('Erro', 'Data de nascimento inválida. Use DD/MM/AAAA ou deixe em branco.');
+    }
+
+    let celularFinal = (novoJogador.celular || '').trim();
+    if (editandoId && !celularFinal) {
+      celularFinal = editandoOriginal.celular;
     }
     
     try {
       const payload = {
         ...novoJogador,
-        dataNascimento: dataNasc,
+        celular: celularFinal,
+        dataNascimento: dataNascFinal,
         groupId: activeGroupId,
-        presencaAtual: 'Falta',
+        presencas: {},
+        presencaAtual: 'Falta', // Mantido por compatibilidade
         diariaPaga: false,
         historicoPresencas: 0
       };
@@ -144,6 +169,7 @@ export default function AdminScreen() {
 
       setNovoJogador({ nome: '', celular: '', nivel: 3, tipo: 'MENSALISTA', diasMensalista: [], dataNascimento: '' });
       setEditandoId(null);
+      setEditandoOriginal({ celular: '', dataNascimento: '' });
     } catch (e) {
       Alert.alert('Erro', e.message);
     }
@@ -153,12 +179,13 @@ export default function AdminScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setNovoJogador({
       nome: j.nome,
-      celular: j.celular,
+      celular: '', // Deixa em branco para não expor
       nivel: j.nivel,
       tipo: j.tipo,
       diasMensalista: j.diasMensalista || [],
-      dataNascimento: j.dataNascimento || ''
+      dataNascimento: '' // Deixa em branco para não expor
     });
+    setEditandoOriginal({ celular: j.celular, dataNascimento: j.dataNascimento || '' });
     setEditandoId(j.id);
   };
 
@@ -211,9 +238,9 @@ export default function AdminScreen() {
               <Text className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-2 ml-1">WhatsApp</Text>
               <TextInput 
                 value={novoJogador.celular}
-                onChangeText={t => setNovoJogador({...novoJogador, celular: t})}
-                placeholder="(11) 99999-9999"
-                placeholderTextColor="#475569"
+                onChangeText={t => setNovoJogador({...novoJogador, celular: mascaraTelefone(t)})}
+                placeholder={editandoId ? "(Oculto) Digite para alterar..." : "(11) 99999-9999"}
+                placeholderTextColor={editandoId ? "#fbbf24" : "#475569"}
                 keyboardType="phone-pad"
                 returnKeyType="done"
                 className="bg-slate-900/60 border border-white/5 rounded-2xl p-4 text-white font-bold"
@@ -227,8 +254,8 @@ export default function AdminScreen() {
                 onChangeText={(t) =>
                   setNovoJogador({ ...novoJogador, dataNascimento: formatarDataNascimentoDigitos(t) })
                 }
-                placeholder="AAAA-MM-DD"
-                placeholderTextColor="#475569"
+                placeholder={editandoId && editandoOriginal.dataNascimento ? "(Oculta) Digite para alterar..." : "DD/MM/AAAA"}
+                placeholderTextColor={editandoId && editandoOriginal.dataNascimento ? "#fbbf24" : "#475569"}
                 keyboardType="numbers-and-punctuation"
                 maxLength={10}
                 returnKeyType="next"
@@ -298,6 +325,7 @@ export default function AdminScreen() {
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   setEditandoId(null);
+                  setEditandoOriginal({ celular: '', dataNascimento: '' });
                   setNovoJogador({
                     nome: '',
                     celular: '',

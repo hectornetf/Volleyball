@@ -80,29 +80,30 @@ export default function PresencaScreen() {
     setTimeout(() => setRefreshing(false), 800);
   };
 
-  // Jogadores do dia selecionado (paridade legado)
-  const jogadoresDoDia = todosJogadores
-    .filter(j => j.tipo === 'AVULSO' || (j.diasMensalista || []).includes(diaSelecionado))
-    .sort((a, b) => a.nome.localeCompare(b.nome));
+  // Exibe todos os jogadores (sem filtro de dia, para permitir que mensalistas joguem como avulsos em outros dias)
+  const jogadoresDoDia = todosJogadores.sort((a, b) => a.nome.localeCompare(b.nome));
 
-  // Totais para o cabeçalho (paridade legado: total + mensalistas + avulsos)
-  const confirmados = jogadoresDoDia.filter(j => j.presencaAtual === 'Confirmado');
+  // Totais para o cabeçalho
+  const confirmados = jogadoresDoDia.filter(j => (j.presencas?.[diaSelecionado]) === 'Confirmado');
   const totalConfirmados = {
     total: confirmados.length,
-    mensalista: confirmados.filter(j => j.tipo === 'MENSALISTA').length,
-    avulso: confirmados.filter(j => j.tipo === 'AVULSO').length,
+    mensalista: confirmados.filter(j => j.tipo === 'MENSALISTA' && (j.diasMensalista || []).includes(diaSelecionado)).length,
+    avulso: confirmados.filter(j => j.tipo === 'AVULSO' || (j.tipo === 'MENSALISTA' && !(j.diasMensalista || []).includes(diaSelecionado))).length,
   };
 
   const marcar = async (jogador, status) => {
     try {
+      const isMensalistaDesteDia = jogador.tipo === 'MENSALISTA' && (jogador.diasMensalista || []).includes(diaSelecionado);
+      const isAvulsoDesteDia = !isMensalistaDesteDia;
+
       // Avulso não pago não pode confirmar
-      if (jogador.tipo === 'AVULSO' && !jogador.diariaPaga && status === 'Confirmado') {
+      if (isAvulsoDesteDia && !jogador.diariaPaga && status === 'Confirmado') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        Alert.alert('Atenção', `Avulsos só podem confirmar após o pagamento da diária de R$${valorAvulso}!`);
+        Alert.alert('Atenção', `Para jogar hoje, ${jogador.nome} atua como Avulso e deve pagar a diária de R$${valorAvulso}!`);
         return;
       }
 
-      const statusAntigo = jogador.presencaAtual;
+      const statusAntigo = jogador.presencas?.[diaSelecionado] || 'Falta';
       if (statusAntigo !== 'Confirmado' && status === 'Confirmado') {
         await incrementarPresencaHistorica(jogador.id, 1);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -113,7 +114,9 @@ export default function PresencaScreen() {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
 
-      await updateJogador(jogador.id, { presencaAtual: status });
+      await updateJogador(jogador.id, { 
+        [`presencas.${diaSelecionado}`]: status
+      });
     } catch (err) {
       Alert.alert('Erro', err.message);
     }
@@ -242,9 +245,13 @@ export default function PresencaScreen() {
             {/* Lista de jogadores */}
             <View className="space-y-2">
               {jogadoresDoDia.map(j => {
-                const isConfirmado = j.presencaAtual === 'Confirmado';
-                const isFalta = j.presencaAtual === 'Falta';
-                const avulsoNaoPago = j.tipo === 'AVULSO' && !j.diariaPaga;
+                const statusDia = j.presencas?.[diaSelecionado] || 'Falta';
+                const isConfirmado = statusDia === 'Confirmado';
+                const isFalta = statusDia === 'Falta';
+                
+                const isMensalistaDesteDia = j.tipo === 'MENSALISTA' && (j.diasMensalista || []).includes(diaSelecionado);
+                const isAvulsoDesteDia = !isMensalistaDesteDia;
+                const avulsoNaoPago = isAvulsoDesteDia && !j.diariaPaga;
 
                 return (
                   <View
@@ -264,17 +271,17 @@ export default function PresencaScreen() {
                         >
                           {j.nome}
                         </Text>
-                        {/* Badge de tipo — só aparece quando Confirmado (paridade legado) */}
+                        {/* Badge de tipo */}
                         {isConfirmado && (
                           <View className={`px-1.5 py-0.5 rounded ${
-                            j.tipo === 'AVULSO'
+                            isAvulsoDesteDia
                               ? 'bg-amber-500/20'
                               : 'bg-emerald-500/20'
                           }`}>
                             <Text className={`text-[9px] font-black uppercase ${
-                              j.tipo === 'AVULSO' ? 'text-amber-400' : 'text-emerald-400'
+                              isAvulsoDesteDia ? 'text-amber-400' : 'text-emerald-400'
                             }`}>
-                              {j.tipo === 'AVULSO' ? 'Avulso' : 'Mensalista'}
+                              {isAvulsoDesteDia ? 'Avulso' : 'Mensalista'}
                             </Text>
                           </View>
                         )}
@@ -286,8 +293,8 @@ export default function PresencaScreen() {
 
                     {/* Ações */}
                     <View className="flex-row items-center gap-1.5">
-                      {/* Botão Pagar Avulso (paridade legado: mostra valor) */}
-                      {j.tipo === 'AVULSO' && !j.diariaPaga && (
+                      {/* Botão Pagar Avulso */}
+                      {isAvulsoDesteDia && !j.diariaPaga && (
                         <TouchableOpacity
                           onPress={() => pagarAvulso(j)}
                           className="bg-amber-500 px-2 py-1.5 rounded-xl shadow-lg shadow-amber-500/20 border border-amber-400/50"
@@ -298,8 +305,8 @@ export default function PresencaScreen() {
                         </TouchableOpacity>
                       )}
 
-                      {/* Badge "PAGO ✅" (paridade legado) */}
-                      {j.tipo === 'AVULSO' && j.diariaPaga && (
+                      {/* Badge "PAGO ✅" */}
+                      {isAvulsoDesteDia && j.diariaPaga && (
                         <View className="bg-amber-400/10 px-2 py-1 rounded-lg border border-amber-400/20">
                           <Text className="text-[9px] font-black text-amber-400">PAGO ✅</Text>
                         </View>
