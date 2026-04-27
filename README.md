@@ -56,6 +56,7 @@
 - **Rateio automático dos mensalistas** por dia de treino (cada dia tem seu custo independente)
 - **Fundo de Equipamentos:** Receita dos avulsos (e visitas) vai para um caixa separado, nunca se mistura com o custo da quadra
 - **Gestão Manual de Caixa:** Botões de Entrada e Saída para gerenciar o fundo de equipamentos (ex: doações ou compra de bolas) com histórico descritivo
+- **Congelamento de Histórico:** Uma vez que um mês é marcado como "Pago Totalmente", o relatório e o dashboard são "congelados". Isso impede que mudanças futuras no cadastro de jogadores (como mudar de mensalista para avulso) alterem os dados de rateio de meses que já foram encerrados.
 - Listagem dos devedores do mês com link de cobrança individual no WhatsApp
 - Botão de salvar configurações sem precisar fazer o fechamento completo
 

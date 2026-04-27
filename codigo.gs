@@ -455,33 +455,59 @@ function calcularFechamento(mesAno, custosJsonStr) {
   });
 
   // 2. Mapeia Mensalistas para cada dia
-  todos.forEach(j => {
-    let tipoStr = String(j.tipo).toUpperCase();
-    if (tipoStr.includes('AVULSO')) return;
+  // Se o mês já estiver "Pago Totalmente", usamos o histórico de pagamentos para listar os jogadores.
+  // Isso evita que alterações no cadastro de jogadores (ex: mudar para avulso) alterem meses passados já fechados.
+  const configAtual = getConfigFinanceira(mesAno);
+  const jaPagoTotalmente = configAtual && configAtual.status === "Pago Totalmente";
 
-    Object.keys(relatorio.dias).forEach(dia => {
-      let sigla = dia.substring(0, 3).toUpperCase();
-      // Verifica se o tipo contém a sigla do dia (SEG, TER, etc)
-      // Ou suporte legado para MENSALISTA puro que cai no padrão SEG/SEX dependendo do dia configurado
-      let ehMensalista = tipoStr.includes(sigla) || 
-                         (tipoStr === 'MENSALISTA' && (dia === 'Segunda' || dia === 'Sexta')) ||
-                         (tipoStr === 'MENS' && (dia === 'Segunda' || dia === 'Sexta'));
+  if (jaPagoTotalmente) {
+    pagamentos.forEach(p => {
+      if (p.status !== 'Pago') return;
+      // Registros de mensalistas têm mesAno com 7 caracteres (MM/YYYY). Avulsos têm > 7 (DD/MM/YYYY).
+      if (p.idJogador === 'CAIXA' || (p.mesAno && p.mesAno.length > 7)) return;
 
-      if (ehMensalista) {
-        let registroPagamento = pagamentos.find(p => String(p.idJogador) === String(j.id) && p.diaSemana === dia && p.status === 'Pago');
-        let valorPago = registroPagamento ? parseFloat(String(registroPagamento.valor).replace(',', '.')) || 0 : 0;
-        
+      const dia = p.diaSemana;
+      if (relatorio.dias[dia]) {
         relatorio.dias[dia].totalMensalistas++;
         relatorio.dias[dia].jogadores.push({
-          id: j.id, 
-          nome: j.nome, 
-          pago: !!registroPagamento,
-          valorPago: valorPago
+          id: p.idJogador,
+          nome: p.nome,
+          pago: true,
+          valorPago: parseFloat(String(p.valor).replace(',', '.')) || 0
         });
-        relatorio.totalArrecadadoMensalistas += valorPago;
+        relatorio.totalArrecadadoMensalistas += (parseFloat(String(p.valor).replace(',', '.')) || 0);
       }
     });
-  });
+  } else {
+    // Comportamento original: dinâmico baseado no cadastro atual (Jogadores)
+    todos.forEach(j => {
+      let tipoStr = String(j.tipo).toUpperCase();
+      if (tipoStr.includes('AVULSO')) return;
+
+      Object.keys(relatorio.dias).forEach(dia => {
+        let sigla = dia.substring(0, 3).toUpperCase();
+        // Verifica se o tipo contém a sigla do dia (SEG, TER, etc)
+        // Ou suporte legado para MENSALISTA puro que cai no padrão SEG/SEX dependendo do dia configurado
+        let ehMensalista = tipoStr.includes(sigla) || 
+                           (tipoStr === 'MENSALISTA' && (dia === 'Segunda' || dia === 'Sexta')) ||
+                           (tipoStr === 'MENS' && (dia === 'Segunda' || dia === 'Sexta'));
+
+        if (ehMensalista) {
+          let registroPagamento = pagamentos.find(p => String(p.idJogador) === String(j.id) && p.diaSemana === dia && p.status === 'Pago');
+          let valorPago = registroPagamento ? parseFloat(String(registroPagamento.valor).replace(',', '.')) || 0 : 0;
+          
+          relatorio.dias[dia].totalMensalistas++;
+          relatorio.dias[dia].jogadores.push({
+            id: j.id, 
+            nome: j.nome, 
+            pago: !!registroPagamento,
+            valorPago: valorPago
+          });
+          relatorio.totalArrecadadoMensalistas += valorPago;
+        }
+      });
+    });
+  }
   
   // 3. Calcula rateios e gera avisos
   Object.keys(relatorio.dias).forEach(dia => {
@@ -773,7 +799,9 @@ function getDashboardData() {
   let saldoEmAberto = 0; 
   const devedores = [];
   
-  if (configFin && configFin.custosJsonStr) {
+  // Só calculamos pendências se o mês NÃO estiver totalmente pago.
+  // Se estiver pago, o saldo em aberto é zero e a lista de devedores é vazia por definição.
+  if (configFin && configFin.custosJsonStr && financeiroStatus !== 'Pago Totalmente') {
     try {
       let cObj = JSON.parse(configFin.custosJsonStr);
       Object.keys(cObj).forEach(dia => {

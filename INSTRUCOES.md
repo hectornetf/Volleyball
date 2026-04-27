@@ -142,6 +142,12 @@ O sistema agora possui um controle de caixa global que acumula as taxas dos avul
 - **💸 Saída:** Use para registrar a compra de uma bola nova, rede ou outros custos extras.
 - **Histórico:** Todos os movimentos são registrados na aba `Pagamentos` com o ID `CAIXA`.
 
+#### Fechamento e Histórico Financeiro
+
+- **Status "Pago Totalmente":** Quando a arrecadação dos mensalistas atinge a meta do custo da quadra, o mês é marcado automaticamente como "Pago Totalmente".
+- **Integridade de Dados (Congelamento):** Ao atingir este status, a lista de jogadores e os valores de rateio daquele mês são "congelados". Isso significa que se um jogador mudar de "Mensalista" para "Avulso" no futuro, ele continuará aparecendo como mensalista nos meses que ele já pagou, preservando o histórico financeiro.
+- **Como Reabrir um Mês:** Para editar um mês já fechado, basta cancelar um pagamento ou alterar os custos configurados. Isso voltará o status para "Em Aberto" e permitirá novos cálculos baseados no cadastro atual.
+
 ### Níveis de Jogador (usados no sorteio)
 
 | Nível | Classificação |
