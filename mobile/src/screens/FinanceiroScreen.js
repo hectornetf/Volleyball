@@ -49,6 +49,7 @@ export default function FinanceiroScreen() {
 
   // Resultado do fechamento (rateio)
   const [fechamento, setFechamento] = useState(null);
+  const [statusMes, setStatusMes] = useState('Em Aberto');
 
   // Seletor de mês (paridade legado: ◀ Mês Referência ▶) — offset 0 = mês civil atual
   const [mesOffset, setMesOffset] = useState(0);
@@ -112,6 +113,7 @@ export default function FinanceiroScreen() {
       };
       
       setCustos(novosCustos);
+      setStatusMes(conf.status || 'Em Aberto');
       
       const temCustoSempre = diasDaSemana.some(
         (d) => (parseFloat(String(novosCustos[d]).replace(',', '.')) || 0) > 0
@@ -159,7 +161,15 @@ export default function FinanceiroScreen() {
 
     consumiuAutoRateioMockRef.current = true;
     setAutoRateioMockRequested(false);
-    setFechamento(computarFechamento(custos, elenco, mesRef));
+    const novoFechamento = computarFechamento(custos, elenco, mesRef, statusMes);
+    setFechamento(novoFechamento);
+
+    // Persiste o status se houver mudança relevante (ex: agora está Pago Totalmente)
+    if (activeGroupId && novoFechamento.statusGeral !== statusMes) {
+       setStatusMes(novoFechamento.statusGeral);
+       saveConfigFinanceira(activeGroupId, mesRef, { status: novoFechamento.statusGeral }).catch(() => {});
+    }
+
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     
     // Agora remove o token mock (se existir) mas mantem as configuracoes
@@ -178,6 +188,7 @@ export default function FinanceiroScreen() {
         Sabado: custos.Sábado,
         mesReferenciaOffset: mesOffset,
         mesReferenciaYYYYMM: yyyymmFromMesOffset(mesOffset),
+        status: statusMes
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert('Salvo!', 'Configuração de custos salva com sucesso!');
@@ -187,7 +198,13 @@ export default function FinanceiroScreen() {
 
   const calcularFechamento = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    setFechamento(computarFechamento(custos, elenco, mesRef));
+    const novoFechamento = computarFechamento(custos, elenco, mesRef, statusMes);
+    setFechamento(novoFechamento);
+    
+    if (activeGroupId && novoFechamento.statusGeral !== statusMes) {
+      setStatusMes(novoFechamento.statusGeral);
+      saveConfigFinanceira(activeGroupId, mesRef, { status: novoFechamento.statusGeral }).catch(() => {});
+    }
   };
 
   // Marcar/desmarcar mensalidadePaga individualmente (paridade legado)
@@ -209,7 +226,15 @@ export default function FinanceiroScreen() {
             ),
           };
         }
-        return { ...prev, dias: novosDias };
+        
+        // Recalcula o status geral após o pagamento
+        const f = computarFechamento(custos, elenco, mesRef, statusMes);
+        if (activeGroupId && f.statusGeral !== statusMes) {
+           setStatusMes(f.statusGeral);
+           saveConfigFinanceira(activeGroupId, mesRef, { status: f.statusGeral }).catch(() => {});
+        }
+
+        return { ...prev, dias: novosDias, statusGeral: f.statusGeral, totalArrecadadoMensalistas: f.totalArrecadadoMensalistas };
       });
     } catch (e) { Alert.alert('Erro', e.message); }
   };

@@ -31,7 +31,8 @@ export default function DashboardScreen() {
       const conf = await getConfigFinanceira(activeGroupId, mesAtualNome);
       setCustosMes({
         Segunda: conf.Segunda, Terça: conf.Terca ?? conf.Terça, Quarta: conf.Quarta, Quinta: conf.Quinta, 
-        Sexta: conf.Sexta, Sábado: conf.Sabado ?? conf.Sábado, Domingo: conf.Domingo, Avulso: conf.Avulso
+        Sexta: conf.Sexta, Sábado: conf.Sabado ?? conf.Sábado, Domingo: conf.Domingo, Avulso: conf.Avulso,
+        status: conf.status || 'Em Aberto'
       });
     } catch (e) {
       console.error(e);
@@ -93,7 +94,7 @@ export default function DashboardScreen() {
     : '—';
 
   // Financeiro — paridade legado
-  const fechamento = custosMes && elenco.length > 0 ? computarFechamento(custosMes, elenco, mesAtualNome) : null;
+  const fechamento = custosMes && elenco.length > 0 ? computarFechamento(custosMes, elenco, mesAtualNome, custosMes.status) : null;
   const totalQuadra = fechamento ? fechamento.totalArrecadadoMensalistas : 0;
   const metaCustoQuadra = fechamento ? fechamento.metaArrecadacao : 0;
   
@@ -104,7 +105,9 @@ export default function DashboardScreen() {
 
   // Pendências — mensalistas com mensalidade em aberto no mês atual com seus valores REAIS rateados
   const devedoresMap = {};
-  if (fechamento) {
+  const jaPagoTotalmente = fechamento && fechamento.statusGeral === 'Pago Totalmente';
+
+  if (fechamento && !jaPagoTotalmente) {
     Object.keys(fechamento.dias).forEach(dia => {
        const infoDia = fechamento.dias[dia];
        infoDia.jogadores.forEach(j => {
