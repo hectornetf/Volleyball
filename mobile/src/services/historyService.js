@@ -1,5 +1,5 @@
 import { db } from '../config/firebase';
-import { collection, addDoc, query, where, orderBy, limit, onSnapshot, serverTimestamp, getDocs } from 'firebase/firestore';
+import { collection, addDoc, query, where, orderBy, limit, onSnapshot, serverTimestamp } from 'firebase/firestore';
 
 const LOGS_COLLECTION = 'logs_atividades';
 
