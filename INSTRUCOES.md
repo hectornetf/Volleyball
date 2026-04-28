@@ -68,6 +68,7 @@ Após executar, volte na sua planilha e veja que foram criadas automaticamente a
 - `Presenças_Geral`
 - `Pagamentos`
 - `Config_Financeira`
+- `Log_Atividades` ← **Novo sistema de auditoria**
 
 ---
 
@@ -83,6 +84,7 @@ Isso criará automaticamente:
 - Presenças do dia com todos confirmados
 - Pagamentos dos avulsos registrados
 - Configuração financeira do mês atual
+- **Trilha de Histórico:** Popula a aba de histórico com logs de simulação para você testar os filtros e visualização.
 
 > **⚠️ Atenção:** Execute `gerarDadosDeTeste` apenas com as abas **vazias** (só com cabeçalho). Se já existirem dados, a função pulará cada aba automaticamente.
 
@@ -135,9 +137,24 @@ Se você atualizou o código e quer publicar as mudanças:
 | **Destino R$** | Custo da Quadra | Fundo de Equipamentos (Bolas/Redes) |
 | **WhatsApp** | Cobrança mensal individual | Cobrança de presença no grupo |
 
+### 🛡️ Sistema de Auditoria (Histórico)
+
+O sistema registra automaticamente todas as ações importantes na aba `Log_Atividades`. No app, você pode acessar a aba **Histórico** (ícone do relógio) para:
+- **Visualizar Movimentações:** Ver quem pagou, quem foi cadastrado e quem marcou presença.
+- **Filtro Inteligente:** Use a barra de busca para filtrar por dia (ex: `27/04`), mês (ex: `/04/`) ou categoria (ex: `Financeiro`).
+
+### 👤 Gestão de Jogadores Inativos
+
+Para remover um jogador da lista de presença e do rateio financeiro sem excluí-lo permanentemente:
+1. Vá na aba **Admin** (ícone de engrenagem com pessoas).
+2. Clique no ícone de editar (lápis) ao lado do jogador.
+3. Altere o status para **"Inativo"**.
+4. Salve as alterações.
+- **Resultado:** O jogador não aparecerá mais nos sorteios nem na lista de presença, mas seu histórico de pagamentos passados será preservado.
+
 ### Gestão do Fundo de Equipamentos
 
-O sistema agora possui um controle de caixa global que acumula as taxas dos avulsos:
+O sistema possui um controle de caixa global que acumula as taxas dos avulsos:
 - **💰 Entrada:** Use para registrar doações extras, lucros de vendas ou sobras.
 - **💸 Saída:** Use para registrar a compra de uma bola nova, rede ou outros custos extras.
 - **Histórico:** Todos os movimentos são registrados na aba `Pagamentos` com o ID `CAIXA`.
@@ -145,8 +162,8 @@ O sistema agora possui um controle de caixa global que acumula as taxas dos avul
 #### Fechamento e Histórico Financeiro
 
 - **Status "Pago Totalmente":** Quando a arrecadação dos mensalistas atinge a meta do custo da quadra, o mês é marcado automaticamente como "Pago Totalmente".
-- **Integridade de Dados (Congelamento):** Ao atingir este status, a lista de jogadores e os valores de rateio daquele mês são "congelados". Isso significa que se um jogador mudar de "Mensalista" para "Avulso" no futuro, ele continuará aparecendo como mensalista nos meses que ele já pagou, preservando o histórico financeiro.
-- **Como Reabrir um Mês:** Para editar um mês já fechado, basta cancelar um pagamento ou alterar os custos configurados. Isso voltará o status para "Em Aberto" e permitirá novos cálculos baseados no cadastro atual.
+- **Integridade de Dados (Congelamento):** Ao atingir este status, a lista de jogadores e os valores de rateio daquele mês são "congelados".
+- **Como Reabrir um Mês:** Para editar um mês já fechado, basta cancelar um pagamento ou alterar os custos configurados. Isso voltará o status para "Em Aberto".
 
 ### Níveis de Jogador (usados no sorteio)
 

@@ -31,19 +31,19 @@
 
 ## 🚀 Funcionalidades
 
-### 📊 Dashboard Analítico
-- **Visão do elenco:** Total de jogadores, divisão entre mensalistas e avulsos
+### 📊 Dashboard e Auditoria
+- **Visão do elenco:** Total de jogadores, divisão entre mensalistas, avulsos e ativos/inativos
 - **Saúde financeira:** Arrecadação acumulada com barras de progresso separando receita da quadra e caixa de equipamentos
-- **Aniversariantes do Mês:** Lista cronológica de quem apaga as velinhas no mês atual, com destaque pulsante para quem faz aniversário hoje! 🎂
-- **Ranking de assiduidade:** Top 5 presenças do mês
-- **Equilíbrio técnico:** Distribuição de níveis (⭐1 a ⭐5) do grupo
+- **Aniversariantes do Mês:** Lista cronológica com destaque pulsante para quem faz aniversário hoje! 🎂
+- **🛡️ Auditoria e Logs:** Histórico completo de tudo o que acontece no sistema (cadastros, presenças, pagamentos). Nunca mais perca o rastro de quem pagou ou de quem alterou um registro.
+- **🔍 Filtro de Histórico:** Busca instantânea por dia, mês ou tipo de movimentação.
 
 ### 📅 Chamada Inteligente e Multi-Dia
-- Suporte a **qualquer dia da semana** — não fica limitado a Segunda/Sexta
-- O app detecta automaticamente o dia atual e já seleciona o card correto
+- Suporte a **qualquer dia da semana** — o app detecta o dia atual e seleciona o card correto
+- **Jogadores Inativos:** Opção de inativar jogadores para que não apareçam na lista de presença ou no rateio mensal, sem precisar excluí-los do banco de dados.
 - Status em tempo real: **Vou / Falto** com recálculo instantâneo de confirmados
 - **Trava de Segurança:** Avulsos (e mensalistas fora de seu dia) só podem confirmar presença após o pagamento da diária ser registrado
-- **Múltiplas Categorias:** O sistema diferencia quem é mensalista "oficial" do dia de quem é visitante ou mensalista de outro dia
+- **Múltiplas Categorias:** Diferenciação automática entre mensalistas "oficiais", visitantes e avulsos
 - Botão de cobrança em massa via WhatsApp formatado para o grupo
 
 ### 🔀 Sorteio Inteligente de Times (Algoritmo Híbrido)
@@ -52,11 +52,11 @@
 - Compartilhamento dos times formatados diretamente no WhatsApp
 
 ### 💰 Inteligência Financeira Completa
-- **Valor do avulso configurável por mês** — defina livremente quanto cobrar, sem valor fixo
-- **Rateio automático dos mensalistas** por dia de treino (cada dia tem seu custo independente)
-- **Fundo de Equipamentos:** Receita dos avulsos (e visitas) vai para um caixa separado, nunca se mistura com o custo da quadra
-- **Gestão Manual de Caixa:** Botões de Entrada e Saída para gerenciar o fundo de equipamentos (ex: doações ou compra de bolas) com histórico descritivo
-- **Congelamento de Histórico:** Uma vez que um mês é marcado como "Pago Totalmente", o relatório e o dashboard são "congelados". Isso impede que mudanças futuras no cadastro de jogadores (como mudar de mensalista para avulso) alterem os dados de rateio de meses que já foram encerrados.
+- **Valor do avulso configurável por mês** — flexibilidade total na cobrança
+- **Rateio automático dos mensalistas** por dia de treino com custos independentes
+- **Fundo de Equipamentos:** Receita de avulsos vai para um caixa separado para compra de materiais
+- **Gestão Manual de Caixa:** Entradas e Saídas manuais para gerenciar o fundo de equipamentos com logs descritivos
+- **Congelamento de Histórico:** Uma vez que um mês é marcado como "Pago Totalmente", os dados de rateio daquele mês são preservados contra mudanças futuras no cadastro.
 - Listagem dos devedores do mês com link de cobrança individual no WhatsApp
 - Botão de salvar configurações sem precisar fazer o fechamento completo
 
