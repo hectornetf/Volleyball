@@ -3,6 +3,7 @@ const SHEET_JOGADORES = 'Jogadores';
 const SHEET_PRESENCAS = 'Presenças_Geral';
 const SHEET_PAGAMENTOS = 'Pagamentos';
 const SHEET_CONFIG_FINANCEIRA = 'Config_Financeira';
+const SHEET_LOG = 'Log_Atividades';
 
 
 function setupInicial() {
@@ -52,6 +53,33 @@ function setupInicial() {
       sheet.getRange(1, 1, 1, 3).setValues([['Mes/Ano', 'Status', 'Custos_JSON']]).setFontWeight("bold");
     }
   }
+
+  if (!ss.getSheetByName(SHEET_LOG)) {
+    let sheet = ss.insertSheet(SHEET_LOG);
+    sheet.appendRow(['Data/Hora', 'Categoria', 'Descrição', 'Valor', 'Status']);
+    sheet.getRange("A1:E1").setFontWeight("bold");
+    sheet.setColumnWidth(1, 150);
+    sheet.setColumnWidth(2, 100);
+    sheet.setColumnWidth(3, 350);
+  }
+}
+
+/**
+ * Registra um evento no log de atividades
+ */
+function registrarLog(categoria, descricao, valor = '', status = 'Sucesso') {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_LOG);
+    if (!sheet) return;
+    
+    const agora = Utilities.formatDate(new Date(), "GMT-3", "dd/MM/yyyy HH:mm:ss");
+    // Forçamos a limpeza de valores nulos para evitar deslocamento de colunas
+    const v = (valor === undefined || valor === null || valor === '') ? '' : valor;
+    sheet.appendRow([agora, categoria, descricao, v, status]);
+  } catch(e) {
+    console.error("Erro ao registrar log: " + e.message);
+  }
 }
 
 
@@ -63,6 +91,9 @@ function setupInicial() {
 function gerarDadosDeTeste() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   
+  // Log de início de processo
+  registrarLog('SISTEMA', '🚀 Iniciando geração de dados de teste (Ambiente de Simulação)');
+
   // Garante que as abas existem antes de tentar inserir dados
   let sheetJogadores = ss.getSheetByName(SHEET_JOGADORES);
   let sheetPresencas = ss.getSheetByName(SHEET_PRESENCAS);
@@ -78,68 +109,57 @@ function gerarDadosDeTeste() {
   // 1. Jogadores fictícios (só se a aba estiver vazia)
   if (sheetJogadores && sheetJogadores.getLastRow() <= 1) {
     let jogadoresMock = [
-      // Mensalistas de Segunda
       ['1710000000001', 'Carlos (Mens Seg)', '11999990001', '5', 'Mensalista: Seg', "'15/03/1990", 'Ativo'],
       ['1710000000002', 'Fernanda (Mens Seg)', '11999990002', '4', 'Mensalista: Seg', "'22/07/1993", 'Ativo'],
       ['1710000000003', 'Roberto (Mens Seg)', '11999990003', '4', 'Mensalista: Seg', "'10/11/1988", 'Ativo'],
       ['1710000000004', 'Camila (Mens Seg)', '11999990004', '3', 'Mensalista: Seg', "'05/02/1997", 'Ativo'],
-      // Mensalistas de Sexta
       ['1710000000005', 'Thiago (Mens Sex)', '11999990005', '5', 'Mensalista: Sex', "'30/09/1991", 'Ativo'],
       ['1710000000006', 'Patrícia (Mens Sex)', '11999990006', '3', 'Mensalista: Sex', "'18/04/1994", 'Ativo'],
       ['1710000000007', 'Diego (Mens Sex)', '11999990007', '4', 'Mensalista: Seg, Sex', "'27/06/1986", 'Ativo'],
       ['1710000000008', 'Larissa (Mens Seg/Sex)', '11999990008', '3', 'Mensalista: Seg, Sex', "'12/01/1999", 'Ativo'],
-      // Avulsos
       ['1710000000009', 'João (Avulso)', '11999990009', '2', 'Avulso', "'08/08/1995", 'Ativo'],
       ['1710000000010', 'Mariana (Avulso)', '11999990010', '2', 'Avulso', "'20/12/2000", 'Ativo'],
       ['1710000000011', 'Rafael (Avulso)', '11999990011', '1', 'Avulso', "'14/05/1998", 'Ativo'],
       ['1710000000012', 'Beatriz (Avulso)', '11999990012', '1', 'Avulso', "'03/09/2001", 'Ativo']
     ];
-    jogadoresMock.forEach(j => sheetJogadores.appendRow(j));
+    jogadoresMock.forEach(j => {
+      sheetJogadores.appendRow(j);
+      registrarLog('CADASTRO', 'Jogador cadastrado via simulação: ' + j[1], 0);
+    });
     Logger.log('✅ Jogadores de teste inseridos.');
-  } else {
-    Logger.log('⚠️ Aba de Jogadores já possui dados. Pulando inserção.');
   }
 
-  // 2. Configuração Financeira fictícia para o mês atual
+  // 2. Configuração Financeira fictícia
   if (sheetConfigFin && sheetConfigFin.getLastRow() <= 1) {
     let hoje = new Date();
     let mesAno = ('0' + (hoje.getMonth() + 1)).slice(-2) + '/' + hoje.getFullYear();
     let custosMock = JSON.stringify({"Segunda": 120, "Sexta": 150, "Avulso": 10});
     sheetConfigFin.appendRow(["'" + mesAno, 'Em Aberto', custosMock]);
-    Logger.log('✅ Configuração financeira de teste inserida para ' + mesAno);
-  } else {
-    Logger.log('⚠️ Config Financeira já possui dados. Pulando inserção.');
+    registrarLog('FINANCEIRO', 'Novo rateio de teste iniciado: ' + mesAno, 0);
   }
 
-  // 3. Presenças fictícias — todos 12 confirmados para testar o sorteio
+  // 3. Presenças fictícias
   if (sheetPresencas && sheetPresencas.getLastRow() <= 1) {
     let hoje = new Date();
     let hojeLocal = "'" + ('0' + hoje.getDate()).slice(-2) + '/' + ('0' + (hoje.getMonth() + 1)).slice(-2) + '/' + hoje.getFullYear();
     let diaSemanaStr = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"][hoje.getDay()];
     
     let presencasMock = [
-      // Mensalistas — confirmados
       [hojeLocal, diaSemanaStr, '1710000000001', 'Carlos (Mens Seg)', 'Confirmado', 'Mensalista: Seg'],
       [hojeLocal, diaSemanaStr, '1710000000002', 'Fernanda (Mens Seg)', 'Confirmado', 'Mensalista: Seg'],
       [hojeLocal, diaSemanaStr, '1710000000003', 'Roberto (Mens Seg)', 'Confirmado', 'Mensalista: Seg'],
       [hojeLocal, diaSemanaStr, '1710000000004', 'Camila (Mens Seg)', 'Confirmado', 'Mensalista: Seg'],
       [hojeLocal, diaSemanaStr, '1710000000005', 'Thiago (Mens Sex)', 'Confirmado', 'Mensalista: Sex'],
-      [hojeLocal, diaSemanaStr, '1710000000006', 'Patrícia (Mens Sex)', 'Confirmado', 'Mensalista: Sex'],
-      [hojeLocal, diaSemanaStr, '1710000000007', 'Diego (Mens Sex)', 'Confirmado', 'Mensalista: Seg, Sex'],
-      [hojeLocal, diaSemanaStr, '1710000000008', 'Larissa (Mens Seg/Sex)', 'Confirmado', 'Mensalista: Seg, Sex'],
-      // Avulsos — confirmados (pagamento será inserido na aba de Pagamentos abaixo)
       [hojeLocal, diaSemanaStr, '1710000000009', 'João (Avulso)', 'Confirmado', 'Avulso'],
-      [hojeLocal, diaSemanaStr, '1710000000010', 'Mariana (Avulso)', 'Confirmado', 'Avulso'],
-      [hojeLocal, diaSemanaStr, '1710000000011', 'Rafael (Avulso)', 'Confirmado', 'Avulso'],
-      [hojeLocal, diaSemanaStr, '1710000000012', 'Beatriz (Avulso)', 'Confirmado', 'Avulso']
+      [hojeLocal, diaSemanaStr, '1710000000010', 'Mariana (Avulso)', 'Confirmado', 'Avulso']
     ];
-    presencasMock.forEach(p => sheetPresencas.appendRow(p));
-    Logger.log('✅ Presenças de teste inseridas para ' + hojeLocal + ' (' + diaSemanaStr + ')');
-  } else {
-    Logger.log('⚠️ Aba de Presenças já possui dados. Pulando inserção.');
+    presencasMock.forEach(p => {
+      sheetPresencas.appendRow(p);
+      registrarLog('PRESENÇA', 'Confirmação de presença via simulação: ' + p[3], 0);
+    });
   }
 
-  // 4. Pagamentos dos avulsos (para que o sistema libere a confirmação)
+  // 4. Pagamentos
   let sheetPagamentos = ss.getSheetByName(SHEET_PAGAMENTOS);
   if (sheetPagamentos && sheetPagamentos.getLastRow() <= 1) {
     let hoje = new Date();
@@ -149,18 +169,17 @@ function gerarDadosDeTeste() {
     let pagamentosMock = [
       ['1710000000009', 'João (Avulso)',    diaSemanaStr, hojeCompleto, 10, 'Pago'],
       ['1710000000010', 'Mariana (Avulso)', diaSemanaStr, hojeCompleto, 10, 'Pago'],
-      ['1710000000011', 'Rafael (Avulso)',  diaSemanaStr, hojeCompleto, 10, 'Pago'],
-      ['1710000000012', 'Beatriz (Avulso)', diaSemanaStr, hojeCompleto, 10, 'Pago'],
       ['CAIXA', 'Compra de Bolas (Teste)',  'Saída',      hojeCompleto, -15.50, 'Pago']
     ];
-    pagamentosMock.forEach(p => sheetPagamentos.appendRow(p));
-    Logger.log('✅ Pagamentos de avulsos inseridos.');
-  } else {
-    Logger.log('⚠️ Aba de Pagamentos já possui dados. Pulando inserção.');
+    pagamentosMock.forEach(p => {
+      sheetPagamentos.appendRow(p);
+      let cat = p[0] === 'CAIXA' ? 'FINANCEIRO' : 'FINANCEIRO';
+      registrarLog(cat, 'Movimentação financeira simulada: ' + p[1], p[4]);
+    });
   }
 
-  Logger.log('🏐 gerarDadosDeTeste() concluído! 12 jogadores, 2 times possíveis de 6.');
-
+  registrarLog('SISTEMA', '✅ Geração de dados de teste concluída. Sistema pronto para uso!');
+  Logger.log('🏐 gerarDadosDeTeste() concluído com auditoria!');
 }
 
 
@@ -247,6 +266,8 @@ function adicionarJogador(nome, telefone, nivel, tipo, dataNascimento, status) {
   // Salva como string com apóstrofo para garantir DD/MM/YYYY na planilha
   let dataSalvar = dataNascimento ? "'" + dataNascimento : '';
   sheet.appendRow([id, nome, telefone, nivel, tipo, dataSalvar, status || 'Ativo']);
+  
+  registrarLog('CADASTRO', 'Novo jogador adicionado: ' + nome + ' (' + tipo + ')');
   return getJogadores();
 }
 
@@ -267,6 +288,8 @@ function editarJogador(id, nome, telefone, nivel, tipo, dataNascimento, status) 
       let dataSalvar = dataNascimento ? "'" + dataNascimento : '';
       sheet.getRange(i+1, 6).setValue(dataSalvar);
       sheet.getRange(i+1, 7).setValue(status || 'Ativo');
+      
+      registrarLog('CADASTRO', 'Jogador atualizado: ' + nome + ' (Status: ' + (status || 'Ativo') + ')');
       return getJogadores();
     }
   }
@@ -322,6 +345,8 @@ function registrarPresenca(diaDaSemana, dataJogo, idJogador, nome, status) {
   
   // Array com 6 colunas: Data, Dia Semana, ID, Nome, Status, Tipo
   sheet.appendRow(["'" + dataJogo, diaDaSemana, idJogador, nome, status, tipo]);
+  
+  registrarLog('PRESENÇA', 'Presença marcada para ' + nome + ': ' + status + ' (' + diaDaSemana + ')');
   return getPresencas(diaDaSemana, dataJogo);
 }
 
@@ -559,10 +584,13 @@ function salvarConfigFinanceira(mesAno, custosJsonStr, status) {
       // Formato Novo (Col 2 Status, Col 3 Json)
       sheet.getRange(i+1, 2).setValue(status || "Em Aberto");
       sheet.getRange(i+1, 3).setValue(typeof custosJsonStr === 'string' ? custosJsonStr : JSON.stringify(custosJsonStr));
+      
+      registrarLog('FINANCEIRO', 'Configuração de rateio atualizada (' + mesAno + '): ' + (status || "Em Aberto"));
       return;
     }
   }
   sheet.appendRow(["'" + mesAno, status || "Em Aberto", typeof custosJsonStr === 'string' ? custosJsonStr : JSON.stringify(custosJsonStr)]);
+  registrarLog('FINANCEIRO', 'Novo rateio iniciado para ' + mesAno);
 }
 
 // Obtém os custos configurados de um mês
@@ -604,6 +632,80 @@ function deletarConfigFinanceira(mesAno) {
       sheet.deleteRow(i + 1);
       return;
     }
+  }
+}
+
+/**
+ * Obtém o histórico completo de movimentações (Pagamentos, Avulsos e Saídas)
+ * Retorna uma lista formatada para a interface do usuário.
+ */
+function getHistoricoGeral() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName(SHEET_LOG);
+    
+    // Se a aba não existe, tenta criar ou retorna vazio
+    if (!sheet) {
+      setupInicial();
+      sheet = ss.getSheetByName(SHEET_LOG);
+      if (!sheet) return [];
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    if (!data || data.length <= 1) return [];
+    
+    // Remove cabeçalho e filtra linhas que possam estar vazias
+    const rows = data.slice(1).filter(row => row[0] && row[1]);
+    
+    // Inverte para mostrar os mais recentes primeiro e limita a 50
+    return rows.reverse().slice(0, 50).map((row, index) => {
+      const dataHora = row[0];
+      const categoria = String(row[1] || 'SISTEMA');
+      const descricao = String(row[2] || '');
+      const valorRaw = row[3];
+      const status = String(row[4] || '');
+      
+      let valorNum = 0;
+      if (valorRaw !== undefined && valorRaw !== '') {
+        valorNum = parseFloat(String(valorRaw).replace(',', '.'));
+      }
+      
+      // Converte dataHora para string amigável
+      let dataStr = '';
+      if (dataHora instanceof Date) {
+        dataStr = Utilities.formatDate(dataHora, "GMT-3", "dd/MM/yyyy HH:mm:ss");
+      } else {
+        dataStr = String(dataHora);
+      }
+      
+      let icone = 'fa-solid fa-circle-info';
+      let cor = 'text-slate-400';
+      
+      if (categoria === 'FINANCEIRO') {
+        icone = 'fa-solid fa-hand-holding-dollar';
+        cor = 'text-emerald-400';
+      } else if (categoria === 'CADASTRO') {
+        icone = 'fa-solid fa-user-gear';
+        cor = 'text-purple-400';
+      } else if (categoria === 'PRESENÇA') {
+        icone = 'fa-solid fa-calendar-check';
+        cor = 'text-cyan-400';
+      }
+      
+      return {
+        id: 'hist_' + index,
+        nome: categoria,
+        detalhe: descricao,
+        valor: isNaN(valorNum) ? 0 : valorNum,
+        status: status,
+        tipo: dataStr,
+        icone: icone,
+        cor: cor
+      };
+    });
+  } catch (e) {
+    console.error("Erro em getHistoricoGeral: " + e.message);
+    return [];
   }
 }
 
@@ -685,6 +787,7 @@ function liquidarCaixaEquipamentos(valorLiquidar) {
   // ID=CAIXA, Nome=Compra Equipamentos, Dia=Saída, MesAno=Data de Hoje, Valor=-valorDouble
   sheet.appendRow(['CAIXA', 'Compra de Equipamento / Saída', 'Saída', "'" + dataStr, -valorDouble, 'Pago']);
   
+  registrarLog('FINANCEIRO', 'Compra de Equipamento / Saída', -valorDouble);
   return getHistoricoCaixaEquipamentos();
 }
 
@@ -706,6 +809,7 @@ function registrarEntradaCaixaEquipamentos(valorEntrada, descricao) {
   // ID=CAIXA, Nome=Descricao, Dia=Entrada, MesAno=Data de Hoje, Valor=valorDouble
   sheet.appendRow(['CAIXA', descFinal, 'Entrada', "'" + dataStr, valorDouble, 'Pago']);
   
+  registrarLog('FINANCEIRO', descFinal, valorDouble);
   return getHistoricoCaixaEquipamentos();
 }
 
@@ -733,6 +837,10 @@ function registrarPagamento(idJogador, nome, diaSemana, mesAno, valor) {
       let statusAtual = data[i].length >= 6 && data[i][5] ? data[i][5] : 'Pago';
       let novoStatus = statusAtual === 'Pago' ? 'Cancelado' : 'Pago';
       sheet.getRange(i + 1, 6).setValue(novoStatus);
+      
+      let valorRegistro = data[i][4] || 0;
+      registrarLog('FINANCEIRO', 'Pagamento ' + (novoStatus === 'Pago' ? 'confirmado' : 'cancelado') + ': ' + nome + ' (' + mesAno + ')', novoStatus === 'Pago' ? valorRegistro : 0);
+      
       let filtro = mesAno.length > 7 ? mesAno.split('/').slice(1).join('/') : mesAno;
       return getPagamentos(filtro);
     }
@@ -740,6 +848,8 @@ function registrarPagamento(idJogador, nome, diaSemana, mesAno, valor) {
   
   // Não existe: cria novo registro com status 'Pago'
   sheet.appendRow([idJogador, nome, diaSemana, "'" + mesAno, valor, 'Pago']);
+  
+  registrarLog('FINANCEIRO', 'Pagamento recebido: ' + nome + ' (' + mesAno + ')', valor);
   
   let filtroRetorno = mesAno.length > 7 ? mesAno.split('/').slice(1).join('/') : mesAno;
   return getPagamentos(filtroRetorno);

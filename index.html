@@ -130,6 +130,10 @@
                 :class="tab === 'admin' ? 'active bg-slate-800 text-purple-400 border-purple-500/50 shadow-[0_0_15px_rgba(192,132,252,0.2)]' : 'bg-slate-800/30 text-slate-500 border-transparent'"
                 class="nav-btn flex-1 py-3 rounded-xl border font-semibold"><i
                     class="fa-solid fa-users-gear lg:mr-2"></i></button>
+            <button @click="tab = 'historico'"
+                :class="tab === 'historico' ? 'active bg-slate-800 text-rose-400 border-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.2)]' : 'bg-slate-800/30 text-slate-500 border-transparent'"
+                class="nav-btn flex-1 py-3 rounded-xl border font-semibold"><i
+                    class="fa-solid fa-clock-rotate-left lg:mr-2"></i></button>
         </div>
 
         <!-- Main Content -->
@@ -788,6 +792,69 @@
                 </div>
             </section>
 
+            <!-- HISTÓRICO -->
+            <section v-if="tab === 'historico'" class="space-y-4 animate-fade-in">
+                <div class="glass p-5 rounded-2xl">
+                    <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-clock-rotate-left text-rose-400"></i> Histórico de Movimentações
+                    </h2>
+                    
+                    <!-- Campo de Filtro -->
+                    <div class="relative mb-6">
+                        <input v-model="filtroHistorico" type="text" 
+                            placeholder="Filtrar por dia, mês ou tipo (ex: 27/04)..." 
+                            class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl py-3 pl-10 pr-4 text-sm focus:border-rose-500/50 focus:ring-1 focus:ring-rose-500/50 outline-none transition-all">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                        <button v-if="filtroHistorico" @click="filtroHistorico = ''" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors">
+                            <i class="fa-solid fa-circle-xmark"></i>
+                        </button>
+                    </div>
+
+                    <div v-if="loading" class="py-20 text-center">
+                        <i class="fa-solid fa-circle-notch fa-spin text-3xl text-rose-400"></i>
+                        <p class="text-slate-400 mt-4 font-bold uppercase text-[10px] tracking-widest">Carregando histórico...</p>
+                    </div>
+
+                    <div v-else-if="historico.length === 0" class="py-20 text-center text-slate-500">
+                        <i class="fa-solid fa-box-open text-4xl mb-4 opacity-20"></i>
+                        <p>Nenhuma movimentação registrada.</p>
+                    </div>
+
+                    <div v-else-if="historicoFiltrado.length === 0" class="py-20 text-center text-slate-500">
+                        <i class="fa-solid fa-filter-circle-xmark text-4xl mb-4 opacity-20 text-rose-400/50"></i>
+                        <p>Nenhum resultado para este filtro.</p>
+                    </div>
+
+                    <div v-else class="space-y-3">
+                        <div v-for="item in historicoFiltrado" :key="item.id" 
+                            class="flex items-start gap-3 p-4 bg-slate-800/40 rounded-xl border border-slate-700/50 hover:bg-slate-800/60 transition-all overflow-hidden animate-in">
+                            
+                            <div :class="item.cor.replace('text', 'bg').replace('400', '500/20')" class="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border border-white/5 mt-1">
+                                <i :class="[item.icone, item.cor]" class="text-lg"></i>
+                            </div>
+
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between items-start gap-2">
+                                    <div class="min-w-0">
+                                        <h4 class="font-bold text-slate-100 truncate text-sm uppercase tracking-wider">{{ item.nome }}</h4>
+                                        <div class="flex flex-col text-[9px] text-slate-500 font-bold leading-tight mt-0.5">
+                                            <span>{{ item.tipo.split(' ')[0] }}</span>
+                                            <span>{{ item.tipo.split(' ')[1] }}</span>
+                                        </div>
+                                    </div>
+                                    <div v-if="item.valor !== 0" 
+                                         :class="item.valor > 0 ? 'text-emerald-400' : 'text-rose-400'"
+                                         class="font-black text-xs whitespace-nowrap bg-slate-900/50 px-2 py-1 rounded-lg border border-white/5">
+                                        {{ item.valor > 0 ? '+' : '-' }} R$ {{ Math.abs(item.valor).toLocaleString('pt-BR', {minimumFractionDigits: 2}) }}
+                                    </div>
+                                </div>
+                                <p class="text-slate-400 text-xs mt-2 leading-relaxed break-words">{{ item.detalhe }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
         </main>
     </div>
 
@@ -815,12 +882,24 @@
                     fechamento: null,
                     mesReferencia: (new Date().getMonth() + 1).toString().padStart(2, '0') + '/' + new Date().getFullYear(),
                     pagamentosGlobal: [],
+                    historico: [],
+                    filtroHistorico: '',
                     loading: false,
                     appUrl: '',
                     toastMsg: ''
                 };
             },
             computed: {
+                historicoFiltrado: function() {
+                    if (!this.filtroHistorico) return this.historico;
+                    var f = this.filtroHistorico.toLowerCase();
+                    return this.historico.filter(function(h) {
+                        // Busca na data (tipo), categoria (nome) ou descrição (detalhe)
+                        return (h.tipo && h.tipo.toLowerCase().includes(f)) || 
+                               (h.nome && h.nome.toLowerCase().includes(f)) || 
+                               (h.detalhe && h.detalhe.toLowerCase().includes(f));
+                    });
+                },
                 totalConfirmados: function () {
                     var count = { total: 0, mensalista: 0, avulso: 0 };
                     for (var i = 0; i < this.presencas.length; i++) {
@@ -860,6 +939,7 @@
                 tab: function (newTab) {
                     if (newTab === 'financeiro') this.checkFinanceiro();
                     if (newTab === 'dashboard') this.fetchDashboardData();
+                    if (newTab === 'historico') this.carregarHistorico();
                 }
             },
             created: function () {
@@ -878,6 +958,14 @@
                 });
             },
             methods: {
+                carregarHistorico: function() {
+                    this.loading = true;
+                    var self = this;
+                    this.runGoogleScript('getHistoricoGeral').then(function(res) {
+                        self.historico = res;
+                        self.loading = false;
+                    });
+                },
                 somaCustosConfig: function () {
                     let sum = 0;
                     Object.keys(this.custosConfig).forEach(k => {
@@ -995,6 +1083,8 @@
                             google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).liquidarCaixaEquipamentos(args[0]);
                         } else if (funcName === 'registrarEntradaCaixaEquipamentos') {
                             google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).registrarEntradaCaixaEquipamentos(args[0], args[1]);
+                        } else if (funcName === 'getHistoricoGeral') {
+                            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getHistoricoGeral();
                         } else {
                             reject('Função não encontrada');
                         }
@@ -1035,6 +1125,10 @@
                         }
                     };
                     if (f === 'getConfigFinanceira') return { custoSegunda: 120, custoSexta: 100 };
+                    if (f === 'getHistoricoGeral') return [
+                        { id: 1, nome: 'FINANCEIRO', detalhe: 'Pagamento recebido: Hector (Mensalidade)', tipo: '27/04/2026 21:00:00', icone: 'fa-solid fa-hand-holding-dollar', cor: 'text-emerald-400' },
+                        { id: 2, nome: 'CADASTRO', detalhe: 'Jogador atualizado: Bruno (Ativo)', tipo: '27/04/2026 20:30:00', icone: 'fa-solid fa-user-gear', cor: 'text-purple-400' }
+                    ];
                     return [];
                 },
                 fetchJogadores: function () {
