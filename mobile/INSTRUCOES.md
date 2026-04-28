@@ -6,7 +6,7 @@ Este documento define a arquitetura, regras de negócio e padrões de segurança
 
 ## 🏗️ Arquitetura do Sistema
 
-A plataforma foi migrada de uma estrutura fixa para uma arquitetura **SaaS (Software as a Service)** moderna:
+A plataforma utiliza uma arquitetura **SaaS (Software as a Service)** moderna:
 - **Frontend**: React Native with Expo (Managed Workflow).
 - **Backend**: Firebase Firestore (NoSQL) com isolamento por Grupo.
 - **Segurança**: Criptografia AES-256 (Camada de Aplicação).
@@ -14,53 +14,51 @@ A plataforma foi migrada de uma estrutura fixa para uma arquitetura **SaaS (Soft
 
 ---
 
+## 🛠️ Passo a Passo: Configuração Inicial
+
+Para rodar este projeto pela primeira vez, siga estas etapas:
+
+### 1. Criar Projeto no Firebase
+1. Vá ao [Firebase Console](https://console.firebase.google.com/) e clique em **Adicionar Projeto**.
+2. No menu lateral, clique em **Build > Cloud Firestore** e clique em **Criar banco de dados**.
+3. Em **Regras de Segurança**, use o conteúdo do arquivo `firestore.rules` que está na raiz desta pasta mobile.
+
+### 2. Registrar o App (Obter Credenciais)
+1. No console do Firebase, clique no ícone de **Web (</>)** para adicionar um app.
+2. Copie o objeto `firebaseConfig` que aparecerá. Você usará esses valores no seu `.env`.
+
+### 3. Configurar Variáveis de Ambiente (.env)
+Crie um arquivo chamado `.env` na raiz da pasta `mobile/`:
+
+```env
+# Configurações do Firebase
+EXPO_PUBLIC_FIREBASE_API_KEY=...
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=...
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=...
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=...
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=...
+EXPO_PUBLIC_FIREBASE_APP_ID=...
+EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID=...
+
+# Chave de Criptografia (Mantenha em segredo!)
+EXPO_PUBLIC_ENCRYPTION_KEY=sua_chave_aqui
+```
+
+### 4. Índices do Firestore (Obrigatório)
+Para que a aba de **Histórico** funcione, crie o índice composto no console:
+- **Coleção**: `logs_atividades`
+- **Campos**: `groupId` (Ascending) + `createdAt` (Descending)
+
+---
+
 ## 🛡️ Regras de Ouro (Segurança e Privacidade)
 
 ### 1. Criptografia AES-256
-Todos os dados sensíveis dos jogadores **devem** ser criptografados antes de serem persistidos no Firestore.
-- **Campos Obrigatórios**: `nome`, `celular`, `dataNascimento`.
-- **Chave de Criptografia**: Composta pela `SECRET_KEY` (no `.env`) + `activeGroupId`. Isso garante que, mesmo em caso de vazamento, os dados de um grupo não possam ser descriptografados sem o ID específico.
+Dados sensíveis dos jogadores **devem** ser criptografados.
+- **Campos Encriptados**: `nome`, `celular`, `dataNascimento` (na col. jogadores) e `descricao` (nas finanças).
 
-**Como usar:**
-```javascript
-import { encryptData, decryptData } from '../utils/crypto';
-
-// Ao Salvar:
-const encrypted = encryptData("Nome do Jogador", activeGroupId);
-
-// Ao Ler:
-const plain = decryptData(doc.data().nome, activeGroupId);
-```
-
-### 2. Isolamento Multi-Tenancy (SaaS)
-Nenhuma query ao Firestore deve ser feita sem o filtro de `groupId`. O `SessionContext` provê o `activeGroupId` globalmente.
-- O campo `groupId` deve estar presente em todos os documentos das coleções `jogadores` e `operacoes_financeiras`.
-
----
-
-## 💻 Padrões de Código
-
-### 1. Linting & Análise Estática
-Utilizamos o **ESLint v9 (Flat Config)** para manter a qualidade do código.
-- **Executar Análise**: `npm run lint`
-- **Regras Críticas**: `no-unused-vars` (Warning) e `no-useless-catch` (Error).
-
-### 2. Estilização (UI Pro)
-- Use apenas classes do **NativeWind**.
-- Evite `inline styles` a menos que seja para propriedades dinâmicas de animação.
-- Siga a paleta de cores *Dark Premium* definida no sistema (Slate 800/900 + Indigo/Cyan/Emerald).
-
----
-
-## 🚀 Como Rodar o Ambiente de Desenvolvimento
-
-1.  **Instalar Dependências**: `npm install`
-2.  **Configurar Variáveis**: Crie um arquivo `.env` baseado no padrão:
-    ```env
-    EXPO_PUBLIC_FIREBASE_API_KEY=...
-    EXPO_PUBLIC_ENCRYPTION_KEY=...
-    ```
-3.  **Iniciar Expo**: `npx expo start`
+### 2. Isolamento Multi-Tenancy
+Nenhuma query deve ser feita sem o filtro de `groupId`. O `SessionContext` provê o `activeGroupId` globalmente.
 
 ---
 
@@ -69,27 +67,38 @@ Utilizamos o **ESLint v9 (Flat Config)** para manter a qualidade do código.
 ### Coleção `jogadores`
 | Campo | Tipo | Descrição |
 |---|---|---|
-| `nome` | String (AES) | Nome do jogador (Encriptado) |
-| `celular` | String (AES) | Telefone (Encriptado) |
+| `nome` | String (AES) | Nome do jogador |
 | `groupId` | String | ID do grupo (Ex: VO-XXXX) |
-| `nivel` | Number | Ranking técnico (1 a 5) |
 | `tipo` | String | `MENSALISTA` ou `AVULSO` |
+| `status` | String | `Ativo` ou `Inativo` (Filtra presenças) |
 
 ### Coleção `operacoes_financeiras`
 | Campo | Tipo | Descrição |
 |---|---|---|
-| `tipo` | String | `ENTRADA_AVULSO` ou `SAIDA_DESPESA` |
-| `valor` | Number | Valor da operação (Positivo/Negativo) |
-| `descricao` | String (AES) | Identificador da transação (Encriptado) |
+| `tipo` | String | `ENTRADA_AVULSO`, `SAIDA_DESPESA`, etc. |
+| `valor` | Number | Valor da operação |
+| `groupId` | String | Vínculo com o grupo |
+
+### Coleção `logs_atividades` (Novo)
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `categoria` | String | `FINANCEIRO`, `CADASTRO`, `PRESENÇA`, `SISTEMA` |
+| `descricao` | String | Texto amigável da ação |
+| `createdAt` | Timestamp | Data/Hora para ordenação oficial |
+| `groupId` | String | Vínculo com o grupo |
+
+### Coleção `config_financeira` (Novo)
+| Campo | Tipo | Descrição |
+|---|---|---|
+| ID Documento | String | Formato: `{groupId}_{Mês}` (Ex: VO-123_Janeiro 2026) |
+| `Segunda..Domingo` | Number | Custo fixo da quadra por dia da semana |
+| `Avulso` | Number | Valor padrão da diária |
 
 ---
 
-## ✅ Checklist para Novas Funcionalidades
-1.  [ ] A nova funcionalidade respeita o filtro de `activeGroupId`?
-2.  [ ] Dados sensíveis estão sendo encriptados via `utils/crypto`?
-3.  [ ] O layout é responsivo e segue o padrão *Dark Mode*?
-4.  [ ] Rodou o `npm run lint` e não há erros?
+## 🚀 Comandos Úteis
+- `npm install`: Instala dependências.
+- `npx expo start -c`: Inicia o app limpando o cache.
+- `npm run lint`: Verifica qualidade do código.
 
----
-
-> Propriedade de **VoleizinDosCria Team**. O uso indevido de chaves de criptografia viola as políticas de privacidade de dados.
+> Propriedade de **VoleizinDosCria Team**.

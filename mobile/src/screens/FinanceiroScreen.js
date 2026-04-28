@@ -4,6 +4,7 @@ import * as Haptics from 'expo-haptics';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { subscribeJogadores, getSaldoGlobalEquipamentos, saveConfigFinanceira, getConfigFinanceira, registrarSaidaCaixa, registrarEntradaCaixa, updateJogador } from '../services/jogadorService';
+import { registrarLog } from '../services/historyService';
 import { useSession } from '../context/SessionContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -214,6 +215,9 @@ export default function FinanceiroScreen() {
       const key = `${dia}_${mesRef}`;
       const valorAtual = !!(jogador.pagamentosMensais && jogador.pagamentosMensais[key]);
       await updateJogador(jogador.id, { [`pagamentosMensais.${key}`]: !valorAtual }, activeGroupId);
+      
+      await registrarLog('FINANCEIRO', `Mensalidade (${dia}) de ${jogador.nome} marcada como: ${!valorAtual ? 'PAGO' : 'PENDENTE'}`, 0, activeGroupId);
+      
       // Atualiza estado local no fechamento
       setFechamento(prev => {
         if (!prev) return prev;

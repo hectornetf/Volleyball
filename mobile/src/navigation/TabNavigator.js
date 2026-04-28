@@ -8,6 +8,7 @@ import DashboardScreen from '../screens/DashboardScreen';
 import PresencaScreen from '../screens/PresencaScreen';
 import TimesScreen from '../screens/TimesScreen';
 import FinanceiroScreen from '../screens/FinanceiroScreen';
+import HistoryScreen from '../screens/HistoryScreen';
 import AdminScreen from '../screens/AdminScreen';
 import WelcomeScreen from '../screens/WelcomeScreen';
 
@@ -64,6 +65,7 @@ export default function TabNavigator() {
       <Tab.Screen name="Presença" component={PresencaScreen} options={{ tabBarIcon: ({ color }) => <MaterialCommunityIcons name="calendar-check" size={24} color={color} /> }} />
       <Tab.Screen name="Times" component={TimesScreen} options={{ tabBarIcon: ({ color }) => <MaterialCommunityIcons name="account-group" size={24} color={color} /> }} />
       <Tab.Screen name="Financeiro" component={FinanceiroScreen} options={{ tabBarIcon: ({ color }) => <MaterialCommunityIcons name="wallet" size={24} color={color} /> }} />
+      <Tab.Screen name="Histórico" component={HistoryScreen} options={{ tabBarIcon: ({ color }) => <MaterialCommunityIcons name="history" size={24} color={color} /> }} />
       <Tab.Screen name="Admin" component={AdminScreen} options={{ tabBarIcon: ({ color }) => <MaterialCommunityIcons name="account-cog" size={24} color={color} /> }} />
     </Tab.Navigator>
   );

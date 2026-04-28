@@ -10,6 +10,7 @@ import {
   registrarOperacaoFinanceira, incrementarPresencaHistorica,
   getConfigFinanceira
 } from '../services/jogadorService';
+import { registrarLog } from '../services/historyService';
 import { useSession } from '../context/SessionContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -119,6 +120,8 @@ export default function PresencaScreen() {
       await updateJogador(jogador.id, { 
         [`presencas.${diaSelecionado}`]: status
       });
+
+      await registrarLog('PRESENÇA', `Presença de ${jogador.nome} em ${diaSelecionado} alterada para: ${status}`, 0, activeGroupId);
     } catch (err) {
       Alert.alert('Erro', err.message);
     }
