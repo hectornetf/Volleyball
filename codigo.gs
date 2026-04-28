@@ -14,8 +14,9 @@ function setupInicial() {
     sheet.getRange("A1:F1").setFontWeight("bold");
   } else {
     let sheet = ss.getSheetByName(SHEET_JOGADORES);
-    if (sheet.getLastColumn() < 6) {
+    if (sheet.getLastColumn() < 7) {
       sheet.getRange(1, 6).setValue("Data Nascimento").setFontWeight("bold");
+      sheet.getRange(1, 7).setValue("Status").setFontWeight("bold");
     }
   }
   // ... rest of setup ...
@@ -78,20 +79,20 @@ function gerarDadosDeTeste() {
   if (sheetJogadores && sheetJogadores.getLastRow() <= 1) {
     let jogadoresMock = [
       // Mensalistas de Segunda
-      ['1710000000001', 'Carlos (Mens Seg)', '11999990001', '5', 'Mensalista: Seg', "'15/03/1990"],
-      ['1710000000002', 'Fernanda (Mens Seg)', '11999990002', '4', 'Mensalista: Seg', "'22/07/1993"],
-      ['1710000000003', 'Roberto (Mens Seg)', '11999990003', '4', 'Mensalista: Seg', "'10/11/1988"],
-      ['1710000000004', 'Camila (Mens Seg)', '11999990004', '3', 'Mensalista: Seg', "'05/02/1997"],
+      ['1710000000001', 'Carlos (Mens Seg)', '11999990001', '5', 'Mensalista: Seg', "'15/03/1990", 'Ativo'],
+      ['1710000000002', 'Fernanda (Mens Seg)', '11999990002', '4', 'Mensalista: Seg', "'22/07/1993", 'Ativo'],
+      ['1710000000003', 'Roberto (Mens Seg)', '11999990003', '4', 'Mensalista: Seg', "'10/11/1988", 'Ativo'],
+      ['1710000000004', 'Camila (Mens Seg)', '11999990004', '3', 'Mensalista: Seg', "'05/02/1997", 'Ativo'],
       // Mensalistas de Sexta
-      ['1710000000005', 'Thiago (Mens Sex)', '11999990005', '5', 'Mensalista: Sex', "'30/09/1991"],
-      ['1710000000006', 'Patrícia (Mens Sex)', '11999990006', '3', 'Mensalista: Sex', "'18/04/1994"],
-      ['1710000000007', 'Diego (Mens Sex)', '11999990007', '4', 'Mensalista: Seg, Sex', "'27/06/1986"],
-      ['1710000000008', 'Larissa (Mens Seg/Sex)', '11999990008', '3', 'Mensalista: Seg, Sex', "'12/01/1999"],
+      ['1710000000005', 'Thiago (Mens Sex)', '11999990005', '5', 'Mensalista: Sex', "'30/09/1991", 'Ativo'],
+      ['1710000000006', 'Patrícia (Mens Sex)', '11999990006', '3', 'Mensalista: Sex', "'18/04/1994", 'Ativo'],
+      ['1710000000007', 'Diego (Mens Sex)', '11999990007', '4', 'Mensalista: Seg, Sex', "'27/06/1986", 'Ativo'],
+      ['1710000000008', 'Larissa (Mens Seg/Sex)', '11999990008', '3', 'Mensalista: Seg, Sex', "'12/01/1999", 'Ativo'],
       // Avulsos
-      ['1710000000009', 'João (Avulso)', '11999990009', '2', 'Avulso', "'08/08/1995"],
-      ['1710000000010', 'Mariana (Avulso)', '11999990010', '2', 'Avulso', "'20/12/2000"],
-      ['1710000000011', 'Rafael (Avulso)', '11999990011', '1', 'Avulso', "'14/05/1998"],
-      ['1710000000012', 'Beatriz (Avulso)', '11999990012', '1', 'Avulso', "'03/09/2001"]
+      ['1710000000009', 'João (Avulso)', '11999990009', '2', 'Avulso', "'08/08/1995", 'Ativo'],
+      ['1710000000010', 'Mariana (Avulso)', '11999990010', '2', 'Avulso', "'20/12/2000", 'Ativo'],
+      ['1710000000011', 'Rafael (Avulso)', '11999990011', '1', 'Avulso', "'14/05/1998", 'Ativo'],
+      ['1710000000012', 'Beatriz (Avulso)', '11999990012', '1', 'Avulso', "'03/09/2001", 'Ativo']
     ];
     jogadoresMock.forEach(j => sheetJogadores.appendRow(j));
     Logger.log('✅ Jogadores de teste inseridos.');
@@ -188,7 +189,8 @@ function getJogadores() {
     telefone: row[2],
     nivel: row[3],
     tipo: row[4],
-    dataNascimento: row[5] ? formatarParaBR(row[5]) : ''
+    dataNascimento: row[5] ? formatarParaBR(row[5]) : '',
+    status: row[6] || 'Ativo'
   }));
 }
 
@@ -237,19 +239,19 @@ function formatarParaInputData(data) {
 }
 
 // Adiciona jogador
-function adicionarJogador(nome, telefone, nivel, tipo, dataNascimento) {
+function adicionarJogador(nome, telefone, nivel, tipo, dataNascimento, status) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(SHEET_JOGADORES);
   if (!sheet) { setupInicial(); sheet = ss.getSheetByName(SHEET_JOGADORES); }
   const id = new Date().getTime().toString();
   // Salva como string com apóstrofo para garantir DD/MM/YYYY na planilha
   let dataSalvar = dataNascimento ? "'" + dataNascimento : '';
-  sheet.appendRow([id, nome, telefone, nivel, tipo, dataSalvar]);
+  sheet.appendRow([id, nome, telefone, nivel, tipo, dataSalvar, status || 'Ativo']);
   return getJogadores();
 }
 
 // Edita jogador existente
-function editarJogador(id, nome, telefone, nivel, tipo, dataNascimento) {
+function editarJogador(id, nome, telefone, nivel, tipo, dataNascimento, status) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_JOGADORES);
   if (!sheet) return getJogadores();
@@ -264,6 +266,7 @@ function editarJogador(id, nome, telefone, nivel, tipo, dataNascimento) {
       // Salva como string com apóstrofo
       let dataSalvar = dataNascimento ? "'" + dataNascimento : '';
       sheet.getRange(i+1, 6).setValue(dataSalvar);
+      sheet.getRange(i+1, 7).setValue(status || 'Ativo');
       return getJogadores();
     }
   }
@@ -760,7 +763,7 @@ function getDashboardData() {
   let numMensalistas = 0;
   let numAvulsos = 0;
   
-  jogadores.forEach(j => {
+  jogadores.filter(j => j.status === 'Ativo').forEach(j => {
     // Conta tipos
     if(String(j.tipo).toLowerCase().includes('avulso')) {
       numAvulsos++;
@@ -809,6 +812,7 @@ function getDashboardData() {
         if(custoDia <= 0) return;
         
         let jDia = jogadores.filter(j => {
+          if (j.status !== 'Ativo') return false;
           let tipo = String(j.tipo).toUpperCase();
           let ehLegado = (dia === 'Segunda' && (tipo.includes('SEG') || tipo === 'MENS' || tipo === 'MENSALISTA')) ||
                          (dia === 'Sexta' && (tipo.includes('SEX') || tipo === 'MENS' || tipo === 'MENSALISTA'));
@@ -849,15 +853,17 @@ function getDashboardData() {
     .slice(0, 5);
 
   // 5. Estatísticas Básicas
+  const jogadoresAtivos = jogadores.filter(j => j.status === 'Ativo');
+  
   const statsJogadores = {
-    total: jogadores.length,
+    total: jogadoresAtivos.length,
     mensalistas: numMensalistas,
     avulsos: numAvulsos,
-    mediaNivel: (jogadores.reduce((acc, j) => acc + (parseInt(j.nivel) || 0), 0) / (jogadores.length || 1)).toFixed(1)
+    mediaNivel: (jogadoresAtivos.reduce((acc, j) => acc + (parseInt(j.nivel) || 0), 0) / (jogadoresAtivos.length || 1)).toFixed(1)
   };
 
   const mesAtualNum = dataHoje.getMonth() + 1;
-  aniversariantes = jogadores.filter(j => {
+  aniversariantes = jogadoresAtivos.filter(j => {
     if (!j.dataNascimento) return false;
     let partes = j.dataNascimento.split('/');
     if (partes.length < 2) return false;
@@ -883,7 +889,7 @@ function getDashboardData() {
     ranking,
     niveis: [1,2,3,4,5].map(n => ({
       nivel: n,
-      qtd: jogadores.filter(j => parseInt(j.nivel) === n).length
+      qtd: jogadoresAtivos.filter(j => parseInt(j.nivel) === n).length
     })),
     aniversariantes
   };

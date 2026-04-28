@@ -351,7 +351,7 @@
                         </div>
                     </div>
                     <div class="space-y-2">
-                        <div v-for="j in jogadores" :key="j.id"
+                        <div v-for="j in jogadores.filter(x => x.status === 'Ativo')" :key="j.id"
                             class="flex items-center justify-between gap-2 p-3 bg-slate-800/50 rounded-xl border border-slate-700/50">
                             <div class="min-w-0 flex-1">
                                 <div class="flex items-center gap-2 flex-wrap">
@@ -723,6 +723,21 @@
                                 placeholder="DD/MM/AAAA"
                                 class="w-full bg-slate-800 rounded-xl p-3 outline-none mt-1 text-slate-300">
                         </div>
+                        <div v-if="novoJogador.id" class="flex-1">
+                            <label class="text-[10px] text-slate-400 uppercase font-bold ml-1">Status do Jogador</label>
+                            <div @click="novoJogador.status = novoJogador.status === 'Ativo' ? 'Inativo' : 'Ativo'" 
+                                 class="bg-slate-800 rounded-xl p-3 mt-1 flex items-center justify-between cursor-pointer border border-slate-700">
+                                <span class="text-xs font-bold" :class="novoJogador.status === 'Ativo' ? 'text-emerald-400' : 'text-red-400'">
+                                    {{ novoJogador.status === 'Ativo' ? 'ATIVO' : 'INATIVO' }}
+                                </span>
+                                <div class="relative w-10 h-5">
+                                    <div :class="novoJogador.status === 'Ativo' ? 'bg-emerald-500' : 'bg-red-500/50'"
+                                        class="w-10 h-5 rounded-full transition-colors"></div>
+                                    <div :class="novoJogador.status === 'Ativo' ? 'translate-x-5' : 'translate-x-0'"
+                                        class="absolute top-0 left-0 w-5 h-5 bg-white rounded-full shadow transform transition-transform"></div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="flex gap-2">
                         <button v-if="novoJogador.id" @click="cancelarEdicao"
@@ -758,8 +773,10 @@
                                     <div class="text-amber-400 text-[10px] mb-1">
                                         <i v-for="n in parseInt(j.nivel)" class="fa-solid fa-star"></i>
                                     </div>
-                                    <span
-                                        class="text-[10px] bg-slate-700 px-2 py-1 rounded-md text-slate-300 font-bold uppercase">{{j.tipo.replace('Mensalista','Mens')}}</span>
+                                    <div class="flex gap-1 items-center">
+                                        <span v-if="j.status === 'Inativo'" class="text-[8px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded font-black uppercase">Inativo</span>
+                                        <span class="text-[10px] bg-slate-700 px-2 py-1 rounded-md text-slate-300 font-bold uppercase">{{j.tipo.replace('Mensalista','Mens')}}</span>
+                                    </div>
                                 </div>
                                 <button @click="prepararEdicao(j)"
                                     class="w-8 h-8 rounded-lg bg-slate-700 text-cyan-400 hover:bg-cyan-500 hover:text-white transition flex items-center justify-center">
@@ -788,7 +805,7 @@
                     diaSelecionado: 'Segunda', // fallback
                     diasDaSemana: ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'],
                     dataJogo: '',
-                    novoJogador: { id: null, nome: '', telefone: '', nivel: '3', tipo: '', isAvulso: false, diasMensalista: ['Segunda'], dataNascimento: '' },
+                    novoJogador: { id: null, nome: '', telefone: '', nivel: '3', tipo: '', isAvulso: false, diasMensalista: ['Segunda'], dataNascimento: '', status: 'Ativo' },
                     originalTelefone: '',
                     originalDataNascimento: '',
                     jogadoresPorTime: 6,
@@ -957,9 +974,9 @@
                         } else if (funcName === 'registrarPresenca') {
                             google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).registrarPresenca(args[0], args[1], args[2], args[3], args[4]);
                         } else if (funcName === 'adicionarJogador') {
-                            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).adicionarJogador(args[0], args[1], args[2], args[3], args[4]);
+                            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).adicionarJogador(args[0], args[1], args[2], args[3], args[4], args[5]);
                         } else if (funcName === 'editarJogador') {
-                            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).editarJogador(args[0], args[1], args[2], args[3], args[4], args[5]);
+                            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).editarJogador(args[0], args[1], args[2], args[3], args[4], args[5], args[6]);
                         } else if (funcName === 'sortearTimes') {
                             google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).sortearTimes(args[0], args[1], args[2]);
                         } else if (funcName === 'calcularFechamento') {
@@ -1093,7 +1110,8 @@
                         tipo: j.tipo, // Mantém o tipo original para referência, mas o UI usa isAvulso/diasMensalista
                         isAvulso: isAvulso,
                         diasMensalista: diasM.length > 0 ? diasM : ['Segunda'], // Garante ao menos um dia selecionado se não for avulso
-                        dataNascimento: this.mascararData(j.dataNascimento)
+                        dataNascimento: this.mascararData(j.dataNascimento),
+                        status: j.status || 'Ativo'
                     };
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 },
@@ -1131,7 +1149,7 @@
                     return dia + '/**/****';
                 },
                 cancelarEdicao: function () {
-                    this.novoJogador = { id: null, nome: '', telefone: '', nivel: '3', tipo: '', isAvulso: false, diasMensalista: ['Segunda'], dataNascimento: '' };
+                    this.novoJogador = { id: null, nome: '', telefone: '', nivel: '3', tipo: '', isAvulso: false, diasMensalista: ['Segunda'], dataNascimento: '', status: 'Ativo' };
                     this.originalTelefone = '';
                     this.originalDataNascimento = '';
                 },
@@ -1201,13 +1219,13 @@
                     this.loading = true;
                     var self = this;
                     if (this.novoJogador.id) {
-                        this.runGoogleScript('editarJogador', [this.novoJogador.id, this.novoJogador.nome.trim(), telFinal, this.novoJogador.nivel, this.novoJogador.tipo, dataFinal]).then(function (res) {
+                        this.runGoogleScript('editarJogador', [this.novoJogador.id, this.novoJogador.nome.trim(), telFinal, this.novoJogador.nivel, this.novoJogador.tipo, dataFinal, this.novoJogador.status]).then(function (res) {
                             self.jogadores = res;
                             self.cancelarEdicao();
                             alert("Jogador atualizado com sucesso!");
                         });
                     } else {
-                        this.runGoogleScript('adicionarJogador', [this.novoJogador.nome.trim(), telFinal, this.novoJogador.nivel, this.novoJogador.tipo, dataFinal]).then(function (res) {
+                        this.runGoogleScript('adicionarJogador', [this.novoJogador.nome.trim(), telFinal, this.novoJogador.nivel, this.novoJogador.tipo, dataFinal, this.novoJogador.status]).then(function (res) {
                             self.jogadores = res;
                             self.cancelarEdicao();
                             self.toastMsg = 'Jogador adicionado com sucesso! 🏀';
