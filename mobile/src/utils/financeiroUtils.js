@@ -17,7 +17,7 @@ export function computarFechamento(custos, elenco, mesRefStr, statusAtual) {
       if (isFrozen) {
         return temPagamento;
       }
-      return j.tipo === 'MENSALISTA' && (j.diasMensalista || []).includes(dia);
+      return j.status === 'Ativo' && j.tipo === 'MENSALISTA' && (j.diasMensalista || []).includes(dia);
     });
 
     const totalMensalistas = mensalistasNoDia.length;

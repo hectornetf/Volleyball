@@ -55,7 +55,8 @@ export default function AdminScreen() {
     nivel: 3,
     tipo: 'MENSALISTA',
     diasMensalista: [],
-    dataNascimento: ''
+    dataNascimento: '',
+    status: 'Ativo'
   });
 
   const [editandoId, setEditandoId] = useState(null);
@@ -156,7 +157,8 @@ export default function AdminScreen() {
         presencas: {},
         presencaAtual: 'Falta', // Mantido por compatibilidade
         diariaPaga: false,
-        historicoPresencas: 0
+        historicoPresencas: 0,
+        status: novoJogador.status || 'Ativo'
       };
 
       if (editandoId) {
@@ -167,7 +169,7 @@ export default function AdminScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
 
-      setNovoJogador({ nome: '', celular: '', nivel: 3, tipo: 'MENSALISTA', diasMensalista: [], dataNascimento: '' });
+      setNovoJogador({ nome: '', celular: '', nivel: 3, tipo: 'MENSALISTA', diasMensalista: [], dataNascimento: '', status: 'Ativo' });
       setEditandoId(null);
       setEditandoOriginal({ celular: '', dataNascimento: '' });
     } catch (e) {
@@ -183,7 +185,8 @@ export default function AdminScreen() {
       nivel: j.nivel,
       tipo: j.tipo,
       diasMensalista: j.diasMensalista || [],
-      dataNascimento: '' // Deixa em branco para não expor
+      dataNascimento: '', // Deixa em branco para não expor
+      status: j.status || 'Ativo'
     });
     setEditandoOriginal({ celular: j.celular, dataNascimento: j.dataNascimento || '' });
     setEditandoId(j.id);
@@ -313,6 +316,31 @@ export default function AdminScreen() {
                 </View>
               </View>
             )}
+            
+            {editandoId && (
+              <View>
+                <Text className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-2 ml-1">Status do Jogador</Text>
+                <TouchableOpacity 
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setNovoJogador({ ...novoJogador, status: novoJogador.status === 'Ativo' ? 'Inativo' : 'Ativo' });
+                  }}
+                  className={`w-full py-4 rounded-2xl border flex-row items-center justify-between px-4 ${novoJogador.status === 'Ativo' ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-red-500/5 border-red-500/20'}`}
+                >
+                  <View className="flex-row items-center">
+                    <View className={`w-8 h-8 rounded-xl items-center justify-center ${novoJogador.status === 'Ativo' ? 'bg-emerald-500/20' : 'bg-red-500/20'}`}>
+                      <FontAwesome5 name={novoJogador.status === 'Ativo' ? "user-check" : "user-slash"} size={12} color={novoJogador.status === 'Ativo' ? "#10b981" : "#ef4444"} />
+                    </View>
+                    <Text className={`font-black text-xs ml-3 ${novoJogador.status === 'Ativo' ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {novoJogador.status === 'Ativo' ? 'ATIVO NO GRUPO' : 'INATIVO / AFASTADO'}
+                    </Text>
+                  </View>
+                  <View className={`w-10 h-5 rounded-full px-1 justify-center ${novoJogador.status === 'Ativo' ? 'bg-emerald-500' : 'bg-slate-600'}`}>
+                    <View className={`w-3 h-3 rounded-full bg-white ${novoJogador.status === 'Ativo' ? 'self-end' : 'self-start'}`} />
+                  </View>
+                </TouchableOpacity>
+              </View>
+            )}
 
             <TouchableOpacity onPress={salvarJogador} className={`w-full py-4.5 rounded-2xl items-center shadow-lg active:scale-[0.98] ${editandoId ? 'bg-amber-500' : 'bg-purple-600'}`}>
               <Text className={`font-black text-sm uppercase tracking-widest ${editandoId ? 'text-slate-900' : 'text-white'}`}>
@@ -332,7 +360,8 @@ export default function AdminScreen() {
                     nivel: 3,
                     tipo: 'MENSALISTA',
                     diasMensalista: [],
-                    dataNascimento: ''
+                    dataNascimento: '',
+                    status: 'Ativo'
                   });
                 }}
                 className="w-full py-2 items-center"
@@ -400,7 +429,14 @@ export default function AdminScreen() {
                 <View key={j.id} className="bg-slate-900/60 p-5 rounded-3xl border border-white/5 flex-row justify-between items-center mb-3">
                   <View className="flex-1 pr-4">
                     <Text className="text-white font-black text-sm">{j.nome}</Text>
-                    <Text className="text-[9px] text-slate-500 font-bold uppercase mt-1 tracking-widest">⭐ Nível {j.nivel || 3} • {j.tipo}</Text>
+                    <View className="flex-row items-center mt-1">
+                      {j.status === 'Inativo' && (
+                        <View className="bg-red-500/20 px-1.5 py-0.5 rounded mr-2 border border-red-500/30">
+                          <Text className="text-red-400 font-black text-[7px] uppercase tracking-tighter">Inativo</Text>
+                        </View>
+                      )}
+                      <Text className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">⭐ Nível {j.nivel || 3} • {j.tipo}</Text>
+                    </View>
                   </View>
                   <TouchableOpacity onPress={() => prepararEdicao(j)} className="bg-slate-800/80 w-11 h-11 rounded-2xl items-center justify-center border border-white/5">
                     <FontAwesome5 name="pen" size={14} color="#22d3ee" />

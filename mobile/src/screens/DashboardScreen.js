@@ -74,9 +74,9 @@ export default function DashboardScreen() {
   const mesAtual = (hoje.getMonth() + 1).toString().padStart(2, '0');
   const diaAtual = hoje.getDate().toString().padStart(2, '0');
 
-  // Aniversariantes DO MÊS (destaque para o dia de hoje)
+  // Aniversariantes DO MÊS (destaque para o dia de hoje) — Apenas ATIVOS
   const aniversariantesMes = elenco.filter(j => {
-    if (!j.dataNascimento) return false;
+    if (j.status !== 'Ativo' || !j.dataNascimento) return false;
     const dn = j.dataNascimento;
     return dn.includes(`-${mesAtual}-`) || dn.substring(3, 5) === mesAtual;
   }).map(j => {
@@ -86,11 +86,12 @@ export default function DashboardScreen() {
     return { ...j, isHoje, dia };
   }).sort((a, b) => a.dia.localeCompare(b.dia));
 
-  // Stats de jogadores
-  const totalElenco = elenco.length;
-  const mensalistas = elenco.filter(j => j.tipo === 'MENSALISTA').length;
-  const mediaNivel = elenco.length > 0
-    ? (elenco.reduce((acc, j) => acc + (j.nivel || 3), 0) / elenco.length).toFixed(1)
+  // Stats de jogadores — Apenas ATIVOS
+  const elencoAtivo = elenco.filter(j => j.status === 'Ativo');
+  const totalElenco = elencoAtivo.length;
+  const mensalistas = elencoAtivo.filter(j => j.tipo === 'MENSALISTA').length;
+  const mediaNivel = elencoAtivo.length > 0
+    ? (elencoAtivo.reduce((acc, j) => acc + (j.nivel || 3), 0) / elencoAtivo.length).toFixed(1)
     : '—';
 
   // Financeiro — paridade legado
@@ -134,7 +135,7 @@ export default function DashboardScreen() {
   // Equilíbrio Técnico — distribuição por nível (legado: gráfico de barras)
   const niveis = [1, 2, 3, 4, 5].map(n => ({
     nivel: n,
-    qtd: elenco.filter(j => (j.nivel || 3) === n).length
+    qtd: elencoAtivo.filter(j => (j.nivel || 3) === n).length
   }));
   const maxNivel = Math.max(...niveis.map(n => n.qtd), 1);
 

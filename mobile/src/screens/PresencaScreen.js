@@ -80,8 +80,10 @@ export default function PresencaScreen() {
     setTimeout(() => setRefreshing(false), 800);
   };
 
-  // Exibe todos os jogadores (sem filtro de dia, para permitir que mensalistas joguem como avulsos em outros dias)
-  const jogadoresDoDia = todosJogadores.sort((a, b) => a.nome.localeCompare(b.nome));
+  // Exibe apenas jogadores ATIVOS para evitar poluição na lista de presença
+  const jogadoresDoDia = todosJogadores
+    .filter(j => j.status === 'Ativo')
+    .sort((a, b) => a.nome.localeCompare(b.nome));
 
   // Totais para o cabeçalho
   const confirmados = jogadoresDoDia.filter(j => (j.presencas?.[diaSelecionado]) === 'Confirmado');

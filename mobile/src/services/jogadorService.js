@@ -23,7 +23,8 @@ const decryptPlayer = (docData, groupId) => ({
   celular: decryptData(docData.celular, groupId),
   dataNascimento: decryptData(docData.dataNascimento, groupId),
   // Garante que o histórico seja numérico para o ranking
-  historicoPresencas: parseInt(docData.historicoPresencas) || 0
+  historicoPresencas: parseInt(docData.historicoPresencas) || 0,
+  status: docData.status || 'Ativo'
 });
 
 // Funções de Escrita com Criptografia
@@ -36,7 +37,8 @@ export const addJogador = async (jogador, groupId) => {
     historicoPresencas: jogador.historicoPresencas || 0,
     mensalidadePaga: jogador.mensalidadePaga || false,
     diariaPaga: jogador.diariaPaga || false,
-    presencaAtual: jogador.presencaAtual || 'Falto'
+    presencaAtual: jogador.presencaAtual || 'Falto',
+    status: jogador.status || 'Ativo'
   });
 };
 
@@ -253,7 +255,8 @@ export const gerarDadosDeTestePro = async (groupId) => {
         const isDiaDele = diasDesteMensalista.includes(dia);
         acc[dia] = (isDiaDele && i < 9) ? 'Confirmado' : 'Falta';
         return acc;
-      }, {})
+      }, {}),
+      status: 'Ativo'
     };
   });
 
@@ -272,7 +275,8 @@ export const gerarDadosDeTestePro = async (groupId) => {
     presencas: diasTreino.reduce((acc, dia) => {
       acc[dia] = a.presencaAtual;
       return acc;
-    }, {})
+    }, {}),
+    status: 'Ativo'
   }));
 
   const batch = writeBatch(db);
