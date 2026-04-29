@@ -96,9 +96,31 @@ Nenhuma query deve ser feita sem o filtro de `groupId`. O `SessionContext` prov�
 
 ---
 
+## 📦 Como Gerar APK (Android) e IPA (iOS)
+
+Para gerar os arquivos de instalação final, utilizamos o **EAS Build**.
+
+### 1. Login
+```bash
+npx eas-cli login
+```
+
+### 2. Configuração do Projeto
+Execute na pasta `mobile/`:
+```bash
+npx eas-cli build:configure
+```
+
+### 3. Comandos de Geração
+- **Android (APK de Teste)**: `npx eas-cli build --platform android --profile preview`
+- **Android (Play Store)**: `npx eas-cli build --platform android --profile production`
+- **iOS (IPA)**: `npx eas-cli build --platform ios` (Requer conta Apple Developer)
+
+---
+
 ## 🚀 Comandos Úteis
 - `npm install`: Instala dependências.
 - `npx expo start -c`: Inicia o app limpando o cache.
 - `npm run lint`: Verifica qualidade do código.
 
-> Propriedade de **VoleizinDosCria Team**.
+> Propriedade de **VoleizinDosCria Team**. v2.1 (Abril 2026).

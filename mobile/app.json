@@ -14,14 +14,22 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.hectornet.voleizindoscria"
+      "bundleIdentifier": "com.voleizindoscria.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
-      "package": "com.hectornet.voleizindoscria",
+      "package": "com.voleizindoscria.app",
       "edgeToEdgeEnabled": true
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "1213f734-6d18-4f00-954b-fdfc4a72f3fa"
+      }
     }
   }
 }
