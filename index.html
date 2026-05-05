@@ -1315,6 +1315,7 @@
                     if (this.novoJogador.id) {
                         this.runGoogleScript('editarJogador', [this.novoJogador.id, this.novoJogador.nome.trim(), telFinal, this.novoJogador.nivel, this.novoJogador.tipo, dataFinal, this.novoJogador.status]).then(function (res) {
                             self.jogadores = res;
+                            self.carregarPresencas(); // Recarrega presenças para refletir o novo nome
                             self.cancelarEdicao();
                             alert("Jogador atualizado com sucesso!");
                         });

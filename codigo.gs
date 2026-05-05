@@ -290,10 +290,80 @@ function editarJogador(id, nome, telefone, nivel, tipo, dataNascimento, status) 
       sheet.getRange(i+1, 7).setValue(status || 'Ativo');
       
       registrarLog('CADASTRO', 'Jogador atualizado: ' + nome + ' (Status: ' + (status || 'Ativo') + ')');
+      
+      // Sincroniza nome e tipo em outras abas (Presenças e Pagamentos)
+      sincronizarDadosJogador(id, nome, tipo);
+      
       return getJogadores();
     }
   }
   return getJogadores();
+}
+
+/**
+ * Sincroniza o nome e o tipo do jogador em todas as abas onde esses dados são replicados.
+ * Isso garante que alterações no cadastro reflitam em todo o histórico.
+ */
+function sincronizarDadosJogador(id, novoNome, novoTipo) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const targetId = String(id).trim();
+    let totalAtualizados = 0;
+    
+    // 1. Sincronizar na aba de Presenças
+    const sheetPresencas = ss.getSheetByName(SHEET_PRESENCAS);
+    if (sheetPresencas) {
+      const range = sheetPresencas.getDataRange();
+      const data = range.getValues();
+      if (data.length > 1) {
+        const colIdIdx = data[0].length >= 6 ? 2 : 1; 
+        const colNomeIdx = data[0].length >= 6 ? 3 : 2;
+        const colTipoIdx = data[0].length >= 6 ? 5 : 4;
+        let changed = false;
+
+        for (let i = 1; i < data.length; i++) {
+          // Comparação mais flexível com trim e == para evitar falhas de tipo
+          if (String(data[i][colIdIdx]).trim() == targetId) {
+            data[i][colNomeIdx] = novoNome;
+            data[i][colTipoIdx] = novoTipo;
+            changed = true;
+            totalAtualizados++;
+          }
+        }
+        if (changed) {
+          range.setValues(data);
+        }
+      }
+    }
+    
+    // 2. Sincronizar na aba de Pagamentos
+    const sheetPagamentos = ss.getSheetByName(SHEET_PAGAMENTOS);
+    if (sheetPagamentos) {
+      const range = sheetPagamentos.getDataRange();
+      const data = range.getValues();
+      if (data.length > 1) {
+        let changed = false;
+        // Pagamentos: ID Jogador (índice 0), Nome (índice 1)
+        for (let i = 1; i < data.length; i++) {
+          if (String(data[i][0]).trim() == targetId) {
+            data[i][1] = novoNome;
+            changed = true;
+            totalAtualizados++;
+          }
+        }
+        if (changed) {
+          range.setValues(data);
+        }
+      }
+    }
+    
+    if (totalAtualizados > 0) {
+      registrarLog('SISTEMA', 'Sincronização concluída: ' + totalAtualizados + ' registros atualizados para ' + novoNome);
+    }
+  } catch (e) {
+    registrarLog('SISTEMA', 'Erro na sincronização: ' + e.message, '', 'Erro');
+    console.error("Erro em sincronizarDadosJogador: " + e.message);
+  }
 }
 
 // Helper para tratar datas lidas do Google Sheets e evitar falha na comparação
