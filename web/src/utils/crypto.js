@@ -1,6 +1,7 @@
 import CryptoJS from 'crypto-js';
 
-const SECRET_KEY_BASE = import.meta.env.VITE_ENCRYPTION_KEY || 'voleizin-saas-2026-secure-v1';
+// Chave de criptografia carregada EXCLUSIVAMENTE do .env \u2014 nunca adicione fallback aqui!
+const SECRET_KEY_BASE = import.meta.env.VITE_ENCRYPTION_KEY;
 
 /**
  * Encripta um texto utilizando AES-256 com secret + groupId
