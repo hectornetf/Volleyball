@@ -1,4 +1,26 @@
+# IDE e Agentes
 /.vscode
 /.agents
-/.expo
 /.boilerplate
+
+# Expo & Metro
+/.expo
+/mobile/.expo
+/mobile/dist
+/mobile/web-build
+
+# Web App
+/web/node_modules
+/web/dist
+
+# Dependencies
+node_modules/
+
+# Environment files
+.env
+*.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
