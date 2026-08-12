@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { useSession } from './context/SessionContext';
 import Navbar from './components/Navbar';
 import WelcomePage from './pages/WelcomePage';
@@ -58,6 +59,7 @@ export default function App() {
       <footer className="py-6 border-t border-slate-900 text-center text-xs text-slate-600 font-semibold">
         <p>Voleizin dos Cria • Platform SaaS v2.1 • Criptografia AES-256</p>
       </footer>
+      <Analytics />
     </div>
   );
 }
