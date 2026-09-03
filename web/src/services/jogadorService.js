@@ -41,7 +41,8 @@ export const addJogador = async (jogador, groupId) => {
     historicoPresencas: jogador.historicoPresencas || 0,
     mensalidadePaga: jogador.mensalidadePaga || false,
     diariaPaga: jogador.diariaPaga || false,
-    presencaAtual: jogador.presencaAtual || 'Falto',
+    presencaAtual: jogador.presencaAtual || 'Falta',
+    presencas: jogador.presencas || {},
     status: jogador.status || 'Ativo'
   });
   

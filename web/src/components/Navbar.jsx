@@ -1,6 +1,6 @@
 import React from 'react';
-import { 
-  LayoutDashboard, CheckSquare, Users, DollarSign, 
+import {
+  LayoutDashboard, CheckSquare, Users, DollarSign,
   History, Settings, LogOut, ShieldCheck
 } from 'lucide-react';
 import { useSession } from '../context/SessionContext';
@@ -21,7 +21,7 @@ export default function Navbar({ activeTab, setActiveTab }) {
     <header className="sticky top-0 z-40 bg-[#0b0f1a]/90 backdrop-blur-md border-b border-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          
+
           {/* Logo & Group Badge */}
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
@@ -29,7 +29,7 @@ export default function Navbar({ activeTab, setActiveTab }) {
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="font-black text-xl tracking-tight text-white">Voleizin</span>
+                <span className="font-black text-xl tracking-tight text-white">VoleizinDosCria</span>
                 <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">PRO WEB</span>
               </div>
               <div className="flex items-center space-x-1.5 text-xs text-slate-400">
@@ -48,11 +48,10 @@ export default function Navbar({ activeTab, setActiveTab }) {
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-xl font-bold text-xs transition-all ${
-                    isActive
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-xl font-bold text-xs transition-all ${isActive
                       ? 'bg-gradient-to-r from-emerald-500 to-cyan-500 text-white shadow-md shadow-cyan-500/20'
                       : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-                  }`}
+                    }`}
                 >
                   <Icon className="w-4 h-4" />
                   <span>{item.label}</span>
@@ -84,11 +83,10 @@ export default function Navbar({ activeTab, setActiveTab }) {
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`flex flex-col items-center py-1 px-2 rounded-lg text-[10px] font-bold transition-all ${
-                isActive
+              className={`flex flex-col items-center py-1 px-2 rounded-lg text-[10px] font-bold transition-all ${isActive
                   ? 'text-cyan-400 font-extrabold'
                   : 'text-slate-500 hover:text-slate-300'
-              }`}
+                }`}
             >
               <Icon className={`w-5 h-5 mb-0.5 ${isActive ? 'text-cyan-400' : 'text-slate-500'}`} />
               <span>{item.label}</span>

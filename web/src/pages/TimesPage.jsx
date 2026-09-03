@@ -38,36 +38,44 @@ export default function TimesPage() {
   const handleSortearTimes = () => {
     if (confirmados.length === 0) return;
 
-    const listaOrdenada = [...confirmados].sort((a, b) => {
-      const diff = (b.nivel || 3) - (a.nivel || 3);
-      if (diff !== 0) return diff;
-      return Math.random() - 0.5;
-    });
+    // Lógica Snake Draft Avançada (Elite vs Iniciantes)
+    const elite = [...confirmados].filter(j => (j.nivel || 3) >= 3).sort((a, b) => (b.nivel || 3) - (a.nivel || 3) || 0.5 - Math.random());
+    const iniciantes = [...confirmados].filter(j => (j.nivel || 3) < 3).sort((a, b) => (b.nivel || 3) - (a.nivel || 3) || 0.5 - Math.random());
 
-    const numTimes = Math.ceil(listaOrdenada.length / tamanhoTime);
-    const times = Array.from({ length: numTimes }, () => []);
+    const numTimes = Math.max(2, Math.ceil(confirmados.length / tamanhoTime));
+    const novosTimes = Array.from({ length: numTimes }, () => []);
+    const pesosTimes = Array.from({ length: numTimes }, () => 0);
 
-    let direcao = 1;
-    let indexTime = 0;
+    let direcaoIda = true;
+    let indiceTime = 0;
 
-    listaOrdenada.forEach((jogador) => {
-      times[indexTime].push(jogador);
-      if (direcao === 1) {
-        if (indexTime === numTimes - 1) {
-          direcao = -1;
+    // Distribuir Elite
+    for (let i = 0; i < elite.length; i++) {
+        novosTimes[indiceTime].push(elite[i]);
+        pesosTimes[indiceTime] += (elite[i].nivel || 3);
+        if (direcaoIda) {
+            indiceTime++;
+            if (indiceTime === numTimes) { indiceTime--; direcaoIda = false; }
         } else {
-          indexTime++;
+            indiceTime--;
+            if (indiceTime < 0) { indiceTime = 0; direcaoIda = true; }
         }
-      } else {
-        if (indexTime === 0) {
-          direcao = 1;
-        } else {
-          indexTime--;
-        }
-      }
-    });
+    }
 
-    setTimesGerados(times);
+    // Distribuir Iniciantes para balancear o peso total
+    for (let i = 0; i < iniciantes.length; i++) {
+        let melhorTimeIdx = 0;
+        for (let t = 1; t < novosTimes.length; t++) {
+           if (novosTimes[t].length < novosTimes[melhorTimeIdx].length) { melhorTimeIdx = t; }
+           else if (novosTimes[t].length === novosTimes[melhorTimeIdx].length) {
+              if (pesosTimes[t] < pesosTimes[melhorTimeIdx]) { melhorTimeIdx = t; }
+           }
+        }
+        novosTimes[melhorTimeIdx].push(iniciantes[i]);
+        pesosTimes[melhorTimeIdx] += (iniciantes[i].nivel || 3);
+    }
+    
+    setTimesGerados(novosTimes);
     setCopied(false);
   };
 

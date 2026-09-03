@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Animated } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { FontAwesome5 } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
+import * as xlsx from 'xlsx';
 import { subscribeJogadores, addJogador, updateJogador, gerarDadosDeTestePro, resetDadosGrupo } from '../services/jogadorService';
 import { useSession } from '../context/SessionContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -118,6 +121,90 @@ export default function AdminScreen() {
         }
       }}
     ]);
+  };
+
+  const handleImportarPlanilha = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'],
+        copyToCacheDirectory: true,
+      });
+      
+      if (result.canceled || !result.assets || result.assets.length === 0) return;
+      
+      setCarregando(true);
+      const fileUri = result.assets[0].uri;
+      const fileBase64 = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.Base64 });
+      const workbook = xlsx.read(fileBase64, { type: 'base64' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const json = xlsx.utils.sheet_to_json(worksheet);
+
+      let adicionados = 0;
+      let atualizados = 0;
+
+      for (const row of json) {
+        if (!row.Nome) continue;
+
+        const nome = String(row.Nome).trim();
+        let celular = row.Telefone ? String(row.Telefone).trim() : '';
+        let nivel = parseInt(row['Nível (1-5)']) || 3;
+        
+        let tipo = 'MENSALISTA';
+        let diasMensalista = [];
+        const tipoRow = String(row.Tipo || '');
+        if (tipoRow.toLowerCase().includes('avulso')) {
+          tipo = 'AVULSO';
+        } else {
+          tipo = 'MENSALISTA';
+          if (tipoRow.toLowerCase().includes('seg')) diasMensalista.push('Segunda');
+          if (tipoRow.toLowerCase().includes('ter')) diasMensalista.push('Terça');
+          if (tipoRow.toLowerCase().includes('qua')) diasMensalista.push('Quarta');
+          if (tipoRow.toLowerCase().includes('qui')) diasMensalista.push('Quinta');
+          if (tipoRow.toLowerCase().includes('sex')) diasMensalista.push('Sexta');
+          if (tipoRow.toLowerCase().includes('sáb') || tipoRow.toLowerCase().includes('sab')) diasMensalista.push('Sábado');
+          if (tipoRow.toLowerCase().includes('dom')) diasMensalista.push('Domingo');
+        }
+
+        let dataNascimento = row['Data Nascimento'] ? String(row['Data Nascimento']).trim() : '';
+        let status = row.Status ? String(row.Status).trim() : 'Ativo';
+
+        const payload = {
+          nome,
+          celular,
+          nivel,
+          tipo,
+          diasMensalista: tipo === 'MENSALISTA' ? diasMensalista : [],
+          dataNascimento,
+          status,
+          groupId: activeGroupId,
+          presencas: {},
+          presencaAtual: 'Falta',
+          diariaPaga: false,
+          historicoPresencas: 0
+        };
+
+        const existingJogador = jogadores.find(j => j.nome.toLowerCase() === nome.toLowerCase());
+        
+        if (existingJogador) {
+          await updateJogador(existingJogador.id, payload, activeGroupId);
+          atualizados++;
+        } else {
+          await addJogador(payload, activeGroupId);
+          adicionados++;
+        }
+      }
+      
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Sucesso', `Importação concluída!\nAdicionados: ${adicionados}\nAtualizados: ${atualizados}`);
+
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Erro', 'Não foi possível importar a planilha.');
+    } finally {
+      setCarregando(false);
+    }
   };
 
   const toggleDia = (dia) => {
@@ -463,6 +550,16 @@ export default function AdminScreen() {
         <View className="mt-6 mb-24 border-t border-white/5 pt-10 px-2 opacity-60">
           <Text className="text-[10px] text-slate-600 font-bold uppercase tracking-[4px] mb-8 text-center">Gestão Avançada</Text>
           
+          <View className="flex-row justify-between mb-3">
+             <TouchableOpacity 
+              onPress={handleImportarPlanilha}
+              className="flex-1 bg-indigo-500/5 border border-indigo-500/10 p-5 rounded-[32px] items-center"
+            >
+              <FontAwesome5 name="file-excel" size={16} color="#6366f1" />
+              <Text className="text-indigo-400 font-black text-[9px] uppercase mt-3">Importar</Text>
+            </TouchableOpacity>
+          </View>
+
           <View className="flex-row justify-between">
             <TouchableOpacity 
               onPress={handleGerarTeste}

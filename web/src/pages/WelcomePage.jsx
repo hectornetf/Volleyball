@@ -32,14 +32,14 @@ export default function WelcomePage() {
       <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
 
       <div className="w-full max-w-md z-10">
-        
+
         {/* Brand Header */}
         <div className="text-center mb-8">
           <div className="inline-flex p-5 bg-slate-900/80 rounded-3xl border border-slate-800 shadow-2xl mb-4 relative">
             <span className="text-5xl animate-bounce">🏐</span>
             <Sparkles className="w-5 h-5 text-amber-400 absolute -top-1 -right-1" />
           </div>
-          <h1 className="text-4xl font-black tracking-tight text-white">Voleizin</h1>
+          <h1 className="text-4xl font-black tracking-tight text-white">VoleizinDosCria</h1>
           <p className="text-xs font-black uppercase tracking-[0.25em] text-emerald-400 mt-1">
             DOS CRIA • PRO WEB
           </p>

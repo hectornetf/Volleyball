@@ -18,7 +18,7 @@ export default function App() {
       <div className="min-h-screen bg-[#0b0f1a] flex items-center justify-center">
         <div className="flex flex-col items-center space-y-3">
           <div className="w-12 h-12 rounded-full border-4 border-cyan-500/20 border-t-cyan-500 animate-spin" />
-          <span className="text-slate-400 font-extrabold text-xs uppercase tracking-widest">Carregando Voleizin...</span>
+          <span className="text-slate-400 font-extrabold text-xs uppercase tracking-widest">Carregando VoleizinDosCria...</span>
         </div>
       </div>
     );
@@ -50,7 +50,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#0b0f1a] text-slate-100 flex flex-col">
       <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
-      
+
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {renderContent()}
       </main>

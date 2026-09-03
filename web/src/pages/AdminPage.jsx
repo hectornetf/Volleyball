@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Settings, UserPlus, Search, Edit, Trash2, Power, 
-  Sparkles, AlertTriangle, ShieldCheck, Check, X, Phone, Calendar
+  Sparkles, AlertTriangle, ShieldCheck, Check, X, Phone, Calendar, Upload
 } from 'lucide-react';
 import { useSession } from '../context/SessionContext';
 import { 
@@ -16,6 +16,10 @@ export default function AdminPage() {
   const [modalNovo, setModalNovo] = useState(false);
   const [editingJogador, setEditingJogador] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [abaAtiva, setAbaAtiva] = useState('TODOS');
+  const [ordemNivel, setOrdemNivel] = useState(false);
+  
+  const fileInputRef = useRef(null);
 
   // Form State
   const [formNome, setFormNome] = useState('');
@@ -120,9 +124,90 @@ export default function AdminPage() {
     }
   };
 
-  const filtered = jogadores.filter(j => 
-    j.nome.toLowerCase().includes(search.toLowerCase())
-  );
+  const handleImportarPlanilha = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setLoading(true);
+    try {
+      const { read, utils } = await import('xlsx');
+      const data = await file.arrayBuffer();
+      const workbook = read(data);
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const json = utils.sheet_to_json(worksheet);
+
+      let adicionados = 0;
+      let atualizados = 0;
+
+      for (const row of json) {
+        if (!row.Nome) continue;
+
+        const nome = String(row.Nome).trim();
+        let celular = row.Telefone ? String(row.Telefone).trim() : '';
+        let nivel = parseInt(row['Nível (1-5)']) || 3;
+        
+        let tipo = 'MENSALISTA';
+        let diasMensalista = [];
+        const tipoRow = String(row.Tipo || '');
+        if (tipoRow.toLowerCase().includes('avulso')) {
+          tipo = 'AVULSO';
+        } else {
+          tipo = 'MENSALISTA';
+          if (tipoRow.toLowerCase().includes('seg')) diasMensalista.push('Segunda');
+          if (tipoRow.toLowerCase().includes('ter')) diasMensalista.push('Terça');
+          if (tipoRow.toLowerCase().includes('qua')) diasMensalista.push('Quarta');
+          if (tipoRow.toLowerCase().includes('qui')) diasMensalista.push('Quinta');
+          if (tipoRow.toLowerCase().includes('sex')) diasMensalista.push('Sexta');
+          if (tipoRow.toLowerCase().includes('sáb') || tipoRow.toLowerCase().includes('sab')) diasMensalista.push('Sábado');
+          if (tipoRow.toLowerCase().includes('dom')) diasMensalista.push('Domingo');
+        }
+
+        let dataNascimento = row['Data Nascimento'] ? String(row['Data Nascimento']).trim() : '';
+        let status = row.Status ? String(row.Status).trim() : 'Ativo';
+
+        const payload = {
+          nome,
+          celular,
+          nivel,
+          tipo,
+          diasMensalista: tipo === 'MENSALISTA' ? diasMensalista : [],
+          dataNascimento,
+          status,
+        };
+
+        const existingJogador = jogadores.find(j => j.nome.toLowerCase() === nome.toLowerCase());
+        
+        if (existingJogador) {
+          await updateJogador(existingJogador.id, payload, activeGroupId);
+          atualizados++;
+        } else {
+          await addJogador(payload, activeGroupId);
+          adicionados++;
+        }
+      }
+
+      alert(`Importação concluída!\nAdicionados: ${adicionados}\nAtualizados: ${atualizados}`);
+    } catch (err) {
+      console.error("Erro ao importar planilha: ", err);
+      alert("Erro ao importar a planilha. Verifique o console.");
+    } finally {
+      setLoading(false);
+      e.target.value = null;
+    }
+  };
+
+  const filtered = jogadores
+    .filter(j => {
+      const matchAba = abaAtiva === 'TODOS' || j.tipo === abaAtiva;
+      const term = search.toLowerCase();
+      const matchSearch = j.nome.toLowerCase().includes(term) || (j.celular && j.celular.includes(term));
+      return matchAba && matchSearch;
+    })
+    .sort((a, b) => {
+      if (ordemNivel) return (b.nivel || 3) - (a.nivel || 3);
+      return a.nome.localeCompare(b.nome);
+    });
 
   return (
     <div className="space-y-6">
@@ -151,24 +236,53 @@ export default function AdminPage() {
       </div>
 
       {/* Search & Stats Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="relative w-full sm:w-80">
-          <Search className="w-5 h-5 text-slate-500 absolute left-4 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por nome..."
-            className="w-full bg-slate-900/80 text-white pl-12 pr-4 py-3 rounded-2xl border border-slate-800 text-xs focus:outline-none focus:border-cyan-500"
-          />
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="relative w-full sm:w-80">
+            <Search className="w-5 h-5 text-slate-500 absolute left-4 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar por nome ou celular..."
+              className="w-full bg-slate-900/80 text-white pl-12 pr-4 py-3 rounded-2xl border border-slate-800 text-xs focus:outline-none focus:border-cyan-500"
+            />
+          </div>
+
+          <div className="flex items-center space-x-3 text-xs text-slate-400">
+            <span>Total: <strong className="text-white">{jogadores.length}</strong></span>
+            <span>•</span>
+            <span>Ativos: <strong className="text-emerald-400">{jogadores.filter(j=>j.status==='Ativo').length}</strong></span>
+            <span>•</span>
+            <span>Inativos: <strong className="text-rose-400">{jogadores.filter(j=>j.status==='Inativo').length}</strong></span>
+          </div>
         </div>
 
-        <div className="flex items-center space-x-3 text-xs text-slate-400">
-          <span>Total: <strong className="text-white">{jogadores.length}</strong></span>
-          <span>•</span>
-          <span>Ativos: <strong className="text-emerald-400">{jogadores.filter(j=>j.status==='Ativo').length}</strong></span>
-          <span>•</span>
-          <span>Inativos: <strong className="text-rose-400">{jogadores.filter(j=>j.status==='Inativo').length}</strong></span>
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center space-x-2 w-full sm:w-auto">
+            {['TODOS', 'MENSALISTA', 'AVULSO'].map(aba => (
+              <button
+                key={aba}
+                onClick={() => setAbaAtiva(aba)}
+                className={`flex-1 sm:flex-none px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${
+                  abaAtiva === aba 
+                    ? 'bg-purple-600 text-white border border-purple-400 shadow-lg shadow-purple-500/20' 
+                    : 'bg-slate-900/40 text-slate-500 border border-slate-800 hover:text-white'
+                }`}
+              >
+                {aba}
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={() => setOrdemNivel(!ordemNivel)}
+            className={`px-4 py-2 rounded-xl border text-[10px] font-black uppercase transition-all ${
+              ordemNivel ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50' : 'bg-slate-900/60 text-slate-500 border-slate-800 hover:text-white'
+            }`}
+          >
+            {ordemNivel ? 'Por Nível ⭐' : 'Ordem A-Z'}
+          </button>
         </div>
       </div>
 
@@ -248,10 +362,26 @@ export default function AdminPage() {
           <span>Ferramentas de Desenvolvedor & Testes</span>
         </h2>
         <p className="text-xs text-slate-400">
-          Utilize as ações abaixo para simular 16 jogadores reais ou limpar o grupo para recomeçar.
+          Utilize as ações abaixo para simular 16 jogadores reais, importar de uma planilha ou limpar o grupo para recomeçar.
         </p>
 
         <div className="flex flex-wrap gap-3">
+          <input 
+            type="file" 
+            accept=".xlsx, .xls" 
+            className="hidden" 
+            ref={fileInputRef} 
+            onChange={handleImportarPlanilha} 
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={loading}
+            className="bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center space-x-2 transition-all"
+          >
+            <Upload className="w-4 h-4" />
+            <span>Importar Planilha</span>
+          </button>
+
           <button
             onClick={handleGerarMock}
             disabled={loading}

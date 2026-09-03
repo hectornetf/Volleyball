@@ -1,0 +1,11 @@
+{
+  "name": "voleizin-dos-cria",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "VoleizinDosCria — Monorepo (Web + Mobile)",
+  "scripts": {
+    "verify": "node scripts/verify.js",
+    "prepare": "git config core.hooksPath .githooks && echo '✅ Git hooks configurados em .githooks/'"
+  }
+}
