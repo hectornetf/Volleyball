@@ -5,6 +5,7 @@
   "type": "module",
   "description": "VoleizinDosCria — Monorepo (Web + Mobile)",
   "scripts": {
+    "build": "npm install --prefix web && npm run build --prefix web",
     "verify": "node scripts/verify.js",
     "prepare": "git config core.hooksPath .githooks && echo '✅ Git hooks configurados em .githooks/'"
   }
