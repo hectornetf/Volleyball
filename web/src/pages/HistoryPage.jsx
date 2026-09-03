@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { History, Filter, Clock, ShieldAlert, DollarSign, UserPlus, CheckCircle2 } from 'lucide-react';
+import { History, Filter, Clock, ShieldAlert, DollarSign, UserPlus, CheckCircle2, Search } from 'lucide-react';
 import { useSession } from '../context/SessionContext';
 import { subscribeLogs } from '../services/historyService';
 
@@ -7,6 +7,7 @@ export default function HistoryPage() {
   const { activeGroupId } = useSession();
   const [logs, setLogs] = useState([]);
   const [categoriaFiltro, setCategoriaFiltro] = useState('TODAS');
+  const [busca, setBusca] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,8 +22,12 @@ export default function HistoryPage() {
   const categorias = ['TODAS', 'SISTEMA', 'FINANCEIRO', 'CADASTRO', 'PRESENÇA'];
 
   const filteredLogs = logs.filter(log => {
-    if (categoriaFiltro === 'TODAS') return true;
-    return log.categoria === categoriaFiltro;
+    const termo = busca.toLowerCase();
+    const correspondeTexto = (log.descricao || '').toLowerCase().includes(termo) ||
+      (log.categoria || '').toLowerCase().includes(termo) ||
+      (log.tipo || '').toLowerCase().includes(termo);
+    const correspondeCategoria = categoriaFiltro === 'TODAS' || log.categoria === categoriaFiltro;
+    return correspondeTexto && correspondeCategoria;
   });
 
   const getCategoryBadge = (cat) => {
@@ -51,6 +56,17 @@ export default function HistoryPage() {
           <p className="text-slate-400 text-xs mt-1">
             Feed de auditoria em tempo real das ações registradas no grupo.
           </p>
+        </div>
+
+        <div className="relative w-full sm:w-72">
+          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="search"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Buscar descrição, categoria ou tipo..."
+            className="w-full bg-slate-950 text-white pl-9 pr-3 py-2 rounded-xl border border-slate-700 text-xs focus:outline-none focus:border-cyan-500"
+          />
         </div>
 
         {/* Category Filters */}

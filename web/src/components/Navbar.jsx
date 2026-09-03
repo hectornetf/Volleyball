@@ -1,12 +1,22 @@
 import React from 'react';
 import {
   LayoutDashboard, CheckSquare, Users, DollarSign,
-  History, Settings, LogOut, ShieldCheck
+  History, Settings, LogOut, ShieldCheck, Copy, MessageCircle
 } from 'lucide-react';
 import { useSession } from '../context/SessionContext';
 
 export default function Navbar({ activeTab, setActiveTab }) {
   const { activeGroupId, logout } = useSession();
+
+  const copiarCodigo = async () => {
+    await navigator.clipboard.writeText(activeGroupId);
+    alert('Código do grupo copiado!');
+  };
+
+  const compartilharCodigo = () => {
+    const mensagem = `🏐 CONVITE VOLEIZIN 🏐\n\nEntre no nosso grupo usando o código:\n\n🔑 ${activeGroupId}\n\nBora pro jogo!`;
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(mensagem)}`, '_blank');
+  };
 
   const navItems = [
     { id: 'dashboard', label: 'Resumo', icon: LayoutDashboard },
@@ -35,6 +45,12 @@ export default function Navbar({ activeTab, setActiveTab }) {
               <div className="flex items-center space-x-1.5 text-xs text-slate-400">
                 <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
                 <span className="font-mono font-bold text-cyan-400">{activeGroupId}</span>
+                <button onClick={copiarCodigo} title="Copiar código do grupo" className="p-1 text-slate-500 hover:text-cyan-400">
+                  <Copy className="w-3.5 h-3.5" />
+                </button>
+                <button onClick={compartilharCodigo} title="Compartilhar código no WhatsApp" className="p-1 text-slate-500 hover:text-emerald-400">
+                  <MessageCircle className="w-3.5 h-3.5" />
+                </button>
               </div>
             </div>
           </div>

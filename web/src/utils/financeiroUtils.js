@@ -9,6 +9,7 @@ export function computarFechamento(custos, elenco, mesRefStr, statusAtual) {
 
   diasDaSemana.forEach((dia) => {
     const custoDia = parseFloat(String(custos[dia] || '0').replace(',', '.')) || 0;
+    if (custoDia <= 0) return;
     
     // Se o mês estiver congelado, filtramos apenas quem REALMENTE pagou naquele dia/mês.
     // Se o mês estiver aberto, filtramos quem é MENSALISTA no cadastro atual para aquele dia.

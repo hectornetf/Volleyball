@@ -28,6 +28,7 @@ export default function FinanceiroPage() {
   const [modalConfig, setModalConfig] = useState(false);
   const [configTemp, setConfigTemp] = useState({});
   const [fechamentoIniciado, setFechamentoIniciado] = useState(true);
+  const [statusMes, setStatusMes] = useState('Em Aberto');
 
   const refDate = new Date();
   refDate.setMonth(refDate.getMonth() + offsetMes);
@@ -53,6 +54,7 @@ export default function FinanceiroPage() {
       };
       setCustosQuadra(parsedCfg);
       setConfigTemp(parsedCfg);
+      setStatusMes(cfg.status || 'Em Aberto');
 
       const temCusto = diasDaSemana.some(d => (parseFloat(String(parsedCfg[d]).replace(',', '.')) || 0) > 0);
       setFechamentoIniciado(temCusto || cfg.autoIniciarRateioMock === true);
@@ -63,7 +65,7 @@ export default function FinanceiroPage() {
     return () => unsub();
   }, [activeGroupId, mesRefStr]);
 
-  const fechamento = computarFechamento(custosQuadra, jogadores, mesRefStr, 'Em Aberto');
+  const fechamento = computarFechamento(custosQuadra, jogadores, mesRefStr, statusMes);
 
   const handleTogglePagamentoMensalista = async (jogador, dia) => {
     const key = `${dia}_${mesRefStr}`;
@@ -72,6 +74,16 @@ export default function FinanceiroPage() {
 
     await updateJogador(jogador.id, { [`pagamentosMensais.${key}`]: novoStatus }, activeGroupId);
     await registrarLog('FINANCEIRO', `Mensalidade (${dia}) de ${jogador.nome} marcada como: ${novoStatus ? 'PAGO' : 'PENDENTE'}`, 0, activeGroupId);
+
+    const elencoAtualizado = jogadores.map(item => item.id === jogador.id
+      ? { ...item, pagamentosMensais: { ...pagamentosAtuais, [key]: novoStatus } }
+      : item
+    );
+    const fechamentoAtualizado = computarFechamento(custosQuadra, elencoAtualizado, mesRefStr, statusMes);
+    if (fechamentoAtualizado.statusGeral !== statusMes) {
+      setStatusMes(fechamentoAtualizado.statusGeral);
+      await saveConfigFinanceira(activeGroupId, mesRefStr, { status: fechamentoAtualizado.statusGeral });
+    }
   };
 
   const handleCobrarMensalidadeDia = (valorPorPessoa, dia) => {
@@ -101,7 +113,8 @@ export default function FinanceiroPage() {
     await saveConfigFinanceira(activeGroupId, mesRefStr, {
       ...configTemp,
       Terca: configTemp.Terça,
-      Sabado: configTemp.Sábado
+      Sabado: configTemp.Sábado,
+      status: statusMes
     });
     setCustosQuadra(configTemp);
     setFechamentoIniciado(true);
@@ -255,8 +268,8 @@ export default function FinanceiroPage() {
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {diasDaSemana.map((dia) => {
-                const infoDia = fechamento.dias[dia] || { custo: 0, totalMensalistas: 0, valorPorPessoa: 0, jogadores: [] };
+              {diasDaSemana.filter(dia => fechamento.dias[dia]).map((dia) => {
+                const infoDia = fechamento.dias[dia];
 
                 return (
                   <div key={dia} className="bg-slate-900/80 p-5 rounded-3xl border border-slate-800 space-y-3">

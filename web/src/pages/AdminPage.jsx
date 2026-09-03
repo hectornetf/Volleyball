@@ -9,6 +9,34 @@ import {
   gerarDadosDeTestePro, resetDadosGrupo 
 } from '../services/jogadorService';
 
+function formatarDataNascimentoDigitos(text) {
+  const digits = text.replace(/\D/g, '').slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4, 8)}`;
+}
+
+function dataNascimentoValidaOuVazia(value) {
+  const text = (value || '').trim();
+  if (!text) return true;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return true;
+  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(text)) return false;
+
+  const day = Number(text.slice(0, 2));
+  const month = Number(text.slice(3, 5));
+  const year = Number(text.slice(6, 10));
+  if (month < 1 || month > 12 || day < 1 || day > 31) return false;
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+}
+
+function mascaraTelefone(text) {
+  const digits = text.replace(/\D/g, '').slice(0, 11);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
+
 export default function AdminPage() {
   const { activeGroupId } = useSession();
   const [jogadores, setJogadores] = useState([]);
@@ -53,8 +81,8 @@ export default function AdminPage() {
   const handleOpenEdit = (j) => {
     setEditingJogador(j);
     setFormNome(j.nome || '');
-    setFormCelular(j.celular || '');
-    setFormDataNasc(j.dataNascimento || '');
+    setFormCelular('');
+    setFormDataNasc('');
     setFormTipo(j.tipo || 'MENSALISTA');
     setFormNivel(j.nivel || 3);
     setFormDias(j.diasMensalista || ['Segunda', 'Quarta']);
@@ -63,14 +91,23 @@ export default function AdminPage() {
 
   const handleSaveJogador = async (e) => {
     e.preventDefault();
-    if (!formNome.trim()) return;
+    if (!formNome.trim() || (!formCelular.trim() && !editingJogador)) {
+      alert('Nome e celular são obrigatórios!');
+      return;
+    }
+    if (!dataNascimentoValidaOuVazia(formDataNasc)) {
+      alert('Data de nascimento inválida. Use DD/MM/AAAA ou deixe em branco.');
+      return;
+    }
 
     setLoading(true);
     try {
+      const celular = formCelular.trim() || editingJogador?.celular || '';
+      const dataNascimento = formDataNasc.trim() || editingJogador?.dataNascimento || '';
       const dados = {
         nome: formNome.trim(),
-        celular: formCelular.trim(),
-        dataNascimento: formDataNasc.trim(),
+        celular,
+        dataNascimento,
         tipo: formTipo,
         nivel: parseInt(formNivel) || 3,
         diasMensalista: formTipo === 'MENSALISTA' ? formDias : []
@@ -91,7 +128,7 @@ export default function AdminPage() {
 
   const handleToggleStatus = async (j) => {
     const novoStatus = j.status === 'Ativo' ? 'Inativo' : 'Ativo';
-    await updateJogador(j.id, { status: novoStatus }, activeGroupId);
+    await updateJogador(j.id, { status: novoStatus, nome: j.nome }, activeGroupId);
   };
 
   const handleDelete = async (j) => {
@@ -429,8 +466,21 @@ export default function AdminPage() {
                   <input
                     type="text"
                     value={formCelular}
-                    onChange={(e) => setFormCelular(e.target.value)}
-                    placeholder="(11) 98765-4321"
+                    onChange={(e) => setFormCelular(mascaraTelefone(e.target.value))}
+                    placeholder={editingJogador ? '(Oculto) Digite para alterar...' : '(11) 98765-4321'}
+                    inputMode="tel"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white text-sm focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 font-bold uppercase block mb-1">Data de nascimento</label>
+                  <input
+                    type="text"
+                    value={formDataNasc}
+                    onChange={(e) => setFormDataNasc(formatarDataNascimentoDigitos(e.target.value))}
+                    placeholder={editingJogador ? '(Oculta) Digite para alterar...' : 'DD/MM/AAAA'}
+                    maxLength={10}
+                    inputMode="numeric"
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white text-sm focus:outline-none focus:border-cyan-500"
                   />
                 </div>
