@@ -7,7 +7,7 @@ Este documento define a arquitetura, regras de negócio e padrões de segurança
 ## 🏗️ Arquitetura do Sistema
 
 A plataforma utiliza uma arquitetura **SaaS (Software as a Service)** moderna:
-- **Frontend**: React Native with Expo (Managed Workflow).
+- **Frontend**: React Native with Expo SDK 57 (Managed Workflow).
 - **Backend**: Firebase Firestore (NoSQL) com isolamento por Grupo.
 - **Segurança**: Criptografia AES-256 (Camada de Aplicação).
 - **Styling**: NativeWind (Tailwind CSS para Mobile).
@@ -108,7 +108,7 @@ npx eas-cli login
 ### 2. Configuração do Projeto
 Execute na pasta `mobile/`:
 ```bash
-npx eas-cli build:configure
+npx eas-cli@latest project:info
 ```
 
 ### 3. Comandos de Geração
@@ -116,11 +116,20 @@ npx eas-cli build:configure
 - **Android (Play Store)**: `npx eas-cli build --platform android --profile production`
 - **iOS (IPA)**: `npx eas-cli build --platform ios` (Requer conta Apple Developer)
 
+O projeto EAS atual é `@hectornetf/voleizin-dos-cria`. O perfil `preview` usa o canal `preview` e gera uma build para distribuição interna.
+
+### 4. Atualizações automáticas (EAS Update)
+
+Após instalar uma build configurada com `expo-updates`, pushes na branch `main` que alterarem `mobile/` publicam automaticamente o JavaScript pelo workflow `.github/workflows/mobile-update.yml`. O workflow usa o secret `EXPO_TOKEN` do GitHub e publica no canal `preview`.
+
+Atualizações OTA não substituem uma nova build quando houver alterações em SDK, dependências nativas, permissões, ícone, `app.json` ou código nativo.
+
 ---
 
 ## 🚀 Comandos Úteis
 - `npm install`: Instala dependências.
 - `npx expo start -c`: Inicia o app limpando o cache.
 - `npm run lint`: Verifica qualidade do código.
+- `npx -y expo-doctor`: Verifica dependências e configuração do Expo.
 
 > Propriedade de **VoleizinDosCria Team**. v2.1 (Abril 2026).

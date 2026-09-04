@@ -2,6 +2,8 @@
 
 > Siga os passos abaixo para ter seu sistema de vôlei funcionando em menos de 10 minutos, 100% de graça no Google.
 
+> Este arquivo documenta a versão legada Google Apps Script. Para as aplicações atuais, consulte [`mobile/INSTRUCOES.md`](./mobile/INSTRUCOES.md) e [`web/INSTRUCOES.md`](./web/INSTRUCOES.md).
+
 ---
 
 ## Pré-requisitos
@@ -186,6 +188,15 @@ O sistema usa um **algoritmo híbrido** para garantir equilíbrio justo:
 ## Suporte e Contribuições
 
 Encontrou um bug ou tem uma sugestão? Abra uma **Issue** ou **Pull Request** no GitHub!
+
+## Aplicações atuais
+
+- **Web:** disponível em [voleizindoscria.vercel.app](https://voleizindoscria.vercel.app/), com deploy automático a cada push na `main`.
+- **Mobile:** Expo SDK 57, com builds pelo EAS e atualizações JavaScript via EAS Update.
+- **APK de teste:** execute `npx eas-cli@latest build --platform android --profile preview` dentro de `mobile/`.
+- **Atualizações OTA:** o workflow `.github/workflows/mobile-update.yml` publica no canal `preview` quando há alterações em `mobile/` na `main`.
+
+Uma nova build mobile é necessária para alterações nativas, SDK, dependências nativas, permissões ou configuração do aplicativo.
 
 Se o sistema te ajudou, considere apoiar o desenvolvimento:
 

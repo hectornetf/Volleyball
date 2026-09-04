@@ -42,14 +42,24 @@ Volleyball/
 ## 🚀 Principais Módulos da Plataforma
 
 1. **📱 App Mobile ([`mobile/`](./mobile))**:
-   - Desenvolvido em **React Native + Expo**.
+  - Desenvolvido em **React Native + Expo SDK 57**.
    - Notificações, suporte a gestos e build nativo Android/iOS via EAS Build.
+  - Atualizações JavaScript distribuídas por EAS Update no canal `preview`.
    - Sincronização em tempo real do código do grupo (`VO-XXXX`).
 
 2. **🌐 App Web ([`web/`](./web))**:
    - Desenvolvido em **Vite + React + Tailwind CSS**.
    - Interface Single-Page (SPA) rápida e 100% responsiva para desktop e navegador mobile.
-   - Paridade total de funcionalidades com o aplicativo mobile.
+  - Deploy contínuo na Vercel: [voleizindoscria.vercel.app](https://voleizindoscria.vercel.app/).
+  - Funcionalidades compartilhadas com o aplicativo mobile via Firestore.
+
+## 🚀 Publicação
+
+- **Web:** cada push na branch `main` atualiza o deploy da Vercel.
+- **Mobile OTA:** alterações JavaScript em `mobile/` são publicadas pelo GitHub Actions no canal `preview`.
+- **Mobile nativo:** mudanças de SDK, dependências nativas ou configuração exigem uma nova build EAS.
+
+Consulte os guias específicos em [`mobile/INSTRUCOES.md`](./mobile/INSTRUCOES.md) e [`web/INSTRUCOES.md`](./web/INSTRUCOES.md).
 
 ---
 

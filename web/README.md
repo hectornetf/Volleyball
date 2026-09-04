@@ -5,7 +5,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com/)
 
-**VoleizinDosCria Web** é a aplicação web Single-Page (SPA) moderna e responsiva para a gestão completa de grupos de vôlei. Desenvolvida em **React + Vite + Tailwind CSS**, ela opera 100% em tempo real e em paridade total com o aplicativo **Mobile (React Native/Expo)** através do **Firebase Cloud Firestore**.
+**VoleizinDosCria Web** é a aplicação web Single-Page (SPA) moderna e responsiva para a gestão completa de grupos de vôlei. Desenvolvida em **React + Vite + Tailwind CSS**, ela opera em tempo real com o aplicativo **Mobile (React Native/Expo SDK 57)** através do **Firebase Cloud Firestore**.
 
 ---
 
@@ -14,7 +14,9 @@
 ### 🌐 Sincronização em Tempo Real & Criptografia
 - **Multi-Tenancy por Código (`VO-XXXX`)**: Acesso instantâneo a qualquer grupo criado no mobile ou na web.
 - **Criptografia AES-256 no Cliente**: Dados sensíveis (nomes, telefones, datas de nascimento, lançamentos) criptografados com a chave secreta do grupo.
-- **Auditoria em Tempo Real (`logs_atividades`)**: Feed de histórico com filtro por categoria (SISTEMA, FINANCEIRO, CADASTRO, PRESENÇA).
+- **Auditoria em Tempo Real (`logs_atividades`)**: Feed de histórico com busca por descrição, categoria e tipo.
+- **Convite do grupo**: Código copiável e compartilhável por WhatsApp no cabeçalho.
+- **Privacidade**: Telefones não são exibidos na listagem e ficam ocultos durante a edição.
 
 ### 📅 Chamada de Presença por Dia da Semana
 - **Navegação por Dias (`Segunda`..`Domingo`)**: Chamada inteligente por dia de treino.
@@ -27,7 +29,7 @@
 - **Copiar para WhatsApp**: Texto formatado com emojis pronto para envio no grupo.
 
 ### 💰 Rateio Financeiro & Caixa de Equipamentos
-- **Rateio por Dia de Treino**: Divisão do custo da quadra entre os mensalistas cadastrados para aquele dia.
+- **Rateio por Dia de Treino**: Divisão do custo da quadra entre os mensalistas ativos cadastrados para aquele dia; dias sem custo não entram no rateio.
 - **Cobrança Individual de Mensalidades**: Links de cobrança direto no WhatsApp.
 - **Caixa de Equipamentos**: Controle de entradas e saídas do fundo de materiais (bolas, coletes, redes).
 
@@ -36,7 +38,9 @@
 ## 📦 Como Executar
 
 ### 1. Instalar Dependências
+Execute na pasta `web/`:
 ```bash
+cd web
 npm install
 ```
 
@@ -50,7 +54,17 @@ Acesse no navegador: `http://localhost:3000`
 ```bash
 npm run build
 ```
-Os artefatos otimizados serão gerados em `dist/`.
+Os artefatos otimizados serão gerados em `web/dist/`.
+
+### 4. Deploy na Vercel
+
+O projeto está preparado pelo `vercel.json` na raiz do repositório. Conecte `hectornetf/Volleyball` à Vercel e mantenha a raiz do projeto como `./`. O build usa `npm run build --prefix web` e publica `web/dist`.
+
+Configure as variáveis `VITE_*` do arquivo `web/.env` nos ambientes **Production** e **Preview**. O endereço de produção é:
+
+<https://voleizindoscria.vercel.app/>
+
+Cada push na branch `main` cria um novo deploy automaticamente.
 
 ---
 
