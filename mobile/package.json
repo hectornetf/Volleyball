@@ -33,6 +33,7 @@
     "react-native-screens": "~4.26.0",
     "react-native-worklets": "0.10.1",
     "tailwindcss": "^3.3.2",
+    "voleizin-dos-cria": "file:..",
     "xlsx": "^0.18.5"
   },
   "license": "MIT",

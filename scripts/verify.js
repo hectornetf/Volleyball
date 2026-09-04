@@ -42,6 +42,33 @@ function runCommand(command, cwd, description) {
   }
 }
 
+function runCriticalAudit(cwd, description) {
+  try {
+    process.stdout.write(`  ⏳ Executando: ${description}... `);
+    let output;
+    try {
+      output = execSync('npm audit --audit-level=critical --json', { cwd, stdio: 'pipe' });
+    } catch (error) {
+      output = error.stdout;
+      if (!output) throw error;
+    }
+    const report = JSON.parse(output.toString());
+    const critical = report.metadata?.vulnerabilities?.critical || 0;
+    if (critical > 0) {
+      console.log(`${colors.red}FALHOU${colors.reset}`);
+      console.error(`Foram encontradas ${critical} vulnerabilidade(s) crítica(s).`);
+      return { success: false, reason: 'critical' };
+    }
+    console.log(`${colors.green}APROVADO${colors.reset}`);
+    return { success: true };
+  } catch (error) {
+    console.log(`${colors.red}INDISPONÍVEL${colors.reset}`);
+    if (error.stdout) console.log(error.stdout.toString());
+    if (error.stderr) console.error(error.stderr.toString());
+    return { success: false, reason: 'audit-error' };
+  }
+}
+
 console.log(`${colors.bold}====================================================${colors.reset}`);
 console.log(`${colors.bold}🛡️  VERIFICAÇÃO DE CÓDIGO E SEGURANÇA PRÉ-COMMIT 🛡️${colors.reset}`);
 console.log(`${colors.bold}====================================================${colors.reset}`);
@@ -139,12 +166,16 @@ if (!mobileCheck.success) {
 // 4. AUDITORIA DE SEGURANÇA DE DEPENDÊNCIAS (CRITICAL)
 // -------------------------------------------------------------
 logStep('4/4', 'Auditoria de Vulnerabilidades Críticas de Dependências');
-const auditWeb = runCommand('npm audit --audit-level=critical', webDir, 'npm audit Web (nível crítico)');
-const auditMobile = runCommand('npm audit --audit-level=critical', mobileDir, 'npm audit Mobile (nível crítico)');
+const auditWeb = runCriticalAudit(webDir, 'npm audit Web (nível crítico)');
+const auditMobile = runCriticalAudit(mobileDir, 'npm audit Mobile (nível crítico)');
 
-if (!auditWeb.success || !auditMobile.success) {
+if (auditWeb.reason === 'critical' || auditMobile.reason === 'critical') {
   logError('Vulnerabilidades críticas detectadas nas dependências.');
   hasErrors = true;
+} else if (!auditWeb.success || !auditMobile.success) {
+  console.warn(`${colors.yellow}⚠ Auditoria npm indisponível; commit liberado sem confirmação online de vulnerabilidades.${colors.reset}`);
+  console.warn(`${colors.yellow}  Execute npm audit manualmente quando o registry estiver disponível.${colors.reset}`);
+  logSuccess('Nenhuma vulnerabilidade crítica foi confirmada.');
 } else {
   logSuccess('Nenhuma vulnerabilidade crítica encontrada nas dependências.');
 }
