@@ -56,7 +56,7 @@ export default function App() {
       </main>
 
       <footer className="py-6 border-t border-slate-900 text-center text-xs text-slate-600 font-semibold">
-        <p>Voleizin dos Cria • Platform SaaS v2.1 • Criptografia AES-256</p>
+        <p>Voleizin dos Cria • Platform</p>
       </footer>
     </div>
   );

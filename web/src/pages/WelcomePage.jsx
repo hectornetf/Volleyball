@@ -41,7 +41,7 @@ export default function WelcomePage() {
           </div>
           <h1 className="text-4xl font-black tracking-tight text-white">VoleizinDosCria</h1>
           <p className="text-xs font-black uppercase tracking-[0.25em] text-emerald-400 mt-1">
-            DOS CRIA • PRO WEB
+            • PRO WEB
           </p>
           <p className="text-xs text-slate-400 mt-2 max-w-xs mx-auto">
             Plataforma de gestão de peladas, finanças, rateios e sorteio de times com dados criptografados.
