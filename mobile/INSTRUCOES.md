@@ -132,4 +132,38 @@ Atualizações OTA não substituem uma nova build quando houver alterações em 
 - `npm run lint`: Verifica qualidade do código.
 - `npx -y expo-doctor`: Verifica dependências e configuração do Expo.
 
+---
+
+## 🔄 Fluxo de Deploy Automatizado
+
+```mermaid
+flowchart TB
+    A["💻 Código mobile/"] --> B["git push main"]
+    B --> C{"Tipo de mudança?"}
+
+    C -- "Somente JavaScript" --> D["GitHub Actions<br/>mobile-update.yml"]
+    D --> E["npm ci"]
+    E --> F["npm run lint ✅"]
+    F --> G["eas update --channel preview"]
+    G --> H["📲 OTA (expo-updates)"]
+
+    C -- "SDK / nativa / app.json" --> I["eas build<br/>--profile preview|production"]
+    I --> J["📦 APK / IPA"]
+
+    H -.-> K[("🗄️ Firestore")]
+    J -.-> K
+```
+
+> **Regra de ouro:** OTA atualiza apenas o JavaScript. Alterações em SDK, dependências nativas, permissões, ícone, `app.json` ou código nativo exigem uma nova build EAS.
+
+## 🧹 Código Limpo & 🔒 Segurança
+
+- **Lint no CI**: `npm run lint` roda antes de publicar qualquer OTA — código com erro não vai para produção.
+- **Estrutura organizada**: `screens/`, `components/`, `services/`, `context/`, `config/`, `utils/`.
+- **Serviços desacoplados**: Firestore isolado em `services/` (`jogadorService`, `sessionService`, `historyService`).
+- **Contexto global**: `SessionContext` centraliza `activeGroupId` e estado de carregamento.
+- **AES-256 no cliente** via `utils/crypto.js` (nomes, telefones, datas, lançamentos).
+- **Multi-Tenancy**: toda query exige `groupId` (`firestore.rules`).
+- **Segredos no `.env`** (`EXPO_PUBLIC_*`) e `EXPO_TOKEN` como secret do GitHub — nunca versionados.
+
 > Propriedade de **VoleizinDosCria Team**. v2.1 (Abril 2026).

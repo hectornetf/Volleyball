@@ -63,11 +63,81 @@ Consulte os guias específicos em [`mobile/INSTRUCOES.md`](./mobile/INSTRUCOES.m
 
 ---
 
+## � Arquitetura de Deploy Automatizado
+
+A plataforma usa **CI/CD contínuo** com dois pipelines independentes, acionados por push na branch `main`:
+
+```mermaid
+flowchart TB
+    subgraph DEV["👨‍💻 Desenvolvimento"]
+        A["Código-fonte<br/>Monorepo Volleyball/"]
+        A --> B["git push<br/>branch main"]
+    end
+
+    B --> C{"Arquivos alterados?"}
+
+    subgraph WEB["🌐 Pipeline Web (Vercel)"]
+        C -- "web/**" --> D["Vercel detecta push"]
+        D --> E["npm install --prefix web"]
+        E --> F["npm run build --prefix web<br/>(Vite + React 19)"]
+        F --> G["Publica web/dist"]
+        G --> H["🌍 voleizindoscria.vercel.app"]
+    end
+
+    subgraph MOBILE["📱 Pipeline Mobile (GitHub Actions)"]
+        C -- "mobile/**" --> I["Workflow mobile-update.yml"]
+        I --> J["npm ci + npm run lint"]
+        J --> K["eas update --channel preview"]
+        K --> L["📲 OTA via expo-updates<br/>(sem nova build)"]
+    end
+
+    subgraph NATIVE["🔧 Build Nativa (manual)"]
+        M["Mudança de SDK / nativa /<br/>app.json / permissões"]
+        M --> N["eas build --profile preview|production"]
+        N --> O["APK / IPA"]
+    end
+
+    subgraph DATA["🗄️ Backend (Firebase)"]
+        P["Firestore (NoSQL)"]
+        Q["Auth + AsyncStorage"]
+        R["AES-256 no cliente"]
+    end
+
+    H -. "lê/escreve" .-> P
+    L -. "lê/escreve" .-> P
+    O -. "lê/escreve" .-> P
+    P --- Q --- R
+```
+
+### Fluxo resumido
+
+| Gatilho | Pipeline | Resultado |
+|---|---|---|
+| Push `main` com mudanças em `web/**` | Vercel (via `vercel.json`) | Deploy automático da SPA |
+| Push `main` com mudanças em `mobile/**` | GitHub Actions (`mobile-update.yml`) | EAS Update OTA no canal `preview` |
+| Mudança nativa / SDK / `app.json` | Manual (`eas build`) | Nova build APK/IPA |
+
+> **Regra de ouro:** OTA (EAS Update) só atualiza o JavaScript. Qualquer mudança em SDK, dependências nativas, permissões, ícone ou `app.json` exige uma nova build EAS.
+
+---
+
+## 🧹 Código Limpo e Qualidade
+
+- **Lint obrigatório no CI**: o workflow `mobile-update.yml` executa `npm run lint` (ESLint) antes de publicar qualquer OTA — código com erro não vai para produção.
+- **Padrão de pastas consistente**: `screens/`, `components/`, `services/`, `context/`, `config/`, `utils/` espelhados entre `mobile/` e `web/`.
+- **Serviços desacoplados**: toda comunicação com o Firestore fica isolada em `services/` (`jogadorService`, `sessionService`, `historyService`), mantendo as telas limpas.
+- **Contexto global**: `SessionContext` centraliza o `activeGroupId` e o estado de carregamento, evitando prop-drilling.
+- **Criptografia centralizada**: `utils/crypto.js` encapsula AES-256, usado por todos os serviços.
+
+---
+
 ## 🔒 Segurança e Multi-Tenancy
 
 - **Multi-Tenancy por Código (`VO-XXXX`)**: Cada grupo gerencia seus atletas e caixa com um código isolado.
 - **Criptografia AES-256 no Cliente**: Dados sensíveis (nomes, telefones, datas de nascimento, lançamentos) criptografados com a chave secreta do grupo.
 - **Auditoria de Histórico**: Feed de logs gravados no Firestore para acompanhamento de pagamentos e presenças.
+- **Regras do Firestore** (`firestore.rules`): toda query exige o filtro `groupId`, garantindo isolamento entre grupos.
+- **Segredos fora do código**: credenciais via `.env` (`EXPO_PUBLIC_*` / `VITE_*`) e `EXPO_TOKEN` como secret do GitHub — nunca versionados.
 
 ---
 

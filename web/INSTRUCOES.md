@@ -68,3 +68,28 @@ Para usar o endereço `https://voleizindoscria.vercel.app/`, o projeto Vercel de
 5. **Financeiro & Rateios**: Cálculo automático de custo da quadra por dia da semana e caixa de equipamentos.
 6. **Histórico**: Log de auditoria em tempo real.
 7. **Admin de Jogadores**: Cadastro, edição de nível, ativação/desativação e ferramentas de simulação.
+
+---
+
+## 🔄 Fluxo de Deploy Automatizado (Vercel)
+
+```mermaid
+flowchart LR
+    A["💻 Código web/"] --> B["git push main"]
+    B --> C["Vercel detecta push<br/>(vercel.json)"]
+    C --> D["npm install --prefix web"]
+    D --> E["npm run build --prefix web<br/>(Vite)"]
+    E --> F["Publica web/dist"]
+    F --> G["🌍 voleizindoscria.vercel.app"]
+    G -. "Firestore" .-> H[("🗄️ Firebase")]
+```
+
+> Cada push na branch `main` gera um novo deploy automaticamente. As variáveis `VITE_*` devem estar configuradas em **Production** e **Preview** no painel da Vercel.
+
+## 🧹 Código Limpo & 🔒 Segurança
+
+- **Estrutura organizada**: `pages/`, `components/`, `services/`, `context/`, `config/`, `utils/`.
+- **Serviços desacoplados**: Firestore isolado em `services/` (`jogadorService`, `sessionService`, `historyService`).
+- **AES-256 no cliente** via `utils/crypto.js` (nomes, telefones, datas, lançamentos).
+- **Multi-Tenancy**: toda query exige `groupId` (`firestore.rules`).
+- **Segredos no `.env`** (`VITE_*`) — nunca versionados.

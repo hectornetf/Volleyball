@@ -71,8 +71,33 @@ Cada push na branch `main` cria um novo deploy automaticamente.
 ## 🛠️ Tecnologias
 - **React 19 + Vite 6**
 - **Tailwind CSS 3**
-- **Firebase Firestore SDK (v11)**
+- **Firebase Firestore SDK (v12)**
 - **Crypto-JS (AES-256)**
 - **Lucide React Icons**
+
+---
+
+## 🔄 Deploy Automatizado (Vercel)
+
+```mermaid
+flowchart LR
+    A["💻 Código<br/>web/"] --> B["git push main"]
+    B --> C["Vercel detecta push<br/>(vercel.json)"]
+    C --> D["npm install --prefix web"]
+    D --> E["npm run build --prefix web<br/>(Vite)"]
+    E --> F["Publica web/dist"]
+    F --> G["🌍 voleizindoscria.vercel.app"]
+    G -. "Firestore" .-> H[("🗄️ Firebase")]
+```
+
+> Cada push na branch `main` gera um novo deploy automaticamente. As variáveis `VITE_*` devem estar configuradas em **Production** e **Preview** no painel da Vercel.
+
+## 🧹 Código Limpo & 🔒 Segurança
+
+- **Estrutura organizada**: `pages/`, `components/`, `services/`, `context/`, `config/`, `utils/`.
+- **Serviços desacoplados**: Firestore isolado em `services/` (`jogadorService`, `sessionService`, `historyService`).
+- **AES-256 no cliente** via `utils/crypto.js` (nomes, telefones, datas, lançamentos).
+- **Multi-Tenancy**: toda query exige `groupId` (`firestore.rules`).
+- **Segredos no `.env`** (`VITE_*`) — nunca versionados.
 
 > Desenvolvido para a comunidade **VoleizinDosCria** 🏐🔥

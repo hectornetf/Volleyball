@@ -42,9 +42,47 @@ npx eas-cli@latest build --platform android --profile preview
 
 ---
 
+## � Deploy Automatizado (CI/CD)
+
+```mermaid
+flowchart LR
+    A["💻 Código<br/>mobile/"] --> B["git push main"]
+    B --> C{"Mudou<br/>mobile/**?"}
+    C -- "Sim" --> D["GitHub Actions<br/>mobile-update.yml"]
+    D --> E["npm ci"]
+    E --> F["npm run lint ✅"]
+    F --> G["eas update<br/>--channel preview"]
+    G --> H["📲 OTA no app<br/>(expo-updates)"]
+
+    C -- "Mudança nativa / SDK / app.json" --> I["eas build<br/>--profile preview|production"]
+    I --> J["📦 APK / IPA"]
+
+    H -. "Firestore" .-> K[("🗄️ Firebase")]
+    J -. "Firestore" .-> K
+```
+
+> **Regra:** OTA atualiza só o JavaScript. SDK, dependências nativas, permissões, ícone ou `app.json` exigem nova build.
+
+---
+
+## 🧹 Código Limpo
+
+- **Lint no CI**: `npm run lint` (ESLint) roda antes de publicar qualquer OTA.
+- **Estrutura organizada**: `screens/`, `components/`, `services/`, `context/`, `config/`, `utils/`.
+- **Serviços desacoplados**: Firestore isolado em `services/` (`jogadorService`, `sessionService`, `historyService`).
+- **Contexto global**: `SessionContext` centraliza `activeGroupId` e estado de carregamento.
+
+## 🔒 Segurança
+
+- **AES-256 no cliente** via `utils/crypto.js` (nomes, telefones, datas, lançamentos).
+- **Multi-Tenancy**: toda query exige `groupId` (`firestore.rules`).
+- **Segredos no `.env`** (`EXPO_PUBLIC_*`) e `EXPO_TOKEN` como secret do GitHub — nunca versionados.
+
+---
+
 ## 🛠️ Stack
-- React Native + Expo
+- React Native + Expo SDK 57
 - Tailwind CSS (NativeWind)
-- Firebase Firestore + AES-256 Crypto
+- Firebase Firestore (v12) + AES-256 Crypto
 
 > Projeto desenvolvido pela equipe **Antigravity**. 🏐🔥
