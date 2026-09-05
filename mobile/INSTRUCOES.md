@@ -118,6 +118,14 @@ npx eas-cli@latest project:info
 
 O projeto EAS atual é `@hectornetf/voleizin-dos-cria`. O perfil `preview` usa o canal `preview` e gera uma build para distribuição interna.
 
+### Variáveis obrigatórias no build remoto
+
+O arquivo `.env` é usado apenas na sua máquina e é ignorado pelo Git. Antes de gerar um APK pelo EAS, cadastre as oito variáveis `EXPO_PUBLIC_...` mostradas na seção de configuração inicial no painel **Expo > Project settings > Environment variables**, nos ambientes `preview` e `production` (e em `development`, se aplicável).
+
+O workflow de atualização OTA usa o ambiente `preview` do próprio Expo. Assim, ele recebe as mesmas variáveis que foram usadas para gerar o APK, sem precisar duplicá-las no GitHub.
+
+Depois de cadastrá-las, faça uma nova build `preview`, instale o novo APK e publique uma OTA somente após conferir que o workflow concluiu sem erro.
+
 ### 4. Atualizações automáticas (EAS Update)
 
 Após instalar uma build configurada com `expo-updates`, pushes na branch `main` que alterarem `mobile/` publicam automaticamente o JavaScript pelo workflow `.github/workflows/mobile-update.yml`. O workflow usa o secret `EXPO_TOKEN` do GitHub e publica no canal `preview`.
