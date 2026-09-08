@@ -138,7 +138,7 @@ export default function PresencaScreen() {
           text: 'Sim, registrar', onPress: async () => {
             try {
               await updateJogador(jogador.id, { diariaPaga: true });
-              await registrarOperacaoFinanceira('ENTRADA_AVULSO', valorAvulso, `Pago: ${jogador.nome}`, activeGroupId);
+              await registrarOperacaoFinanceira('ENTRADA_AVULSO', valorAvulso, `Pago: ${jogador.nome}`, activeGroupId, jogador.id);
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             } catch (err) {
               Alert.alert('Erro', err.message);

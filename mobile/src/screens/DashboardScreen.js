@@ -5,7 +5,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as ExpoClipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { FontAwesome5 } from '@expo/vector-icons';
-import { subscribeJogadores, getSaldoGlobalEquipamentos, getConfigFinanceira } from '../services/jogadorService';
+import { subscribeJogadores, getSaldoGlobalEquipamentos, getConfigFinanceira, getPagamentosAvulsosDoMes } from '../services/jogadorService';
 import { useSession } from '../context/SessionContext';
 import { computarFechamento } from '../utils/financeiroUtils';
 
@@ -15,6 +15,7 @@ export default function DashboardScreen() {
   const [elenco, setElenco] = useState([]);
   const [saldoEquipamentos, setSaldoEquipamentos] = useState(0); 
   const [custosMes, setCustosMes] = useState(null);
+  const [pagamentosAvulsos, setPagamentosAvulsos] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(30));
@@ -27,6 +28,7 @@ export default function DashboardScreen() {
     try {
       const saldo = await getSaldoGlobalEquipamentos(activeGroupId);
       setSaldoEquipamentos(saldo);
+      setPagamentosAvulsos(await getPagamentosAvulsosDoMes(activeGroupId));
       
       const conf = await getConfigFinanceira(activeGroupId, mesAtualNome);
       setCustosMes({
@@ -126,6 +128,11 @@ export default function DashboardScreen() {
   const devedores = Object.values(devedoresMap).sort((a, b) => a.nome.localeCompare(b.nome));
 
   const saldoEmAberto = devedores.reduce((acc, d) => acc + d.valor, 0);
+  const avulsosDoMes = pagamentosAvulsos.map((pagamento) => ({
+    ...pagamento,
+    nome: elenco.find((jogador) => jogador.id === pagamento.jogadorId)?.nome || pagamento.nomeLegado || 'Jogador',
+    dataFormatada: pagamento.data ? new Date(pagamento.data).toLocaleDateString('pt-BR') : ''
+  }));
 
   // Ranking Top 5 Assíduos
   const ranking = [...elenco]
@@ -284,6 +291,34 @@ export default function DashboardScreen() {
               <Text className="text-lg font-black text-yellow-400">R$ {totalGeral.toFixed(2).replace('.', ',')}</Text>
             </View>
           </View>
+        </View>
+
+        {/* ── Avulsos pagos no mês ── */}
+        <View className="bg-slate-800/45 p-5 rounded-2xl border-l-4 border-amber-500 border border-white/5 mb-1">
+          <View className="flex-row items-center justify-between mb-4">
+            <View className="flex-row items-center gap-2">
+              <FontAwesome5 name="hand-holding-usd" size={14} color="#f59e0b" />
+              <Text className="text-white font-bold text-sm">Avulsos pagos em {mesAtualNome}</Text>
+            </View>
+            <Text className="text-amber-400 font-black text-xs">{avulsosDoMes.length}</Text>
+          </View>
+          {avulsosDoMes.length > 0 ? (
+            <View className="space-y-2">
+              {avulsosDoMes.map((pagamento) => (
+                <View key={pagamento.id} className="flex-row justify-between items-center bg-amber-500/5 border border-amber-500/10 rounded-xl p-3">
+                  <View className="flex-1 mr-3">
+                    <Text numberOfLines={1} className="text-slate-200 text-sm font-bold">{pagamento.nome}</Text>
+                    <Text className="text-slate-500 text-[10px] mt-0.5">Pago em {pagamento.dataFormatada}</Text>
+                  </View>
+                  <Text className="text-amber-300 font-black text-xs">R$ {(Number(pagamento.valor) || 0).toFixed(2).replace('.', ',')}</Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View className="items-center py-5 bg-amber-500/5 rounded-xl border border-amber-500/10">
+              <Text className="text-slate-400 text-xs">Nenhum pagamento avulso registrado neste mês.</Text>
+            </View>
+          )}
         </View>
 
         {/* ── Pendências do Mês (paridade legado) ── */}

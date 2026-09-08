@@ -3,6 +3,14 @@ import { getFirestore } from "firebase/firestore";
 import { initializeAuth, getReactNativePersistence } from "firebase/auth";
 import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 
+// O SDK pode emitir este aviso interno transitório ao reconstruir o cache local.
+// Mantemos os demais avisos do Firestore visíveis para não esconder problemas reais.
+const avisoOriginal = console.warn;
+console.warn = (...args) => {
+  if (args.some((arg) => String(arg).includes('BloomFilter error'))) return;
+  avisoOriginal(...args);
+};
+
 // As chaves são inseridas no bundle pelo Expo durante o build. Em builds EAS e
 // atualizações OTA elas precisam existir também no ambiente remoto (não apenas
 // no .env da máquina de desenvolvimento).

@@ -7,6 +7,7 @@ const JOGADORES_COLLECTION = 'jogadores';
 const FINANCEIRO_OP_COLLECTION = 'operacoes_financeiras';
 const CONFIG_FINANCEIRA_COLLECTION = 'config_financeira';
 const LOGS_COLLECTION = 'logs_atividades';
+const SORTEIOS_COLLECTION = 'sorteios_times';
 
 /**
  * Funções de Sanitização Criptográfica
@@ -84,7 +85,7 @@ export const subscribeJogadores = (groupId, callback, errorCallback) => {
   }, errorCallback);
 };
 
-export const registrarOperacaoFinanceira = async (tipo, valor, descricao, groupId) => {
+export const registrarOperacaoFinanceira = async (tipo, valor, descricao, groupId, jogadorId = null) => {
   if (!groupId) throw new Error("ID do Grupo obrigatório!");
   
   const docRef = await addDoc(collection(db, FINANCEIRO_OP_COLLECTION), {
@@ -92,11 +93,23 @@ export const registrarOperacaoFinanceira = async (tipo, valor, descricao, groupI
     groupId,
     valor: tipo === 'SAIDA_DESPESA' ? -Math.abs(valor) : Math.abs(valor),
     descricao: encryptData(descricao, groupId), // Criptografa descrição por segurança
-    data: new Date().toISOString()
+    data: new Date().toISOString(),
+    ...(jogadorId ? { jogadorId } : {})
   });
 
   await registrarLog('FINANCEIRO', descricao, valor, groupId);
   return docRef;
+};
+
+export const getPagamentosAvulsosDoMes = async (groupId, referencia = new Date()) => {
+  if (!groupId) return [];
+  const inicio = new Date(referencia.getFullYear(), referencia.getMonth(), 1).toISOString();
+  const fim = new Date(referencia.getFullYear(), referencia.getMonth() + 1, 1).toISOString();
+  const dados = await getDocs(query(collection(db, FINANCEIRO_OP_COLLECTION), where('groupId', '==', groupId)));
+  return dados.docs.map((item) => ({ id: item.id, ...item.data() }))
+    .filter((item) => item.tipo === 'ENTRADA_AVULSO' && item.data >= inicio && item.data < fim)
+    .map((item) => ({ ...item, nomeLegado: String(decryptData(item.descricao, groupId) || '').replace(/^Pago:\s*/i, '') }))
+    .sort((a, b) => (b.data || '').localeCompare(a.data || ''));
 };
 
 /**
@@ -138,7 +151,8 @@ export const resetDadosGrupo = async (groupId) => {
       query(collection(db, JOGADORES_COLLECTION), where('groupId', '==', groupId)),
       query(collection(db, FINANCEIRO_OP_COLLECTION), where('groupId', '==', groupId)),
       query(collection(db, CONFIG_FINANCEIRA_COLLECTION), where('groupId', '==', groupId)),
-      query(collection(db, LOGS_COLLECTION), where('groupId', '==', groupId))
+      query(collection(db, LOGS_COLLECTION), where('groupId', '==', groupId)),
+      query(collection(db, SORTEIOS_COLLECTION), where('groupId', '==', groupId))
     ];
 
     for (const q of queries) {
@@ -293,5 +307,32 @@ export const gerarDadosDeTestePro = async (groupId) => {
     });
   });
 
-  return await batch.commit();
+  await batch.commit();
+
+  // Cria uma rodada aberta para que o fluxo de Times possa ser testado imediatamente.
+  const jogadoresCriados = (await getDocs(query(collection(db, JOGADORES_COLLECTION), where('groupId', '==', groupId))))
+    .docs.map((item) => ({ id: item.id, ...item.data() }))
+    .filter((jogador) => jogador.status !== 'Inativo')
+    .slice(0, 14);
+  if (jogadoresCriados.length >= 12) {
+    const hoje = new Date();
+    const nomesDias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+    const times = [jogadoresCriados.slice(0, 6), jogadoresCriados.slice(6, 12)].map((time, indice) => ({
+      nome: `Time ${indice + 1}`,
+      jogadores: time.map((jogador) => ({ id: jogador.id, nivelNoSorteio: Number(jogador.nivel) || 3 })),
+      vitorias: 0
+    }));
+    await addDoc(collection(db, SORTEIOS_COLLECTION), {
+      groupId,
+      dia: nomesDias[hoje.getDay()],
+      data: hoje.toISOString().slice(0, 10),
+      criadoEm: hoje.toISOString(),
+      concluido: false,
+      times,
+      reservas: jogadoresCriados.slice(12).map((jogador) => jogador.id),
+      diagnostico: { poderes: times.map((time) => time.jogadores.reduce((total, jogador) => total + jogador.nivelNoSorteio, 0)), jogadoresComHistorico: 0 },
+      origem: 'dados_teste'
+    });
+  }
+  return true;
 };
