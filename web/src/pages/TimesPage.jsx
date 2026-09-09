@@ -126,7 +126,7 @@ export default function TimesPage() {
 
   const whatsapp = () => {
     const texto = times.map((time, i) => `*Time ${i + 1}*\n${time.map((j) => `- ${j.nome} (Nível ${j.nivel || 3})`).join('\n')}`).join('\n\n');
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`🏐 *VOLEIZIN: TIMES SORTEADOS*\n\n${texto}`)}`, '_blank');
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`🏐 *VOLEIZIN: TIMES SORTEADOS*\n\n${texto}\n\nAcesse: https://voleizindoscria.vercel.app/`)}`, '_blank');
   };
 
   const poderes = sorteio?.diagnostico?.poderes || [];

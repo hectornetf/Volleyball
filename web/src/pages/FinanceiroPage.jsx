@@ -88,7 +88,7 @@ export default function FinanceiroPage() {
 
   const handleCobrarMensalidadeDia = (valorPorPessoa, dia) => {
     const v = valorPorPessoa.toFixed(2).replace('.', ',');
-    const msg = `🏐 *VOLEIZIN: Mensalidade ${dia}* 🏐\n\nGalera de ${dia}!\n\nO valor da mensalidade deste mês é:\n💰 *R$ ${v} por pessoa*\n\nPor favor, efetuem o pagamento para garantir a quadra! 🙏`;
+    const msg = `🏐 *VOLEIZIN: Mensalidade ${dia}* 🏐\n\nGalera de ${dia}!\n\nO valor da mensalidade deste mês é:\n💰 *R$ ${v} por pessoa*\n\nPor favor, efetuem o pagamento para garantir a quadra! 🙏\n\nAcesse: https://voleizindoscria.vercel.app/`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
   };
 

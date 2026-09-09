@@ -106,7 +106,7 @@ export default function PresencaPage() {
 
   const handleNotificarWhatsApp = () => {
     const confirmados = jogadores.filter(j => j.presencas?.[diaSelecionado] === 'Confirmado');
-    const msg = `🏐 *VOLEIZIN: Confirme sua Presença!* 🏐\n\nFala galera de ${diaSelecionado}!\n\nPor favor, confirme ou cancele sua presença no jogo hoje!\n\nJá confirmados: *${confirmados.length}* 🔥\n\nBora! 💪`;
+    const msg = `🏐 *VOLEIZIN: Confirme sua Presença!* 🏐\n\nFala galera de ${diaSelecionado}!\n\nPor favor, confirme ou cancele sua presença no jogo hoje!\n\nJá confirmados: *${confirmados.length}* 🔥\n\nAcesse: https://voleizindoscria.vercel.app/\n\nBora! 💪`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
   };
 

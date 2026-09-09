@@ -15,7 +15,7 @@ export default function Navbar({ activeTab, setActiveTab }) {
   };
 
   const compartilharCodigo = () => {
-    const mensagem = `🏐 CONVITE VOLEIZIN 🏐\n\nEntre no nosso grupo usando o código:\n\n🔑 ${activeGroupId}\n\nBora pro jogo!`;
+    const mensagem = `🏐 CONVITE VOLEIZIN 🏐\n\nEntre no nosso grupo usando o código:\n\n🔑 ${activeGroupId}\n\nAcesse: https://voleizindoscria.vercel.app/\n\nBora pro jogo!`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(mensagem)}`, '_blank');
   };
 
