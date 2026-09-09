@@ -116,6 +116,8 @@ npx eas-cli@latest project:info
 - **Android (Play Store)**: `npx eas-cli build --platform android --profile production`
 - **iOS (IPA)**: `npx eas-cli build --platform ios` (Requer conta Apple Developer)
 
+> **Build automático:** o workflow `.github/workflows/mobile-update.yml` já gera o APK `preview` automaticamente a cada push na branch `main` — os comandos acima são apenas para builds manuais ou de outros perfis.
+
 O projeto EAS atual é `@hectornetf/voleizin-dos-cria`. O perfil `preview` usa o canal `preview` e gera uma build para distribuição interna.
 
 ### Variáveis obrigatórias no build remoto
@@ -126,11 +128,15 @@ O workflow de atualização OTA usa o ambiente `preview` do próprio Expo. Assim
 
 Depois de cadastrá-las, faça uma nova build `preview`, instale o novo APK e publique uma OTA somente após conferir que o workflow concluiu sem erro.
 
-### 4. Atualizações automáticas (EAS Update)
+### 4. Atualizações automáticas (Build + EAS Update)
 
-Após instalar uma build configurada com `expo-updates`, pushes na branch `main` que alterarem `mobile/` publicam automaticamente o JavaScript pelo workflow `.github/workflows/mobile-update.yml`. O workflow usa o secret `EXPO_TOKEN` do GitHub e publica no canal `preview`.
+O workflow `.github/workflows/mobile-update.yml` roda a cada push na branch `main` com alterações em `mobile/` e:
 
-Atualizações OTA não substituem uma nova build quando houver alterações em SDK, dependências nativas, permissões, ícone, `app.json` ou código nativo.
+1. Instala dependências e roda `npm run lint` (falha bloqueia a publicação).
+2. Executa **`eas build --platform android --profile preview`** — gerando um **APK novo automaticamente** e o guarda como **artifact do run** (`voleizin-preview-apk`).
+3. Publica o **`eas update --channel preview`** (OTA do JavaScript) usando o secret `EXPO_TOKEN` do GitHub.
+
+Builds OTA não exigem instalar um APK novo, mas o OTA só é aplicado em builds com runtimeVersion compatível.
 
 ---
 
@@ -149,23 +155,24 @@ flowchart TB
     A["💻 Código mobile/"] --> B["git push main"]
     B --> C{"Tipo de mudança?"}
 
-    C -- "Somente JavaScript" --> D["GitHub Actions<br/>mobile-update.yml"]
+    C -- "Qualquer mudança em mobile/" --> D["GitHub Actions<br/>mobile-update.yml"]
     D --> E["npm ci"]
     E --> F["npm run lint ✅"]
-    F --> G["eas update --channel preview"]
-    G --> H["📲 OTA (expo-updates)"]
-
-    C -- "SDK / nativa / app.json" --> I["eas build<br/>--profile preview|production"]
-    I --> J["📦 APK / IPA"]
+    F --> G["eas build --profile preview<br/>(APK automático + artifact)"]
+    F --> G2["eas update --channel preview<br/>(OTA)"]
+    G --> H["📦 APK no EAS + run artifact"]
+    G2 --> H2["📲 OTA (expo-updates)"]
 
     H -.-> K[("🗄️ Firestore")]
-    J -.-> K
+    H2 -.-> K
 ```
 
-> **Regra de ouro:** OTA atualiza apenas o JavaScript. Alterações em SDK, dependências nativas, permissões, ícone, `app.json` ou código nativo exigem uma nova build EAS.
+> **Regra de ouro:** o workflow gera um APK novo a cada push na `main`. O OTA continua disponível para builds já instaladas com runtime compatível.
 
 ## 🧹 Código Limpo & 🔒 Segurança
 
+- **Verificação no pré-commit**: o hook `.githooks/pre-commit` roda `scripts/verify.js` (lint Web, build Web, lint Mobile e auditoria `critical`/`high`) e bloqueia o commit em caso de falha.
+- **Detecção de segredos**: o `verify.js` bloqueia vazamento de `.env`, chaves privadas e credenciais Firebase no diff staged.
 - **Lint no CI**: `npm run lint` roda antes de publicar qualquer OTA — código com erro não vai para produção.
 - **Estrutura organizada**: `screens/`, `components/`, `services/`, `context/`, `config/`, `utils/`.
 - **Serviços desacoplados**: Firestore isolado em `services/` (`jogadorService`, `sessionService`, `historyService`).
@@ -174,4 +181,13 @@ flowchart TB
 - **Multi-Tenancy**: toda query exige `groupId` (`firestore.rules`).
 - **Segredos no `.env`** (`EXPO_PUBLIC_*`) e `EXPO_TOKEN` como secret do GitHub — nunca versionados.
 
-> Propriedade de **VoleizinDosCria Team**. v2.1 (Abril 2026).
+---
+
+## 🏷️ Versionamento Automático
+
+- A versão é lida do `mobile/app.json` e exibida no header do **Dashboard** (`vX.Y.Z`).
+- A cada commit, o hook `.githooks/pre-commit` roda `scripts/bump-version.js` e incrementa automaticamente o **patch** (`1.0.0 → 1.0.1`), sincronizando `mobile/package.json`, `mobile/package-lock.json` e `mobile/app.json`.
+- Bump manual de `minor`/`major`: `node ../scripts/bump-version.js minor` (ou `major`) na raiz do repositório.
+- **Compatibilidade OTA**: o `runtimeVersion.policy` é `appVersion` — alterar `minor`/`major` no `app.json` sinaliza uma mudança que requer nova build EAS; `patch` é compatível com OTA.
+
+> Propriedade de **VoleizinDosCria Team**.

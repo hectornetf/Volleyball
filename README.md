@@ -24,6 +24,8 @@ O repositório está organizado em duas aplicações principais sincronizadas em
 Volleyball/
 ├── mobile/            # App Mobile (React Native + Expo + NativeWind)
 │   ├── src/           # Componentes, Telas, Contexto e Serviços
+│   ├── firestore.rules# Regras de segurança do Firestore (Multi-Tenancy)
+│   ├── app.json       # Config do Expo (versão do app sincronizada)
 │   ├── INSTRUCOES.md  # Guia técnico e build de APK/IPA (EAS)
 │   └── README.md      # Documentação do projeto Mobile
 │
@@ -32,6 +34,8 @@ Volleyball/
 │   ├── INSTRUCOES.md  # Guia de execução e deploy Web
 │   └── README.md      # Documentação do projeto Web
 │
+├── scripts/           # Automação: verify.js + bump-version.js
+├── .githooks/         # Hooks Git (pré-commit: verificação + bump de versão)
 ├── codigo.gs          # Versão Legada (Google Apps Script)
 ├── index.html         # Versão Legada (Vue 3 + GAS)
 └── README.md          # Documentação Principal da Plataforma
@@ -56,8 +60,8 @@ Volleyball/
 ## 🚀 Publicação
 
 - **Web:** cada push na branch `main` atualiza o deploy da Vercel.
-- **Mobile OTA:** alterações JavaScript em `mobile/` são publicadas pelo GitHub Actions no canal `preview`.
-- **Mobile nativo:** mudanças de SDK, dependências nativas ou configuração exigem uma nova build EAS.
+- **Mobile:** o workflow `mobile-update.yml` gera **automaticamente um novo APK** (build `preview`) e publica o **OTA** no canal `preview` a cada push na `main`.
+- **Mobile nativo:** mudanças de SDK, dependências nativas ou configuração também são incluídas na build automática a cada push.
 
 Consulte os guias específicos em [`mobile/INSTRUCOES.md`](./mobile/INSTRUCOES.md) e [`web/INSTRUCOES.md`](./web/INSTRUCOES.md).
 
@@ -87,13 +91,15 @@ flowchart TB
     subgraph MOBILE["📱 Pipeline Mobile (GitHub Actions)"]
         C -- "mobile/**" --> I["Workflow mobile-update.yml"]
         I --> J["npm ci + npm run lint"]
-        J --> K["eas update --channel preview"]
-        K --> L["📲 OTA via expo-updates<br/>(sem nova build)"]
+        J --> K["eas build --platform android<br/>--profile preview (APK novo)"]
+        J --> K2["eas update --channel preview<br/>(OTA JS)"]
+        K --> L["📲 APK no EAS + artifact no run"]
+        K2 --> M2["📦 OTA via expo-updates"]
     end
 
-    subgraph NATIVE["🔧 Build Nativa (manual)"]
+    subgraph NATIVE["🔧 Build Nativa (automática)"]
         M["Mudança de SDK / nativa /<br/>app.json / permissões"]
-        M --> N["eas build --profile preview|production"]
+        M --> N["eas build pelo workflow<br/>a cada push na main"]
         N --> O["APK / IPA"]
     end
 
@@ -104,7 +110,8 @@ flowchart TB
     end
 
     H -. "lê/escreve" .-> P
-    L -. "lê/escreve" .-> P
+    K -. "lê/escreve" .-> P
+    M2 -. "lê/escreve" .-> P
     O -. "lê/escreve" .-> P
     P --- Q --- R
 ```
@@ -114,20 +121,32 @@ flowchart TB
 | Gatilho | Pipeline | Resultado |
 |---|---|---|
 | Push `main` com mudanças em `web/**` | Vercel (via `vercel.json`) | Deploy automático da SPA |
-| Push `main` com mudanças em `mobile/**` | GitHub Actions (`mobile-update.yml`) | EAS Update OTA no canal `preview` |
-| Mudança nativa / SDK / `app.json` | Manual (`eas build`) | Nova build APK/IPA |
+| Push `main` com mudanças em `mobile/**` | GitHub Actions (`mobile-update.yml`) | **APK novo** (`eas build preview`) + **OTA** (`eas update`) no canal `preview` |
 
-> **Regra de ouro:** OTA (EAS Update) só atualiza o JavaScript. Qualquer mudança em SDK, dependências nativas, permissões, ícone ou `app.json` exige uma nova build EAS.
+> **Regra de ouro:** a build automática cobre qualquer mudança (JS, SDK, nativa, permissões, `app.json`). O OTA (EAS Update) continua disponível para updates de JavaScript em builds já instaladas com runtime compatível.
 
 ---
 
 ## 🧹 Código Limpo e Qualidade
 
+- **Verificação obrigatória no pré-commit**: o hook `.githooks/pre-commit` roda `scripts/verify.js` e **bloqueia o commit** se algo falhar — lint Web (ESLint), build Web (Vite), lint Mobile (ESLint) e auditoria de dependências (`critical`/`high`).
+- **Detecção de segredos no pré-commit**: o `verify.js` varre o diff staged e bloqueia vazamento de `.env`, chaves privadas (`.pem`/`.key`) e credenciais Firebase.
 - **Lint obrigatório no CI**: o workflow `mobile-update.yml` executa `npm run lint` (ESLint) antes de publicar qualquer OTA — código com erro não vai para produção.
 - **Padrão de pastas consistente**: `screens/`, `components/`, `services/`, `context/`, `config/`, `utils/` espelhados entre `mobile/` e `web/`.
 - **Serviços desacoplados**: toda comunicação com o Firestore fica isolada em `services/` (`jogadorService`, `sessionService`, `historyService`), mantendo as telas limpas.
 - **Contexto global**: `SessionContext` centraliza o `activeGroupId` e o estado de carregamento, evitando prop-drilling.
 - **Criptografia centralizada**: `utils/crypto.js` encapsula AES-256, usado por todos os serviços.
+
+---
+
+## 🏷️ Versionamento Automático
+
+Cada commit incrementa automaticamente o número de versão (patch: `1.0.0 → 1.0.1`):
+
+- O hook `.githooks/pre-commit` executa `scripts/bump-version.js` **antes** de rodar as verificações.
+- A versão é sincronizada em **Web** (`web/package.json` + lockfile) e **Mobile** (`mobile/package.json` + lockfile + `mobile/app.json`).
+- A versão atual aparece na interface: **badge `vX.Y.Z` no Navbar Web** e **texto `vX.Y.Z` no Dashboard Mobile**.
+- Bumps manuais para `minor`/`major`: `node scripts/bump-version.js minor` (ou `major`).
 
 ---
 

@@ -193,10 +193,11 @@ Encontrou um bug ou tem uma sugestão? Abra uma **Issue** ou **Pull Request** no
 
 - **Web:** disponível em [voleizindoscria.vercel.app](https://voleizindoscria.vercel.app/), com deploy automático a cada push na `main`.
 - **Mobile:** Expo SDK 57, com builds pelo EAS e atualizações JavaScript via EAS Update.
-- **APK de teste:** execute `npx eas-cli@latest build --platform android --profile preview` dentro de `mobile/`.
+- **APK automático:** cada push na `main` com mudanças em `mobile/` gera um novo APK `preview` via workflow `mobile-update.yml` — sem comando manual. O `.apk` fica disponível no **artifact `voleizin-preview-apk`** do run e no painel do EAS.
+- **APK manual (opcional):** execute `npx eas-cli@latest build --platform android --profile preview` dentro de `mobile/`.
 - **Atualizações OTA:** o workflow `.github/workflows/mobile-update.yml` publica no canal `preview` quando há alterações em `mobile/` na `main`.
 
-Uma nova build mobile é necessária para alterações nativas, SDK, dependências nativas, permissões ou configuração do aplicativo.
+Como o workflow gera o APK `preview` automaticamente a cada push, você não precisa mais buildar manualmente para distribuir uma nova versão de teste. Builds manuais continuam necessárias para outros perfis (ex: `production` para a Play Store).
 
 Se o sistema te ajudou, considere apoiar o desenvolvimento:
 

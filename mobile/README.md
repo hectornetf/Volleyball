@@ -1,4 +1,4 @@
-# 🏐 VoleizinDosCria — SaaS Platform (v2.1)
+# 🏐 VoleizinDosCria — SaaS Platform
 
 [![Expo](https://img.shields.io/badge/Expo-000020?style=for-the-badge&logo=expo&logoColor=white)](https://expo.dev/)
 [![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com/)
@@ -32,13 +32,23 @@ Para testar no celular, use o Expo Go compatível com SDK 57 ou gere uma build p
 
 ## Atualizações e builds
 
-- Pushes na `main` que alteram `mobile/` publicam EAS Update automaticamente no canal `preview`.
+- Pushes na `main` que alteram `mobile/` geram **automaticamente um novo APK** (`eas build --profile preview`) e publicam **OTA** (`eas update`) no canal `preview`.
 - A instalação inicial deve ser uma build EAS do perfil `preview`.
-- Mudanças nativas exigem uma nova build Android ou iOS.
+- Mudanças nativas também são incluídas na build automática a cada push.
 
 ```bash
+# Opcional — gerar APK manualmente (o Actions já faz isso a cada push)
 npx eas-cli@latest build --platform android --profile preview
 ```
+
+---
+
+## 🏷️ Versionamento Automático
+
+- A versão do app é lida do `mobile/app.json` e exibida no header do **Dashboard** (`vX.Y.Z`).
+- A cada commit, o hook `.githooks/pre-commit` roda `scripts/bump-version.js` e incrementa automaticamente o **patch** (`1.0.0 → 1.0.1`), sincronizando `mobile/package.json`, `mobile/package-lock.json` e `mobile/app.json`.
+- Bump manual de `minor`/`major`: `node ../scripts/bump-version.js minor` (ou `major`) na raiz do repositório.
+- **Regra de runtime**: o `runtimeVersion.policy` é `appVersion`, então o OTA via EAS Update acompanha a versão do `app.json`.
 
 ---
 
@@ -51,22 +61,22 @@ flowchart LR
     C -- "Sim" --> D["GitHub Actions<br/>mobile-update.yml"]
     D --> E["npm ci"]
     E --> F["npm run lint ✅"]
-    F --> G["eas update<br/>--channel preview"]
-    G --> H["📲 OTA no app<br/>(expo-updates)"]
-
-    C -- "Mudança nativa / SDK / app.json" --> I["eas build<br/>--profile preview|production"]
-    I --> J["📦 APK / IPA"]
+    F --> G["eas build<br/>--profile preview (APK)"]
+    F --> G2["eas update<br/>--channel preview (OTA)"]
+    G --> H["📲 APK no EAS + artifact no run"]
+    G2 --> H2["📦 OTA no app<br/>(expo-updates)"]
 
     H -. "Firestore" .-> K[("🗄️ Firebase")]
-    J -. "Firestore" .-> K
+    H2 -. "Firestore" .-> K
 ```
 
-> **Regra:** OTA atualiza só o JavaScript. SDK, dependências nativas, permissões, ícone ou `app.json` exigem nova build.
+> **Regra:** o workflow gera um APK novo a cada push na `main`. O OTA atualiza o JavaScript em builds já instaladas com runtime compatível.
 
 ---
 
 ## 🧹 Código Limpo
 
+- **Verificação no pré-commit**: o hook roda `scripts/verify.js` e bloqueia o commit em caso de erro de lint/build/auditoria e vazamento de segredos.
 - **Lint no CI**: `npm run lint` (ESLint) roda antes de publicar qualquer OTA.
 - **Estrutura organizada**: `screens/`, `components/`, `services/`, `context/`, `config/`, `utils/`.
 - **Serviços desacoplados**: Firestore isolado em `services/` (`jogadorService`, `sessionService`, `historyService`).

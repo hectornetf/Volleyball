@@ -1,4 +1,4 @@
-# 🏐 VoleizinDosCria — Web SaaS Application (v2.1)
+# 🏐 VoleizinDosCria — Web SaaS Application
 
 [![React](https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
@@ -71,9 +71,10 @@ Cada push na branch `main` cria um novo deploy automaticamente.
 ## 🛠️ Tecnologias
 - **React 19 + Vite 6**
 - **Tailwind CSS 3**
-- **Firebase Firestore SDK (v12)**
+- **Firebase Firestore SDK (v11)**
 - **Crypto-JS (AES-256)**
 - **Lucide React Icons**
+- **read-excel-file** (importação de planilhas no Admin)
 
 ---
 
@@ -94,10 +95,18 @@ flowchart LR
 
 ## 🧹 Código Limpo & 🔒 Segurança
 
+- **Verificação no pré-commit**: o hook `.githooks/pre-commit` roda `scripts/verify.js` — lint Web (ESLint), build Web (Vite), lint Mobile e auditoria (`critical`/`high`) — e **bloqueia o commit** se algo falhar.
+- **Detecção de segredos**: o `verify.js` bloqueia vazamento de `.env`, chaves privadas e credenciais Firebase no diff staged.
 - **Estrutura organizada**: `pages/`, `components/`, `services/`, `context/`, `config/`, `utils/`.
 - **Serviços desacoplados**: Firestore isolado em `services/` (`jogadorService`, `sessionService`, `historyService`).
 - **AES-256 no cliente** via `utils/crypto.js` (nomes, telefones, datas, lançamentos).
 - **Multi-Tenancy**: toda query exige `groupId` (`firestore.rules`).
 - **Segredos no `.env`** (`VITE_*`) — nunca versionados.
+
+## 🏷️ Versionamento Automático
+
+- A versão é lida do `web/package.json` e exibida no **Navbar** (badge `vX.Y.Z` ao lado do "PRO WEB").
+- A cada commit, o hook `.githooks/pre-commit` roda `scripts/bump-version.js` e incrementa automaticamente o **patch** (`1.0.0 → 1.0.1`), sincronizando `web/package.json` e `web/package-lock.json` com o Mobile.
+- Bump manual de `minor`/`major`: `node scripts/bump-version.js minor` (ou `major`) na raiz do repositório.
 
 > Desenvolvido para a comunidade **VoleizinDosCria** 🏐🔥

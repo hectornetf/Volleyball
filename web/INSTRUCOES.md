@@ -88,8 +88,16 @@ flowchart LR
 
 ## 🧹 Código Limpo & 🔒 Segurança
 
+- **Verificação no pré-commit**: o hook `.githooks/pre-commit` roda `scripts/verify.js` (lint Web, build Web, lint Mobile e auditoria `critical`/`high`) e bloqueia o commit em caso de falha.
+- **Detecção de segredos**: o `verify.js` bloqueia vazamento de `.env`, chaves privadas e credenciais Firebase no diff staged.
 - **Estrutura organizada**: `pages/`, `components/`, `services/`, `context/`, `config/`, `utils/`.
 - **Serviços desacoplados**: Firestore isolado em `services/` (`jogadorService`, `sessionService`, `historyService`).
 - **AES-256 no cliente** via `utils/crypto.js` (nomes, telefones, datas, lançamentos).
 - **Multi-Tenancy**: toda query exige `groupId` (`firestore.rules`).
 - **Segredos no `.env`** (`VITE_*`) — nunca versionados.
+
+## 🏷️ Versionamento Automático
+
+- A versão é lida do `web/package.json` e exibida no **Navbar** (badge `vX.Y.Z` ao lado do "PRO WEB").
+- A cada commit, o hook `.githooks/pre-commit` roda `scripts/bump-version.js` e incrementa automaticamente o **patch**, sincronizando `web/package.json` e `web/package-lock.json` com o Mobile.
+- Bump manual de `minor`/`major`: `node scripts/bump-version.js minor` (ou `major`) na raiz do repositório.
