@@ -25,7 +25,6 @@ export default function DashboardPage({ setActiveTab }) {
   const [custosMes, setCustosMes] = useState(null);
   const [pagamentosAvulsos, setPagamentosAvulsos] = useState([]);
   const [historicoTimes, setHistoricoTimes] = useState([]);
-  const [loading, setLoading] = useState(true);
 
   const hoje = new Date();
   const mesAtualNome = hoje.toLocaleString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, (c) => c.toUpperCase());
@@ -56,7 +55,6 @@ export default function DashboardPage({ setActiveTab }) {
 
     const unsub = subscribeJogadores(activeGroupId, (list) => {
       setJogadores(list);
-      setLoading(false);
     });
 
     carregarDados();
