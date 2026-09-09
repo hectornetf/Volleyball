@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  CheckCircle2, XCircle, Search, UserCheck, DollarSign, 
-  RefreshCw, AlertCircle, Calendar, MessageSquareShare
+  Search, UserCheck, DollarSign, 
+  AlertCircle, Calendar, MessageSquareShare
 } from 'lucide-react';
 import { useSession } from '../context/SessionContext';
 import { 

@@ -1,18 +1,16 @@
-const reactPlugin = require('eslint-plugin-react');
-const reactNativePlugin = require('eslint-plugin-react-native');
-const prettierConfig = require('eslint-config-prettier');
-const js = require('@eslint/js');
+import reactPlugin from 'eslint-plugin-react';
+import prettierConfig from 'eslint-config-prettier';
+import js from '@eslint/js';
 
-module.exports = [
+export default [
   {
-    ignores: ['node_modules/**', '.expo/**', 'dist/**', 'web-build/**']
+    ignores: ['node_modules/**', 'dist/**']
   },
   js.configs.recommended,
   {
-    files: ['src/**/*.js', 'src/**/*.jsx', 'App.js'],
+    files: ['src/**/*.js', 'src/**/*.jsx'],
     plugins: {
-      react: reactPlugin,
-      'react-native': reactNativePlugin
+      react: reactPlugin
     },
     languageOptions: {
       ecmaVersion: 2022,
@@ -23,23 +21,25 @@ module.exports = [
         }
       },
       globals: {
-        process: 'readonly',
         console: 'readonly',
         setTimeout: 'readonly',
         clearTimeout: 'readonly',
-        Alert: 'readonly',
         fetch: 'readonly',
         window: 'readonly',
-        __dirname: 'readonly'
+        document: 'readonly',
+        navigator: 'readonly',
+        localStorage: 'readonly',
+        process: 'readonly',
+        import: 'readonly',
+        alert: 'readonly',
+        confirm: 'readonly'
       }
     },
     rules: {
       ...reactPlugin.configs.recommended.rules,
       'react/prop-types': 'off',
       'react/react-in-jsx-scope': 'off',
-      'react-native/no-unused-styles': 'error',
-      'react-native/split-platform-components': 'error',
-      'no-unused-vars': ['warn', { 
+      'no-unused-vars': ['warn', {
         argsIgnorePattern: '^_',
         caughtErrorsIgnorePattern: '^_',
         varsIgnorePattern: 'React'
@@ -56,7 +56,7 @@ module.exports = [
     files: ['*.config.js'],
     languageOptions: {
       globals: {
-        module: 'writable',
+        module: 'readonly',
         require: 'readonly',
         process: 'readonly',
         __dirname: 'readonly'

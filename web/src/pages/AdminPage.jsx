@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Settings, UserPlus, Search, Edit, Trash2, Power, 
-  Sparkles, AlertTriangle, ShieldCheck, Check, X, Phone, Calendar, Upload
+  Sparkles, AlertTriangle, Upload
 } from 'lucide-react';
 import { useSession } from '../context/SessionContext';
 import { 
@@ -167,12 +167,15 @@ export default function AdminPage() {
 
     setLoading(true);
     try {
-      const { read, utils } = await import('xlsx');
-      const data = await file.arrayBuffer();
-      const workbook = read(data);
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      const json = utils.sheet_to_json(worksheet);
+      const { readSheet } = await import('read-excel-file/browser');
+      const rows = await readSheet(file);
+      const [headers, ...body] = rows;
+
+      const json = body.map((row) => {
+        const obj = {};
+        headers.forEach((header, i) => { obj[header] = row[i]; });
+        return obj;
+      });
 
       let adicionados = 0;
       let atualizados = 0;

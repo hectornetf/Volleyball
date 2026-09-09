@@ -4,12 +4,28 @@ import * as Haptics from 'expo-haptics';
 import { FontAwesome5 } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
-import * as xlsx from 'xlsx';
+import { readSheet } from 'read-excel-file/universal';
 import { subscribeJogadores, addJogador, updateJogador, gerarDadosDeTestePro, resetDadosGrupo } from '../services/jogadorService';
 import { useSession } from '../context/SessionContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const diasDaSemana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+
+const base64ToArrayBuffer = (base64) => {
+  const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  const clean = base64.replace(/=+$/, '');
+  const bytes = [];
+  for (let i = 0; i < clean.length; i += 4) {
+    const b0 = CHARS.indexOf(clean[i]);
+    const b1 = CHARS.indexOf(clean[i + 1]);
+    const b2 = CHARS.indexOf(clean[i + 2] || 'A');
+    const b3 = CHARS.indexOf(clean[i + 3] || 'A');
+    bytes.push((b0 << 2) | (b1 >> 4));
+    if (clean[i + 2]) bytes.push(((b1 & 15) << 4) | (b2 >> 2));
+    if (clean[i + 3]) bytes.push(((b2 & 3) << 6) | b3);
+  }
+  return new Uint8Array(bytes).buffer;
+};
 
 /** Formata só com dígitos → DD/MM/AAAA (máx. 10 caracteres). */
 function formatarDataNascimentoDigitos(text) {
@@ -136,10 +152,15 @@ export default function AdminScreen() {
       setCarregando(true);
       const fileUri = result.assets[0].uri;
       const fileBase64 = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.Base64 });
-      const workbook = xlsx.read(fileBase64, { type: 'base64' });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      const json = xlsx.utils.sheet_to_json(worksheet);
+      const buffer = base64ToArrayBuffer(fileBase64);
+      const rows = await readSheet(buffer);
+      const [headers, ...body] = rows;
+
+      const json = body.map((row) => {
+        const obj = {};
+        headers.forEach((header, i) => { obj[header] = row[i]; });
+        return obj;
+      });
 
       let adicionados = 0;
       let atualizados = 0;

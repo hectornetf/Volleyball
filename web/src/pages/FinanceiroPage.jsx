@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   DollarSign, ChevronLeft, ChevronRight, CheckCircle2, 
-  Settings, TrendingUp, MessageSquareShare, PlusCircle, MinusCircle, RefreshCw, Calculator
+  Settings, TrendingUp, MessageSquareShare, Calculator
 } from 'lucide-react';
 import { useSession } from '../context/SessionContext';
 import { 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { History, Filter, Clock, ShieldAlert, DollarSign, UserPlus, CheckCircle2, Search } from 'lucide-react';
+import { History, Clock, ShieldAlert, DollarSign, UserPlus, CheckCircle2, Search } from 'lucide-react';
 import { useSession } from '../context/SessionContext';
 import { subscribeLogs } from '../services/historyService';
 
