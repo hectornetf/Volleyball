@@ -11,7 +11,7 @@ export default function WelcomePage() {
   const handleJoin = async (e) => {
     e.preventDefault();
     if (code.trim().length < 4) {
-      setError('Por favor, informe um código válido de 4 caracteres (Ex: VO-ABCD ou ABCD).');
+      setError('Por favor, informe um código válido (Ex: VO-ABCDEF ou ABCDEF).');
       return;
     }
     let finalCode = code.toUpperCase().trim();
@@ -62,7 +62,7 @@ export default function WelcomePage() {
                   type="text"
                   value={code}
                   onChange={(e) => setCode(e.target.value.toUpperCase())}
-                  placeholder="Código do Vôlei (Ex: VO-ABCD)"
+                  placeholder="Código do Vôlei (Ex: VO-ABCDEF)"
                   className="w-full bg-[#0b0f1a] text-white pl-12 pr-4 py-4 rounded-2xl border border-slate-700 font-mono font-bold text-lg focus:outline-none focus:border-cyan-500 transition-colors uppercase placeholder:text-slate-600"
                 />
               </div>

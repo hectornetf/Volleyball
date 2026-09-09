@@ -44,7 +44,7 @@ export default function WelcomeScreen() {
             <TextInput 
               value={code}
               onChangeText={setCode}
-              placeholder="Código (Ex: VO-ABCD)"
+              placeholder="Código (Ex: VO-ABCDEF)"
               placeholderTextColor="#64748b"
               autoCapitalize="characters"
               className="bg-[#0b0f1a] w-full p-4 pl-12 rounded-xl border border-slate-700 text-white font-black text-lg focus:border-cyan-500"
