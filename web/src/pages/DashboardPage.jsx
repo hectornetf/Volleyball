@@ -4,7 +4,7 @@ import {
   TrendingUp, ShieldCheck, UserCheck, Flame, Gift, Star, Activity, AlertCircle
 } from 'lucide-react';
 import { useSession } from '../context/SessionContext';
-import { subscribeJogadores, getSaldoGlobalEquipamentos, getConfigFinanceira } from '../services/jogadorService';
+import { subscribeJogadores, getSaldoGlobalEquipamentos, getConfigFinanceira, getPagamentosAvulsosDoMes } from '../services/jogadorService';
 import { computarFechamento } from '../utils/financeiroUtils';
 
 const diasDaSemana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
@@ -22,6 +22,7 @@ export default function DashboardPage({ setActiveTab }) {
   const [proximoJogo, setProximoJogo] = useState('');
   const [diaHojeStr, setDiaHojeStr] = useState(getDiaAtualSemana);
   const [custosMes, setCustosMes] = useState(null);
+  const [pagamentosAvulsos, setPagamentosAvulsos] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const hoje = new Date();
@@ -34,6 +35,7 @@ export default function DashboardPage({ setActiveTab }) {
     try {
       const saldo = await getSaldoGlobalEquipamentos(activeGroupId);
       setSaldoCaixa(saldo);
+      setPagamentosAvulsos(await getPagamentosAvulsosDoMes(activeGroupId));
       
       const conf = await getConfigFinanceira(activeGroupId, mesAtualNome);
       setCustosMes({
@@ -120,6 +122,12 @@ export default function DashboardPage({ setActiveTab }) {
     });
   }
   const devedores = Object.values(devedoresMap).sort((a, b) => a.nome.localeCompare(b.nome));
+
+  const avulsosDoMes = pagamentosAvulsos.map((pagamento) => ({
+    ...pagamento,
+    nome: jogadores.find((jogador) => jogador.id === pagamento.jogadorId)?.nome || pagamento.nomeLegado || 'Jogador',
+    dataFormatada: pagamento.data ? new Date(pagamento.data).toLocaleDateString('pt-BR') : ''
+  }));
 
   return (
     <div className="space-y-6">
@@ -267,6 +275,34 @@ export default function DashboardPage({ setActiveTab }) {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+
+          {/* Avulsos pagos no mês */}
+          <div className="bg-slate-900/70 p-6 rounded-3xl border border-slate-800 border-l-4 border-l-amber-500">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <DollarSign className="w-5 h-5 text-amber-400" />
+                <h2 className="text-base font-extrabold text-white">Avulsos pagos em {mesAtualNome}</h2>
+              </div>
+              <span className="text-amber-400 font-black text-xs">{avulsosDoMes.length}</span>
+            </div>
+            {avulsosDoMes.length > 0 ? (
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                {avulsosDoMes.map((pagamento) => (
+                  <div key={pagamento.id} className="flex items-center justify-between p-3 rounded-xl bg-amber-500/5 border border-amber-500/10">
+                    <div className="flex-1 min-w-0 mr-3">
+                      <p className="text-slate-200 text-sm font-bold truncate">{pagamento.nome}</p>
+                      <p className="text-slate-500 text-[10px] mt-0.5">Pago em {pagamento.dataFormatada}</p>
+                    </div>
+                    <span className="text-amber-300 font-black text-xs">R$ {(Number(pagamento.valor) || 0).toFixed(2).replace('.', ',')}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-5 bg-amber-500/5 rounded-xl border border-amber-500/10">
+                <p className="text-slate-400 text-xs">Nenhum pagamento avulso registrado neste mês.</p>
               </div>
             )}
           </div>

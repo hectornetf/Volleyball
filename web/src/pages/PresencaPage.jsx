@@ -94,7 +94,8 @@ export default function PresencaPage() {
           'ENTRADA_AVULSO',
           valorAvulso,
           `Diária paga: ${jogador.nome}`,
-          activeGroupId
+          activeGroupId,
+          jogador.id
         );
       }
     } catch (e) {
