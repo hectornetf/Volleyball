@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Users, CheckCircle2, DollarSign, Calendar, ArrowUpRight, 
-  TrendingUp, ShieldCheck, UserCheck, Flame, Gift, Star, Activity, AlertCircle
+  TrendingUp, ShieldCheck, UserCheck, Flame, Gift, Star, Activity, AlertCircle, History
 } from 'lucide-react';
 import { useSession } from '../context/SessionContext';
 import { subscribeJogadores, getSaldoGlobalEquipamentos, getConfigFinanceira, getPagamentosAvulsosDoMes } from '../services/jogadorService';
+import { carregarHistoricoTimes } from '../services/teamDrawService';
 import { computarFechamento } from '../utils/financeiroUtils';
 
 const diasDaSemana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
@@ -23,6 +24,7 @@ export default function DashboardPage({ setActiveTab }) {
   const [diaHojeStr, setDiaHojeStr] = useState(getDiaAtualSemana);
   const [custosMes, setCustosMes] = useState(null);
   const [pagamentosAvulsos, setPagamentosAvulsos] = useState([]);
+  const [historicoTimes, setHistoricoTimes] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const hoje = new Date();
@@ -36,6 +38,7 @@ export default function DashboardPage({ setActiveTab }) {
       const saldo = await getSaldoGlobalEquipamentos(activeGroupId);
       setSaldoCaixa(saldo);
       setPagamentosAvulsos(await getPagamentosAvulsosDoMes(activeGroupId));
+      setHistoricoTimes(await carregarHistoricoTimes(activeGroupId));
       
       const conf = await getConfigFinanceira(activeGroupId, mesAtualNome);
       setCustosMes({
@@ -306,6 +309,39 @@ export default function DashboardPage({ setActiveTab }) {
               </div>
             )}
           </div>
+
+          {/* Histórico de Jogos (Montar Times) */}
+          {historicoTimes.length > 0 && (
+            <div className="bg-slate-900/70 p-6 rounded-3xl border border-slate-800">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-2">
+                  <History className="w-5 h-5 text-emerald-400" />
+                  <h2 className="text-base font-extrabold text-white">Histórico de Jogos</h2>
+                </div>
+                <span className="text-emerald-400 font-black text-xs">{historicoTimes.length} rodadas</span>
+              </div>
+              <div className="space-y-2">
+                {historicoTimes.slice(0, 8).map((partida) => {
+                  const totalJogadores = (partida.times || []).reduce((acc, t) => acc + (t.jogadores || []).length, 0);
+                  const placar = (partida.times || []).map((t) => Number(t.vitorias) || 0).join(' x ');
+                  const dataFormatada = partida.data
+                    ? `${partida.data.slice(8, 10)}/${partida.data.slice(5, 7)}/${partida.data.slice(0, 4)}`
+                    : '';
+                  return (
+                    <div key={partida.id} className="flex items-center justify-between p-3 bg-slate-800/40 rounded-xl border border-slate-700/30">
+                      <div className="flex-1 min-w-0 mr-3">
+                        <p className="text-slate-200 text-xs font-bold truncate">{partida.dia || 'Rodada'}</p>
+                        <p className="text-slate-500 text-[10px] mt-0.5">
+                          {dataFormatada} · {(partida.times || []).length} times · {totalJogadores} jogadores
+                        </p>
+                      </div>
+                      <span className="text-emerald-400 font-black text-xs whitespace-nowrap">{placar}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Devedores e Aniversariantes */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
