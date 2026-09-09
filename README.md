@@ -93,7 +93,7 @@ flowchart TB
         I --> J["npm ci + npm run lint"]
         J --> K["eas build --platform android<br/>--profile preview (APK novo)"]
         J --> K2["eas update --channel preview<br/>(OTA JS)"]
-        K --> L["📲 APK no EAS + artifact no run"]
+        K --> L["📲 APK no painel do EAS"]
         K2 --> M2["📦 OTA via expo-updates"]
     end
 

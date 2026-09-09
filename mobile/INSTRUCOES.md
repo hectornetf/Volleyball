@@ -133,7 +133,7 @@ Depois de cadastrá-las, faça uma nova build `preview`, instale o novo APK e pu
 O workflow `.github/workflows/mobile-update.yml` roda a cada push na branch `main` com alterações em `mobile/` e:
 
 1. Instala dependências e roda `npm run lint` (falha bloqueia a publicação).
-2. Executa **`eas build --platform android --profile preview`** — gerando um **APK novo automaticamente** e o guarda como **artifact do run** (`voleizin-preview-apk`).
+2. Executa **`eas build --platform android --profile preview`** — gerando um **APK novo automaticamente** (disponível no painel do EAS).
 3. Publica o **`eas update --channel preview`** (OTA do JavaScript) usando o secret `EXPO_TOKEN` do GitHub.
 
 Builds OTA não exigem instalar um APK novo, mas o OTA só é aplicado em builds com runtimeVersion compatível.
@@ -158,9 +158,9 @@ flowchart TB
     C -- "Qualquer mudança em mobile/" --> D["GitHub Actions<br/>mobile-update.yml"]
     D --> E["npm ci"]
     E --> F["npm run lint ✅"]
-    F --> G["eas build --profile preview<br/>(APK automático + artifact)"]
+    F --> G["eas build --profile preview<br/>(APK automático)"]
     F --> G2["eas update --channel preview<br/>(OTA)"]
-    G --> H["📦 APK no EAS + run artifact"]
+    G --> H["📦 APK no painel do EAS"]
     G2 --> H2["📲 OTA (expo-updates)"]
 
     H -.-> K[("🗄️ Firestore")]

@@ -63,7 +63,7 @@ flowchart LR
     E --> F["npm run lint ✅"]
     F --> G["eas build<br/>--profile preview (APK)"]
     F --> G2["eas update<br/>--channel preview (OTA)"]
-    G --> H["📲 APK no EAS + artifact no run"]
+    G --> H["📲 APK no painel do EAS"]
     G2 --> H2["📦 OTA no app<br/>(expo-updates)"]
 
     H -. "Firestore" .-> K[("🗄️ Firebase")]

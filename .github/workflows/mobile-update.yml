@@ -39,30 +39,9 @@ jobs:
         run: npm run lint
 
       - name: Build APK (Android preview)
-        id: build-apk
-        run: |
-          npx eas-cli@latest build --platform android --profile preview --message "${{ github.event.head_commit.message }}" --non-interactive --json > build.json
-          node -e "
-            const b = JSON.parse(require('fs').readFileSync('build.json', 'utf8'));
-            const url = b.artifacts && b.artifacts.buildUrl ? b.artifacts.buildUrl : '';
-            console.log('BUILD_ID=' + b.id);
-            console.log('APK_URL=' + url);
-            console.log('APK_VERSION=' + (b.version || ''));
-          " >> "$GITHUB_ENV"
+        run: npx eas-cli@latest build --platform android --profile preview --message "${{ github.event.head_commit.message }}" --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Download APK artifact
-        run: |
-          mkdir -p builds
-          curl -sL -o "builds/voleizin-preview-${APK_VERSION}-${BUILD_ID}.apk" "$APK_URL"
-
-      - name: Upload APK as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: voleizin-preview-apk
-          path: mobile/builds/
-          if-no-files-found: error
 
       - name: Publish OTA update
         run: npx eas-cli@latest update --channel preview --environment preview --auto --non-interactive
