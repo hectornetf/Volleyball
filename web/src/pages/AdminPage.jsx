@@ -138,18 +138,29 @@ export default function AdminPage() {
   };
 
   const handleGerarMock = async () => {
-    if (confirm("Gerar 16 jogadores de teste com finanças e chamadas para simulação PRO?")) {
+    if (confirm("Gerar amostra completa do sistema: 16 jogadores (elenco), 12 rodadas concluídas com placar por confronto, 1 rodada aberta, presenças, finanças e configuração?")) {
       setLoading(true);
-      await gerarDadosDeTestePro(activeGroupId);
-      setLoading(false);
+      try {
+        await gerarDadosDeTestePro(activeGroupId);
+        alert("Amostra completa de teste gerada com sucesso!");
+      } catch (e) {
+        alert(e.message);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
   const handleResetGeral = async () => {
-    if (confirm(`ATENÇÃO: Deseja apagar TODOS os dados do grupo ${activeGroupId}? Essa ação não pode ser desfeita.`)) {
+    if (confirm(`ATENÇÃO: Deseja apagar TODOS os dados do grupo ${activeGroupId}? Isso apagará jogadores, rodadas, finanças e configurações. Essa ação não pode ser desfeita.`)) {
       setLoading(true);
-      await resetDadosGrupo(activeGroupId);
-      setLoading(false);
+      try {
+        await resetDadosGrupo(activeGroupId);
+      } catch (e) {
+        alert(e.message);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -428,7 +439,7 @@ export default function AdminPage() {
             className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center space-x-2 transition-all"
           >
             <Sparkles className="w-4 h-4" />
-            <span>Gerar 16 Jogadores de Teste PRO</span>
+            <span>Gerar Amostra Completa de Teste PRO</span>
           </button>
 
           <button

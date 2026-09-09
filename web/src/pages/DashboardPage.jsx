@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Users, CheckCircle2, DollarSign, Calendar, ArrowUpRight, 
-  TrendingUp, ShieldCheck, UserCheck, Flame, Gift, Star, Activity, AlertCircle, History
+  TrendingUp, ShieldCheck, UserCheck, Flame, Gift, Star, Activity, AlertCircle, History, BarChart3
 } from 'lucide-react';
 import { useSession } from '../context/SessionContext';
 import { subscribeJogadores, getSaldoGlobalEquipamentos, getConfigFinanceira, getPagamentosAvulsosDoMes } from '../services/jogadorService';
 import { carregarHistoricoTimes } from '../services/teamDrawService';
 import { computarFechamento } from '../utils/financeiroUtils';
+import { montarPainelEstatisticas } from '../utils/estatisticasUtils';
 
 const diasDaSemana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 
@@ -14,6 +15,28 @@ const getDiaAtualSemana = () => {
   const hoje = new Date().getDay(); // 0=Dom, 1=Seg...
   const mapa = [6, 0, 1, 2, 3, 4, 5];
   return diasDaSemana[mapa[hoje]] ?? 'Segunda';
+};
+
+// Mini-gráfico de evolução da força estimada do atleta.
+const Sparkline = ({ serie }) => {
+  if (!serie || serie.length < 2) return <span className="text-slate-600 text-[10px] font-bold">—</span>;
+  const min = Math.min(...serie);
+  const max = Math.max(...serie);
+  const range = max - min || 1;
+  const pontos = serie.map((v, i) => `${(i / (serie.length - 1)) * 40},${16 - ((v - min) / range) * 12}`).join(' ');
+  const tendencia = serie[serie.length - 1] - serie[0];
+  return (
+    <svg width="40" height="18" viewBox="0 0 40 18" className="shrink-0">
+      <polyline
+        points={pontos}
+        fill="none"
+        stroke={tendencia > 0.05 ? '#34d399' : tendencia < -0.05 ? '#f87171' : '#94a3b8'}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 };
 
 export default function DashboardPage({ setActiveTab }) {
@@ -126,6 +149,9 @@ export default function DashboardPage({ setActiveTab }) {
     nome: jogadores.find((jogador) => jogador.id === pagamento.jogadorId)?.nome || pagamento.nomeLegado || 'Jogador',
     dataFormatada: pagamento.data ? new Date(pagamento.data).toLocaleDateString('pt-BR') : ''
   }));
+
+  // Painel do Atleta — vitórias, aproveitamento, presença, força estimada e evolução.
+  const painelAtleta = montarPainelEstatisticas(jogadores, historicoTimes);
 
   return (
     <div className="space-y-6">
@@ -473,6 +499,59 @@ export default function DashboardPage({ setActiveTab }) {
 
         </div>
       </div>
+
+      {/* Painel do Atleta */}
+      <div className="bg-slate-900/70 p-6 rounded-3xl border border-slate-800">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-2">
+            <BarChart3 className="w-5 h-5 text-cyan-400" />
+            <h2 className="text-base font-extrabold text-white">Painel do Atleta</h2>
+          </div>
+          <span className="text-cyan-400 font-black text-xs">{painelAtleta.length} atletas</span>
+        </div>
+        <p className="text-slate-500 text-[10px] font-bold mb-3">
+          Entenda por que o sistema monta cada time: vitórias, aproveitamento, presença, força estimada e evolução.
+        </p>
+        {painelAtleta.length === 0 ? (
+          <div className="text-center py-6 text-slate-500 text-xs">
+            Cadastre jogadores para visualizar as estatísticas.
+          </div>
+        ) : (
+          <div className="max-h-96 overflow-y-auto pr-1">
+            <div className="hidden sm:grid grid-cols-12 gap-2 text-[10px] uppercase font-extrabold text-slate-500 pb-2 border-b border-slate-800 mb-2">
+              <span className="col-span-4">Jogador</span>
+              <span className="col-span-2">Partidas</span>
+              <span className="col-span-2">Aprov.</span>
+              <span className="col-span-2">Presença</span>
+              <span className="col-span-2">Força · Evolução</span>
+            </div>
+            {painelAtleta.map((item) => (
+              <div key={item.jogador.id} className="grid grid-cols-12 gap-2 items-center py-2 border-b border-slate-800/60">
+                <div className="col-span-4 flex items-center space-x-2 min-w-0">
+                  <span className="text-xs font-bold text-white truncate">{item.jogador.nome}</span>
+                  {!item.historicoSuficiente && (
+                    <span className="text-[8px] font-extrabold uppercase text-amber-300 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-full shrink-0">
+                      histórico insuficiente
+                    </span>
+                  )}
+                </div>
+                <div className="col-span-2 text-[11px] font-bold text-slate-300">{item.jogos ? `${item.jogos} · ${item.vitorias}V` : '—'}</div>
+                <div className={`col-span-2 text-[11px] font-black ${item.aproveitamento >= 60 ? 'text-emerald-400' : item.aproveitamento >= 40 ? 'text-cyan-300' : 'text-slate-400'}`}>
+                  {item.jogos ? `${item.aproveitamento}%` : '—'}
+                </div>
+                <div className="col-span-2 text-[11px] font-bold text-slate-300">{item.presencas}</div>
+                <div className="col-span-2 flex items-center justify-end space-x-2">
+                  <span className={`text-xs font-black ${item.historicoSuficiente ? 'text-cyan-300' : 'text-slate-600'}`}>
+                    {item.historicoSuficiente ? `⭐ ${item.forca.toFixed(1)}` : '—'}
+                  </span>
+                  <Sparkline serie={item.serie} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }

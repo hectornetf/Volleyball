@@ -10,6 +10,7 @@ import { subscribeJogadores, getSaldoGlobalEquipamentos, getConfigFinanceira, ge
 import { carregarHistoricoTimes } from '../services/teamDrawService';
 import { useSession } from '../context/SessionContext';
 import { computarFechamento } from '../utils/financeiroUtils';
+import { montarPainelEstatisticas } from '../utils/estatisticasUtils';
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
@@ -142,6 +143,9 @@ const saldo = await getSaldoGlobalEquipamentos(activeGroupId);
   const ranking = [...elenco]
     .sort((a, b) => (b.historicoPresencas || 0) - (a.historicoPresencas || 0))
     .slice(0, 5);
+
+  // Painel do Atleta — vitórias, aproveitamento, presença, força estimada e evolução.
+  const painelAtleta = montarPainelEstatisticas(elenco, historicoTimes);
 
   // Equilíbrio Técnico — distribuição por nível (legado: gráfico de barras)
   const niveis = [1, 2, 3, 4, 5].map(n => ({
@@ -487,6 +491,50 @@ const saldo = await getSaldoGlobalEquipamentos(activeGroupId);
                 );
               })}
             </View>
+          </View>
+        )}
+
+        {/* ── Painel do Atleta ── */}
+        {painelAtleta.length > 0 && (
+          <View className="bg-slate-800/45 p-5 rounded-2xl border border-white/5 mb-1">
+            <View className="flex-row items-center justify-between mb-3">
+              <View className="flex-row items-center gap-2">
+                <FontAwesome5 name="chart-bar" size={14} color="#22d3ee" />
+                <Text className="text-white font-bold text-sm">Painel do Atleta</Text>
+              </View>
+              <Text className="text-cyan-400 font-black text-xs">{painelAtleta.length} atletas</Text>
+            </View>
+            <Text className="text-slate-500 text-[9px] font-bold mb-3">Entenda por que o sistema monta cada time.</Text>
+            <ScrollView style={{ maxHeight: 340 }} nestedScrollEnabled showsVerticalScrollIndicator>
+              {painelAtleta.map((item) => {
+                const tendencia = item.evolucao;
+                const corFlecha = tendencia > 0.05 ? '#34d399' : tendencia < -0.05 ? '#f87171' : '#94a3b8';
+                return (
+                  <View key={item.jogador.id} className="flex-row items-center justify-between p-2.5 bg-slate-900/40 rounded-xl border border-slate-700/30 mb-1.5">
+                    <View className="flex-1 mr-2" style={{ minWidth: 0 }}>
+                      <Text numberOfLines={1} className="text-xs font-bold text-slate-100">{item.jogador.nome}</Text>
+                      <Text numberOfLines={1} className="text-[9px] text-slate-500 mt-0.5">{item.jogos ? `${item.jogos} partidas · ${item.vitorias}V` : 'Sem partidas registradas'}</Text>
+                      {!item.historicoSuficiente && <Text className="text-[8px] font-extrabold text-amber-300 mt-0.5 uppercase">histórico insuficiente</Text>}
+                    </View>
+                    <View className="items-end mr-3">
+                      <Text className="text-[10px] text-slate-400 font-bold">Aprov</Text>
+                      <Text className={`text-[11px] font-black ${item.aproveitamento >= 60 ? 'text-emerald-400' : item.aproveitamento >= 40 ? 'text-cyan-300' : 'text-slate-400'}`}>{item.jogos ? `${item.aproveitamento}%` : '—'}</Text>
+                    </View>
+                    <View className="items-end mr-3">
+                      <Text className="text-[10px] text-slate-400 font-bold">Pres</Text>
+                      <Text className="text-[11px] font-black text-slate-200">{item.presencas}</Text>
+                    </View>
+                    <View className="items-end" style={{ minWidth: 54 }}>
+                      <Text className={`text-[11px] font-black ${item.historicoSuficiente ? 'text-cyan-300' : 'text-slate-600'}`}>{item.historicoSuficiente ? `⭐ ${item.forca.toFixed(1)}` : '—'}</Text>
+                      <View className="flex-row items-center gap-1">
+                        <FontAwesome5 name={tendencia > 0.05 ? 'arrow-up' : tendencia < -0.05 ? 'arrow-down' : 'minus'} size={9} color={corFlecha} />
+                        <Text className={`text-[9px] font-black ${tendencia > 0.05 ? 'text-emerald-400' : tendencia < -0.05 ? 'text-rose-400' : 'text-slate-500'}`}>{tendencia === 0 ? '0.0' : `${tendencia > 0 ? '+' : '−'}${Math.abs(tendencia).toFixed(1)}`}</Text>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })}
+            </ScrollView>
           </View>
         )}
 

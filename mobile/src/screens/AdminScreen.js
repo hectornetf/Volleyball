@@ -103,14 +103,14 @@ export default function AdminScreen() {
 
   const handleGerarTeste = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert('Simulação', 'Gerar elenco completo de teste (18 jogadores, finanças e config)?', [
+    Alert.alert('Simulação', 'Gerar amostra completa do sistema: 16 jogadores (elenco), 12 rodadas concluídas com placar por confronto, 1 rodada aberta, presenças, finanças e configuração?', [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Gerar', onPress: async () => {
          try {
            setCarregando(true);
            await gerarDadosDeTestePro(activeGroupId);
            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-           Alert.alert('Sucesso', 'Elenco de amostra gerado com sucesso!');
+           Alert.alert('Sucesso', 'Amostra completa de teste gerada com sucesso!');
          } catch (e) {
            Alert.alert('Erro', e.message);
          } finally {
@@ -122,7 +122,7 @@ export default function AdminScreen() {
 
   const handleReset = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    Alert.alert('PERIGO', 'Isso irá apagar TODOS os jogadores e finanças deste grupo. Confirmar?', [
+    Alert.alert('PERIGO', 'Isso irá apagar TODOS os dados deste grupo: jogadores, rodadas, finanças e configurações. Confirmar?', [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'APAGAR TUDO', style: 'destructive', onPress: async () => {
         try {

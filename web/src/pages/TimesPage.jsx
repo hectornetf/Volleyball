@@ -1,85 +1,58 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { 
   Users, Trophy, Calendar, Star, ArrowRightLeft, 
-  CheckCircle2, Hash, Brain, Send
+  CheckCircle2, Hash, Brain, Send, Swords
 } from 'lucide-react';
 import { useSession } from '../context/SessionContext';
 import { subscribeJogadores } from '../services/jogadorService';
 import { carregarHistoricoTimes, concluirSorteio, salvarSorteio, subscribeSorteioAberto, trocarJogadoresDoSorteio } from '../services/teamDrawService';
+import { criarEstatisticas, equilibraTimes, estatisticaJogador, gerarConfrontos } from '../utils/estatisticasUtils';
 
 const dias = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 const diaAtual = () => dias[[6, 0, 1, 2, 3, 4, 5][new Date().getDay()]] || 'Segunda';
-
-const criarEstatisticas = (historico) => {
-  const resultado = {};
-  historico.forEach((sorteio) => {
-    const maior = Math.max(...(sorteio.times || []).map((time) => Number(time.vitorias) || 0), 0);
-    (sorteio.times || []).forEach((time) => (time.jogadores || []).forEach((j) => {
-      const atual = resultado[j.id] || { jogos: 0, vitorias: 0 };
-      atual.jogos += 1;
-      atual.vitorias += maior ? (Number(time.vitorias) || 0) / maior : 0.5;
-      resultado[j.id] = atual;
-    }));
-  });
-  return resultado;
-};
-
-const poderJogador = (jogador, estatisticas) => {
-  const nivel = Number(jogador.nivel) || 3;
-  const historico = estatisticas[jogador.id];
-  if (!historico) return nivel;
-  const confianca = Math.min(historico.jogos / 8, 1);
-  return nivel + ((historico.vitorias / historico.jogos) - 0.5) * 1.2 * confianca;
-};
-
-const equilibrar = (jogadores, historico, jogadoresPorTime) => {
-  const estatisticas = criarEstatisticas(historico);
-  const quantidadeTimes = Math.floor(jogadores.length / jogadoresPorTime);
-  const ordenados = [...jogadores].sort((a, b) => poderJogador(b, estatisticas) - poderJogador(a, estatisticas) || Math.random() - 0.5);
-  const times = Array.from({ length: quantidadeTimes }, () => []);
-  const poderes = Array(quantidadeTimes).fill(0);
-  ordenados.slice(0, quantidadeTimes * jogadoresPorTime).forEach((jogador) => {
-    const indice = poderes.map((poder, i) => ({ poder, i })).filter(({ i }) => times[i].length < jogadoresPorTime).reduce((a, b) => b.poder < a.poder ? b : a).i;
-    times[indice].push(jogador);
-    poderes[indice] += poderJogador(jogador, estatisticas);
-  });
-  // Melhora a distribuição com trocas entre o time mais forte e o mais fraco.
-  for (let tentativa = 0; tentativa < 80; tentativa += 1) {
-    const forte = poderes.indexOf(Math.max(...poderes));
-    const fraco = poderes.indexOf(Math.min(...poderes));
-    let melhor = null;
-    let diferenca = poderes[forte] - poderes[fraco];
-    times[forte].forEach((a, ia) => times[fraco].forEach((b, ib) => {
-      const nova = Math.abs((poderes[forte] - poderJogador(a, estatisticas) + poderJogador(b, estatisticas)) - (poderes[fraco] - poderJogador(b, estatisticas) + poderJogador(a, estatisticas)));
-      if (nova < diferenca) { diferenca = nova; melhor = { a, b, ia, ib }; }
-    }));
-    if (!melhor) break;
-    times[forte][melhor.ia] = melhor.b; times[fraco][melhor.ib] = melhor.a;
-    poderes[forte] += poderJogador(melhor.b, estatisticas) - poderJogador(melhor.a, estatisticas);
-    poderes[fraco] += poderJogador(melhor.a, estatisticas) - poderJogador(melhor.b, estatisticas);
-  }
-  return { times, reservas: ordenados.slice(quantidadeTimes * jogadoresPorTime), diagnostico: { poderes: poderes.map((p) => Math.round(p * 10) / 10), jogadoresComHistorico: Object.keys(estatisticas).length } };
-};
 
 export default function TimesPage() {
   const { activeGroupId } = useSession();
   const [dia, setDia] = useState(diaAtual);
   const [jogadores, setJogadores] = useState([]);
   const [sorteio, setSorteio] = useState(null);
-  const [vitorias, setVitorias] = useState([]);
+  const [confrontos, setConfrontos] = useState([]);
+  const [historico, setHistorico] = useState([]);
   const [jogadoresPorTime, setJogadoresPorTime] = useState(6);
   const [selecao, setSelecao] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
+  const sorteioIdRef = useRef(null);
 
   useEffect(() => activeGroupId ? subscribeJogadores(activeGroupId, (dados) => { setJogadores(dados); setCarregando(false); }) : undefined, [activeGroupId]);
-  useEffect(() => activeGroupId ? subscribeSorteioAberto(activeGroupId, dia, (dados) => { setSorteio(dados); setSelecao(null); setVitorias((dados?.times || []).map((t) => String(t.vitorias || 0))); }) : undefined, [activeGroupId, dia]);
+  useEffect(() => {
+    if (!activeGroupId) return undefined;
+    let ativo = true;
+    carregarHistoricoTimes(activeGroupId)
+      .then((dados) => { if (ativo) setHistorico(dados); })
+      .catch(() => {});
+    return () => { ativo = false; };
+  }, [activeGroupId]);
+  useEffect(() => activeGroupId ? subscribeSorteioAberto(activeGroupId, dia, (dados) => {
+    setSorteio(dados);
+    setSelecao(null);
+    const novoId = dados?.id || null;
+    if (!novoId) { sorteioIdRef.current = null; setConfrontos([]); return; }
+    if (novoId === sorteioIdRef.current) return;
+    sorteioIdRef.current = novoId;
+    setConfrontos(dados?.confrontos?.length ? dados.confrontos.map((c) => ({ ...c })) : gerarConfrontos(dados?.times?.length || 0));
+  }) : undefined, [activeGroupId, dia]);
 
   const confirmados = useMemo(() => jogadores.filter((j) => j.presencas?.[dia] === 'Confirmado'), [jogadores, dia]);
+  const estatisticas = useMemo(() => criarEstatisticas(historico), [historico]);
+  const infoJogador = (jogador) => estatisticaJogador(jogador, estatisticas);
   const times = useMemo(() => (sorteio?.times || []).map((time) => time.jogadores.map((registro) => {
     const id = typeof registro === 'string' ? registro : registro.id;
     return jogadores.find((j) => j.id === id) || { ...(typeof registro === 'string' ? { id } : registro), nome: 'Jogador removido', nivel: registro.nivelNoSorteio };
   })), [sorteio, jogadores]);
+
+  const vitoriasDoTime = (indice) => confrontos.reduce((soma, c) => soma + (c.a === indice ? Number(c.vitoriasA) || 0 : c.b === indice ? Number(c.vitoriasB) || 0 : 0), 0);
+  const atualizarConfronto = (indice, campo, valor) => setConfrontos((atual) => atual.map((c, i) => i === indice ? { ...c, [campo]: valor.replace(/[^0-9]/g, '') } : c));
 
   const gerar = async () => {
     if (confirmados.length < jogadoresPorTime * 2) {
@@ -88,7 +61,9 @@ export default function TimesPage() {
     }
     setSalvando(true);
     try {
-      const resultado = equilibrar(confirmados, await carregarHistoricoTimes(activeGroupId), jogadoresPorTime);
+      const dadosHistoricos = await carregarHistoricoTimes(activeGroupId);
+      setHistorico(dadosHistoricos);
+      const resultado = equilibraTimes(confirmados, dadosHistoricos, jogadoresPorTime);
       await salvarSorteio({ groupId: activeGroupId, dia, ...resultado });
     } catch (_) {
       alert('Não foi possível salvar o sorteio. Verifique sua conexão e tente novamente.');
@@ -100,7 +75,7 @@ export default function TimesPage() {
   const concluir = async () => {
     setSalvando(true);
     try {
-      await concluirSorteio(sorteio.id, vitorias, activeGroupId);
+      await concluirSorteio(sorteio.id, confrontos, activeGroupId);
     } catch (_) {
       alert('Não foi possível concluir a rodada. Tente novamente.');
     } finally {
@@ -142,7 +117,7 @@ export default function TimesPage() {
             <span>Montar Times</span>
           </h1>
           <p className="text-slate-400 text-xs mt-1">
-            Sorteio inteligente com base no nível atual e nos resultados anteriores de cada atleta.
+            Sorteio inteligente: nível atual, resultados anteriores (nota de confiança) e variedade de parcerias.
           </p>
         </div>
 
@@ -203,7 +178,7 @@ export default function TimesPage() {
         <p className="text-cyan-100 text-xs leading-5 mt-4">
           {confirmados.length} confirmados: {Math.floor(confirmados.length / jogadoresPorTime)} time(s) completo(s)
           {confirmados.length % jogadoresPorTime ? ` e ${confirmados.length % jogadoresPorTime} reserva(s)` : ''}.
-          O cálculo usa nível atual e os resultados anteriores.
+          O cálculo usa o nível atual, os resultados anteriores (com nota de confiança) e evita repetir duplas e trios.
         </p>
         <button
           onClick={gerar}
@@ -220,7 +195,7 @@ export default function TimesPage() {
 
       {sorteio && (
         <div>
-          {/* Aviso de edição + WhatsApp */}
+          {/* Aviso de edição + WhatsApp + diagnóstico */}
           <div className="bg-indigo-500/10 border border-indigo-500/20 p-4 rounded-2xl mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <p className="text-indigo-200 text-xs font-bold flex items-center space-x-2">
               <ArrowRightLeft className="w-4 h-4 shrink-0" />
@@ -234,18 +209,27 @@ export default function TimesPage() {
               <span>Enviar escalação</span>
             </button>
           </div>
+          {sorteio.diagnostico?.repeticaoTotal !== undefined && (
+            <div className="bg-slate-800/40 p-3 rounded-2xl border border-slate-700/40 mb-4 flex items-center space-x-3">
+              <Hash className="w-4 h-4 text-cyan-400 shrink-0" />
+              <p className="text-slate-300 text-[10px] font-bold">
+                Parcerias repetidas na rodada: {sorteio.diagnostico.repeticaoTotal} · Trocas de variedade: {sorteio.diagnostico.variedadeAplicada || 0} · Atletas com histórico: {sorteio.diagnostico.jogadoresComHistorico}
+              </p>
+            </div>
+          )}
 
           {/* Times */}
           {times.map((time, indice) => (
             <div key={indice} className="bg-slate-800/60 rounded-3xl border border-slate-700/40 mb-4 overflow-hidden">
               <div className="p-4 bg-cyan-500/10 flex flex-col sm:flex-row justify-between gap-1">
                 <span className="text-cyan-300 font-black text-xs uppercase">Time {indice + 1} · {time.length} atletas</span>
-                <span className="text-cyan-200 text-xs font-bold">Poder {poderes[indice] ?? '—'}</span>
+                <span className="text-cyan-200 text-xs font-bold">Poder {poderes[indice] ?? '—'} · V {vitoriasDoTime(indice)}</span>
               </div>
               <div className="p-4">
                 {time.map((j, posicao) => {
                   const local = { tipo: 'time', indice, posicao };
                   const isSel = estaSelecionado(local);
+                  const stat = infoJogador(j);
                   return (
                     <button
                       key={j.id}
@@ -257,23 +241,49 @@ export default function TimesPage() {
                           : 'bg-slate-900/40 hover:bg-slate-900/70 border border-transparent'
                       }`}
                     >
-                      <span className="text-slate-100 font-bold text-xs">{j.nome} <span className="text-amber-400">★ {j.nivel || 3}</span></span>
+                      <span className="text-slate-100 font-bold text-xs">{j.nome} <span className="text-amber-400">★ {j.nivel || 3}</span>{!stat.historicoSuficiente && <span className="text-amber-300/90 text-[9px] ml-1">· histórico insuficiente</span>}</span>
                     </button>
                   );
                 })}
-                <div className="border-t border-slate-700/40 mt-2 pt-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                  <span className="text-slate-300 font-black text-xs">PARTIDAS VENCIDAS</span>
-                  <input
-                    value={vitorias[indice] || ''}
-                    onChange={(e) => setVitorias((atual) => atual.map((item, i) => i === indice ? e.target.value.replace(/[^0-9]/g, '') : item))}
-                    type="number"
-                    min="0"
-                    className="bg-slate-900 text-white text-center font-black w-16 py-2 rounded-xl border border-slate-700 focus:outline-none focus:border-cyan-500"
-                  />
-                </div>
               </div>
             </div>
           ))}
+
+          {/* Placar por confronto */}
+          {confrontos.length > 0 && (
+            <div className="bg-indigo-500/10 border border-indigo-500/20 p-4 rounded-3xl mb-4">
+              <h3 className="text-indigo-300 text-xs font-black uppercase flex items-center space-x-2">
+                <Swords className="w-4 h-4" />
+                <span>Placar por confronto</span>
+              </h3>
+              <p className="text-indigo-200 text-[10px] font-bold mt-1 mb-3">Registre quem jogou contra quem (todos contra todos).</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {confrontos.map((confronto, indice) => (
+                  <div key={`${confronto.a}-${confronto.b}`} className="bg-slate-900/40 p-3 rounded-xl flex items-center justify-between gap-2">
+                    <span className="text-slate-200 text-[10px] font-black shrink-0">Time {confronto.a + 1}</span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        value={confronto.vitoriasA}
+                        onChange={(e) => atualizarConfronto(indice, 'vitoriasA', e.target.value)}
+                        className="bg-slate-900 text-white text-center font-black w-14 py-2 rounded-xl border border-slate-700 focus:outline-none focus:border-cyan-500"
+                      />
+                      <span className="text-slate-500 font-black">×</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={confronto.vitoriasB}
+                        onChange={(e) => atualizarConfronto(indice, 'vitoriasB', e.target.value)}
+                        className="bg-slate-900 text-white text-center font-black w-14 py-2 rounded-xl border border-slate-700 focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                    <span className="text-slate-200 text-[10px] font-black shrink-0">Time {confronto.b + 1}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Reservas */}
           {(sorteio?.reservas || []).length > 0 && (
@@ -287,6 +297,7 @@ export default function TimesPage() {
                 const local = { tipo: 'reserva', indice };
                 const isSel = estaSelecionado(local);
                 const jogador = jogadores.find((j) => j.id === id) || { id, nome: 'Jogador' };
+                const stat = infoJogador(jogador);
                 return (
                   <button
                     key={`reserva-${id}-${indice}`}
@@ -298,7 +309,7 @@ export default function TimesPage() {
                         : 'bg-slate-900/40 text-slate-100 hover:bg-slate-900/70'
                     }`}
                   >
-                    {jogador.nome}
+                    {jogador.nome}{!stat.historicoSuficiente && <span className="text-amber-300/90 text-[9px] ml-1">· histórico insuficiente</span>}
                   </button>
                 );
               })}

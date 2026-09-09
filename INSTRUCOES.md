@@ -183,6 +183,8 @@ O sistema usa um **algoritmo híbrido** para garantir equilíbrio justo:
 1. Jogadores **nível 3, 4 e 5** são distribuídos via *Snake Draft* (0→1→2→2→1→0...) garantindo equilíbrio técnico
 2. Jogadores **nível 1 e 2** são distribuídos por rodízio no time com menor peso atual, evitando sua concentração
 
+> **Nos apps atuais (Web/Mobile)** o sorteio evoluiu: usa-se `equilibraTimes` (penalidade para duplas/trios repetidos, troca forte×fraco e passada de variedade; 2 ou 3 times por rodada) e o placar é registrado por **confronto (todos contra todos)** nas rodadas concluídas. Detalhes em [`mobile/INSTRUCOES.md`](./mobile/INSTRUCOES.md) e [`web/INSTRUCOES.md`](./web/INSTRUCOES.md).
+
 ---
 
 ## Suporte e Contribuições
@@ -196,6 +198,7 @@ Encontrou um bug ou tem uma sugestão? Abra uma **Issue** ou **Pull Request** no
 - **APK automático:** cada push na `main` com mudanças em `mobile/` gera um novo APK `preview` via workflow `mobile-update.yml` — sem comando manual. O `.apk` fica disponível no painel do EAS.
 - **APK manual (opcional):** execute `npx eas-cli@latest build --platform android --profile preview` dentro de `mobile/`.
 - **Atualizações OTA:** o workflow `.github/workflows/mobile-update.yml` publica no canal `preview` quando há alterações em `mobile/` na `main`.
+- **Dados de teste (Admin, Web e Mobile):** "Gerar Amostra Completa de Teste PRO" cria 16 jogadores, 12 rodadas concluídas com placar por confronto, 1 rodada aberta do dia, presenças, finanças e configuração do mês. Use **"Resetar Todos os Dados do Grupo"** antes de gerar — o gerador bloqueia grupos que já possuem elenco para evitar duplicação.
 
 Como o workflow gera o APK `preview` automaticamente a cada push, você não precisa mais buildar manualmente para distribuir uma nova versão de teste. Builds manuais continuam necessárias para outros perfis (ex: `production` para a Play Store).
 

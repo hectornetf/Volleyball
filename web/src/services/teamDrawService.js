@@ -30,14 +30,49 @@ export const salvarSorteio = async ({ groupId, dia, times, reservas, diagnostico
   return docRef.id;
 };
 
-export const concluirSorteio = async (id, vitorias, groupId) => {
-  const valores = vitorias.map((valor) => Math.max(0, parseInt(valor, 10) || 0));
+export const concluirSorteio = async (id, confrontos, groupId) => {
   const referencia = doc(db, COLLECTION, id);
   const atual = await getDoc(referencia);
   if (!atual.exists()) throw new Error('Sorteio não encontrado');
-  const times = (atual.data().times || []).map((time, indice) => ({ ...time, vitorias: valores[indice] || 0 }));
-  await updateDoc(referencia, { times, concluido: true, concluidoEm: new Date().toISOString() });
-  await registrarLog('PARTIDAS', `Resultados do sorteio registrados: ${valores.join(' x ')} vitórias por time.`, 0, groupId);
+  const dados = atual.data();
+  const timesBase = dados.times || [];
+
+  // Formato novo: array de confrontos { a, b, vitoriasA, vitoriasB } (todos contra todos).
+  // Formato antigo: array de vitórias por time (retrocompatibilidade).
+  const recebidos = Array.isArray(confrontos) ? confrontos : [];
+  const ehConfronto = recebidos.length > 0 && recebidos[0] && typeof recebidos[0] === 'object' && 'a' in recebidos[0];
+  const listaConfrontos = ehConfronto
+    ? recebidos.map((c) => ({
+        a: Math.max(0, parseInt(c.a, 10) || 0),
+        b: Math.max(0, parseInt(c.b, 10) || 0),
+        vitoriasA: Math.max(0, parseInt(c.vitoriasA, 10) || 0),
+        vitoriasB: Math.max(0, parseInt(c.vitoriasB, 10) || 0),
+      }))
+    : (timesBase.length === 2
+      ? [{
+        a: 0, b: 1,
+        vitoriasA: Math.max(0, parseInt(recebidos[0], 10) || 0),
+        vitoriasB: Math.max(0, parseInt(recebidos[1], 10) || 0),
+      }]
+      : null);
+
+  const valoresLegados = recebidos.map((valor) => Math.max(0, parseInt(valor, 10) || 0));
+  const times = timesBase.map((time, indice) => ({
+    ...time,
+    vitorias: listaConfrontos
+      ? listaConfrontos.filter((c) => c.a === indice || c.b === indice)
+        .reduce((soma, c) => soma + (c.a === indice ? c.vitoriasA : c.vitoriasB), 0)
+      : valoresLegados[indice] || 0,
+  }));
+
+  const atualizacao = { times, concluido: true, concluidoEm: new Date().toISOString() };
+  if (listaConfrontos) atualizacao.confrontos = listaConfrontos;
+  await updateDoc(referencia, atualizacao);
+
+  const resumo = listaConfrontos
+    ? `Time ${listaConfrontos[0].a + 1} ${listaConfrontos[0].vitoriasA} x ${listaConfrontos[0].vitoriasB} Time ${listaConfrontos[0].b + 1}${listaConfrontos.length > 1 ? ` (+${listaConfrontos.length - 1} confrontos)` : ''}`
+    : `${valoresLegados.join(' x ')} vitórias por time`;
+  await registrarLog('PARTIDAS', `Resultados registrados por confronto: ${resumo}.`, 0, groupId);
 };
 
 export const trocarJogadoresDoSorteio = async (id, origem, destino, groupId) => {

@@ -13,6 +13,7 @@ Este repositório contém a versão **Web** da plataforma **VoleizinDosCria**, d
   - `jogadores`: Cadastro de mensalistas e avulsos.
   - `operacoes_financeiras`: Entradas, saídas e caixa de equipamentos.
   - `config_financeira`: Custos da quadra por dia da semana e valor avulso.
+  - `sorteios_times`: Rodadas abertas e concluídas, com `confrontos` (placar todos contra todos), `times`, `reservas` e `diagnostico`.
   - `logs_atividades`: Feed de auditoria em tempo real.
 
 ---
@@ -62,12 +63,12 @@ Para usar o endereço `https://voleizindoscria.vercel.app/`, o projeto Vercel de
 ## 🚀 Funcionalidades Incluídas na Web
 
 1. **Acesso por Código (`VO-XXXX`)**: Compartilhado com o App Mobile.
-2. **Dashboard**: Resumo geral, saldo do caixa e contagem de presenças.
+2. **Dashboard**: Resumo geral, saldo do caixa, contagem de presenças e **Painel do Atleta** (partidas, aproveitamento, presença, força e evolução).
 3. **Presença em Tempo Real**: Chamada rápida (Confirmado/Falta) e diária de avulsos.
-4. **Sorteio de Times Equilibrados**: Algoritmo Snake Draw por nível (1 a 5) com botão **Copiar para WhatsApp**.
+4. **Sorteio de Times Equilibrados**: Algoritmo por nível (1 a 5) que evita duplas/trios repetidos, registra o **placar por confronto** (2 ou 3 times) e marca "histórico insuficiente" para quem tem menos de 8 jogos, com botão **Copiar para WhatsApp**.
 5. **Financeiro & Rateios**: Cálculo automático de custo da quadra por dia da semana e caixa de equipamentos.
 6. **Histórico**: Log de auditoria em tempo real.
-7. **Admin de Jogadores**: Cadastro, edição de nível, ativação/desativação e ferramentas de simulação.
+7. **Admin de Jogadores**: Cadastro, edição de nível, ativação/desativação e ferramentas de simulação — **Gerar Amostra Completa de Teste PRO** (16 jogadores, 12 rodadas concluídas com placar por confronto, rodada aberta do dia, presenças, finanças e config) e **Resetar Todos os Dados** (limpa em lotes jogadores, rodadas, finanças e configurações).
 
 ---
 

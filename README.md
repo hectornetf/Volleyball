@@ -11,7 +11,7 @@
 
 <p align="center">
   <strong>Plataforma Multiplataforma (Mobile App + Web App) para Gestão de Grupos de Vôlei Amador.</strong><br />
-  Presença em tempo real por dia da semana, sorteio equilibrado de times por nível, rateios financeiros e caixa de equipamentos com criptografia AES-256.
+  Presença em tempo real por dia da semana, sorteio equilibrado de times por nível com placar por confronto, painel de estatísticas por atleta, rateios financeiros e caixa de equipamentos com criptografia AES-256.
 </p>
 
 ---
@@ -57,6 +57,17 @@ Volleyball/
   - Deploy contínuo na Vercel: [voleizindoscria.vercel.app](https://voleizindoscria.vercel.app/).
   - Funcionalidades compartilhadas com o aplicativo mobile via Firestore.
 
+3. **🏐 Sorteio com Placar por Confronto**:
+   - Rodadas concluídas registram o placar de **todos contra todos** (coleção `sorteios_times`, campo `confrontos`), com 2 ou 3 times por rodada.
+   - Balanceamento que evita **duplas/trios repetidos** e sinaliza atletas com **histórico insuficiente** (menos de 8 jogos).
+
+4. **📊 Painel do Atleta**:
+   - Dashboard (Web e Mobile) com partidas, aproveitamento, presença, força e evolução por atleta.
+
+5. **🧪 Ferramentas de Teste (Admin)**:
+   - **Gerar Amostra Completa de Teste PRO**: elenco, 12 rodadas concluídas, rodada aberta do dia, presenças, finanças e configuração do mês.
+   - **Resetar Todos os Dados do Grupo**: limpa em lotes jogadores, rodadas, finanças e configurações (inclui legados de ±2 meses).
+
 ## 🚀 Publicação
 
 - **Web:** cada push na branch `main` atualiza o deploy da Vercel.
@@ -67,7 +78,7 @@ Consulte os guias específicos em [`mobile/INSTRUCOES.md`](./mobile/INSTRUCOES.m
 
 ---
 
-## � Arquitetura de Deploy Automatizado
+## 🧭 Arquitetura de Deploy Automatizado
 
 A plataforma usa **CI/CD contínuo** com dois pipelines independentes, acionados por push na branch `main`:
 

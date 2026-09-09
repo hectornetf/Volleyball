@@ -17,8 +17,12 @@
 - **Rateio Automático**: O sistema calcula o valor por pessoa dividindo o custo de cada dia apenas pelos mensalistas ativos cadastrados naquele dia. Dias sem custo não entram no rateio.
 - **Fundo de Equipamentos**: Gestão separada para compra de bolas e materiais.
 
-### 🐍 Sorteio Balanceado (Snake Draft)
-- **Equilíbrio Técnico**: Algoritmo que distribui jogadores de elite e iniciantes de forma alternada para garantir jogos competitivos.
+### 🐍 Sorteio de Times Equilibrados
+- **Equilíbrio Técnico**: distribuição alternada por nível com penalidade para **duplas/trios já repetidos**, troca forte×fraco e passada de variedade (2 ou 3 times por rodada).
+- **Placar por Confronto**: rodadas concluídas registram o resultado de **todos contra todos** (campo `confrontos`); atletas com menos de 8 jogos exibem **histórico insuficiente**.
+
+### 📊 Painel do Atleta
+- Partidas, aproveitamento, presença, força e evolução por atleta diretamente no Dashboard.
 
 ---
 
@@ -52,7 +56,7 @@ npx eas-cli@latest build --platform android --profile preview
 
 ---
 
-## � Deploy Automatizado (CI/CD)
+## 🔄 Deploy Automatizado (CI/CD)
 
 ```mermaid
 flowchart LR

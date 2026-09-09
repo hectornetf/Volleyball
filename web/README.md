@@ -23,8 +23,9 @@
 - **Vou / Falto**: Status em tempo real que reflete instantaneamente no aplicativo dos atletas.
 - **Cobrança em Massa via WhatsApp**: Notificação direta para o grupo com um clique.
 
-### 🐍 Sorteio de Times Equilibrados (Snake Draft)
-- **Equilíbrio Técnico**: Distribuição alternada baseada no nível dos atletas presentes (1 a 5 ⭐).
+### 🐍 Sorteio de Times Equilibrados
+- **Equilíbrio Técnico**: Distribuição alternada por nível (1 a 5 ⭐) evitando **duplas/trios repetidos** e sinalizando atletas com **histórico insuficiente** (< 8 jogos).
+- **Placar por Confronto**: Rodadas concluídas registram o resultado de **todos contra todos** (`confrontos`), com 2 ou 3 times por rodada.
 - **Formatos Flexíveis**: Suporte a times 4x4, 5x5 e 6x6.
 - **Copiar para WhatsApp**: Texto formatado com emojis pronto para envio no grupo.
 
@@ -32,6 +33,13 @@
 - **Rateio por Dia de Treino**: Divisão do custo da quadra entre os mensalistas ativos cadastrados para aquele dia; dias sem custo não entram no rateio.
 - **Cobrança Individual de Mensalidades**: Links de cobrança direto no WhatsApp.
 - **Caixa de Equipamentos**: Controle de entradas e saídas do fundo de materiais (bolas, coletes, redes).
+
+### 📊 Painel do Atleta
+- Partidas, aproveitamento de set, presença, força e evolução (sparkline) por atleta no Dashboard.
+
+### 🧪 Ferramentas de Teste (Admin)
+- **Gerar Amostra Completa de Teste PRO**: elenco, 12 rodadas concluídas, rodada aberta do dia, presenças, finanças e configuração do mês.
+- **Resetar Todos os Dados do Grupo**: limpa em lotes jogadores, rodadas, finanças e configurações (inclui legados de ±2 meses).
 
 ---
 

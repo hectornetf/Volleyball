@@ -82,7 +82,7 @@ Nenhuma query deve ser feita sem o filtro de `groupId`. O `SessionContext` prov�
 ### Coleção `logs_atividades` (Novo)
 | Campo | Tipo | Descrição |
 |---|---|---|
-| `categoria` | String | `FINANCEIRO`, `CADASTRO`, `PRESENÇA`, `SISTEMA` |
+| `categoria` | String | `FINANCEIRO`, `CADASTRO`, `PRESENÇA`, `SISTEMA`, `SORTEIO`, `PARTIDAS` |
 | `descricao` | String | Texto amigável da ação |
 | `createdAt` | Timestamp | Data/Hora para ordenação oficial |
 | `groupId` | String | Vínculo com o grupo |
@@ -93,6 +93,26 @@ Nenhuma query deve ser feita sem o filtro de `groupId`. O `SessionContext` prov�
 | ID Documento | String | Formato: `{groupId}_{Mês}` (Ex: VO-123_Janeiro 2026) |
 | `Segunda..Domingo` | Number | Custo fixo da quadra por dia da semana |
 | `Avulso` | Number | Valor padrão da diária |
+
+### Coleção `sorteios_times`
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `groupId` | String | Vínculo com o grupo |
+| `dia` / `data` | String | Dia da semana e data da rodada |
+| `times` | Array | `[{ nome, jogadores: [{id, nivelNoSorteio}], vitorias }]` |
+| `confrontos` | Array | `[{ a, b, vitoriasA, vitoriasB }]` — placar **todos contra todos** |
+| `reservas` | Array | Ids dos jogadores reservas |
+| `concluido` / `concluidoEm` | Boolean / String | Rodada concluída e quando |
+| `diagnostico` | Object | Poderes dos times, jogadores com histórico, repetição e variedade |
+| `origem` | String | Ex.: `dados_teste` (mock) |
+
+---
+
+## 🧪 Ferramentas de Teste (Admin)
+
+- **Gerar Amostra Completa de Teste PRO**: cria 16 jogadores (14 mensalistas + 2 avulsos, sendo 1 inativo), **12 rodadas concluídas** com placar por confronto, **1 rodada aberta** do dia (via `equilibraTimes`), presenças, pagamentos do mês, 6 operações financeiras, configuração do mês e logs de auditoria.
+- **Resetar Todos os Dados do Grupo**: apaga em lotes jogadores, rodadas, finanças e configurações (inclui registros legado de ±2 meses).
+- **Importante:** o gerador **bloqueia** grupos que já possuem elenco — use o "Resetar" antes de gerar uma nova amostra para evitar duplicação.
 
 ---
 
