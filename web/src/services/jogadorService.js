@@ -1,6 +1,6 @@
 import { db } from '../config/firebase';
 import { 
-  collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, 
+  collection, addDoc, updateDoc, deleteDoc, doc, getDoc, onSnapshot, query, 
   getDocs, where, writeBatch, setDoc, increment 
 } from 'firebase/firestore';
 import { encryptData, decryptData } from '../utils/crypto';
@@ -188,11 +188,10 @@ export const saveConfigFinanceira = async (groupId, mes, config) => {
 };
 
 export const getConfigFinanceira = async (groupId, mes) => {
-  const q = query(collection(db, CONFIG_FINANCEIRA_COLLECTION), where('__name__', '==', `${groupId}_${mes}`));
-  const snapshot = await getDocs(q);
+  const snapshot = await getDoc(doc(db, CONFIG_FINANCEIRA_COLLECTION, `${groupId}_${mes}`));
   
-  if (!snapshot.empty) {
-    return snapshot.docs[0].data();
+  if (snapshot.exists()) {
+    return snapshot.data();
   }
   
   return {

@@ -3,18 +3,18 @@ service cloud.firestore {
   match /databases/{database}/documents {
     
     match /{collectionName}/{docId} {
-      // Leitura Individual
-      allow get: if true;
-      
+      // Leitura Individual - permite docs inexistentes (retorna vazio) e docs que pertencem a um grupo
+      allow get: if resource == null || resource.data.groupId != null;
+
       // Listagem (Queries) - Exige o filtro de groupId por segurança
       allow list: if resource == null || resource.data.groupId != null;
-      
+
       // Criação e Atualização - Exige envio do groupId
       allow create, update: if request.resource.data.groupId != null;
-      
-      // EXCLUSÃO (Reset) - Permite excluir se o documento existir
-      // Isso libera o 'Zerar Grupo' para limpar configurações antigas
-      allow delete: if true; 
+
+      // EXCLUSÃO (Reset) - Permite excluir docs do grupo (libera o 'Zerar Grupo')
+      // O doc DEVE pertencer a um grupo para poder ser excluído (ou não existir)
+      allow delete: if resource == null || resource.data.groupId != null;
     }
   }
 }
