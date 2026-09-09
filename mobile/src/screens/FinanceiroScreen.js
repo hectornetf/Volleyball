@@ -524,7 +524,7 @@ export default function FinanceiroScreen() {
         {/* ── Cards de Rateio por dia (paridade legado: cor, jogadores clicáveis, botão cobrar) ── */}
         {fechamento && (
           <View className="space-y-4 pb-8">
-            {diasDaSemana.filter(dia => fechamento.dias[dia].custo > 0).map(dia => {
+            {diasDaSemana.filter(dia => fechamento.dias[dia]).map(dia => {
               const d = fechamento.dias[dia];
               const cor = corPorDia[dia] || corPorDia.Sábado;
               return (
