@@ -75,7 +75,7 @@ export default function TimesPage() {
   useEffect(() => activeGroupId ? subscribeJogadores(activeGroupId, (dados) => { setJogadores(dados); setCarregando(false); }) : undefined, [activeGroupId]);
   useEffect(() => activeGroupId ? subscribeSorteioAberto(activeGroupId, dia, (dados) => { setSorteio(dados); setSelecao(null); setVitorias((dados?.times || []).map((t) => String(t.vitorias || 0))); }) : undefined, [activeGroupId, dia]);
 
-  const confirmados = useMemo(() => jogadores.filter((j) => (j.presencas?.[dia] || j.presencaAtual) === 'Confirmado'), [jogadores, dia]);
+  const confirmados = useMemo(() => jogadores.filter((j) => j.presencas?.[dia] === 'Confirmado'), [jogadores, dia]);
   const times = useMemo(() => (sorteio?.times || []).map((time) => time.jogadores.map((registro) => {
     const id = typeof registro === 'string' ? registro : registro.id;
     return jogadores.find((j) => j.id === id) || { ...(typeof registro === 'string' ? { id } : registro), nome: 'Jogador removido', nivel: registro.nivelNoSorteio };

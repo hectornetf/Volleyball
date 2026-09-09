@@ -72,8 +72,7 @@ export default function PresencaPage() {
       }
 
       await updateJogador(jogador.id, {
-        [`presencas.${diaSelecionado}`]: novoStatus,
-        presencaAtual: novoStatus
+        [`presencas.${diaSelecionado}`]: novoStatus
       }, activeGroupId);
 
       await registrarLog('PRESENÇA', `Presença de ${jogador.nome} em ${diaSelecionado} alterada para: ${novoStatus}`, 0, activeGroupId);

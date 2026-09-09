@@ -79,7 +79,7 @@ export default function TimesScreen() {
   useFocusEffect(React.useCallback(() => {
     setDia(diaAtual());
   }, []));
-  const confirmados = useMemo(() => jogadores.filter((j) => (j.presencas?.[dia] || j.presencaAtual) === 'Confirmado'), [jogadores, dia]);
+  const confirmados = useMemo(() => jogadores.filter((j) => j.presencas?.[dia] === 'Confirmado'), [jogadores, dia]);
   const times = useMemo(() => (sorteio?.times || []).map((time) => time.jogadores.map((registro) => {
     const id = typeof registro === 'string' ? registro : registro.id;
     return jogadores.find((j) => j.id === id) || { ...(typeof registro === 'string' ? { id } : registro), nome: 'Jogador removido', nivel: registro.nivelNoSorteio };

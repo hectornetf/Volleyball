@@ -72,11 +72,8 @@ export default function DashboardPage({ setActiveTab }) {
   const mensalistas = ativos.filter(j => j.tipo === 'MENSALISTA');
   const avulsos = ativos.filter(j => j.tipo === 'AVULSO');
   
-  // Leitura sincronizada com o Mobile
   const confirmadosHoje = ativos.filter(j => {
-    const statusDia = j.presencas?.[diaHojeStr];
-    if (statusDia) return statusDia === 'Confirmado';
-    return j.presencaAtual === 'Confirmado';
+    return j.presencas?.[diaHojeStr] === 'Confirmado';
   });
 
   // Aniversariantes do Mês
