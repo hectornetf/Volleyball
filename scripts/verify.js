@@ -42,24 +42,42 @@ function runCommand(command, cwd, description) {
   }
 }
 
-function runCriticalAudit(cwd, description) {
+function runDependencyAudit(cwd, description) {
   try {
     process.stdout.write(`  ⏳ Executando: ${description}... `);
     let output;
     try {
-      output = execSync('npm audit --audit-level=critical --json', { cwd, stdio: 'pipe' });
+      output = execSync('npm audit --json', { cwd, stdio: 'pipe' });
     } catch (error) {
       output = error.stdout;
       if (!output) throw error;
     }
     const report = JSON.parse(output.toString());
-    const critical = report.metadata?.vulnerabilities?.critical || 0;
+    const vulns = report.metadata?.vulnerabilities || {};
+    const critical = vulns.critical || 0;
+    const high = vulns.high || 0;
+    const moderate = vulns.moderate || 0;
+    const low = vulns.low || 0;
+
     if (critical > 0) {
       console.log(`${colors.red}FALHOU${colors.reset}`);
-      console.error(`Foram encontradas ${critical} vulnerabilidade(s) crítica(s).`);
+      console.error(`Foram encontradas ${critical} vulnerabilidade(s) CRÍTICA(s) em ${description}.`);
       return { success: false, reason: 'critical' };
     }
-    console.log(`${colors.green}APROVADO${colors.reset}`);
+    if (high > 0) {
+      console.log(`${colors.red}FALHOU${colors.reset}`);
+      console.error(`Foram encontradas ${high} vulnerabilidade(s) de severidade ALTA em ${description}.`);
+      return { success: false, reason: 'high' };
+    }
+    if (moderate > 0) {
+      console.log(`${colors.yellow}ADVERTÊNCIA${colors.reset}`);
+      console.warn(`  ⚠ ${moderate} vulnerabilidade(s) moderada(s) em ${description} (não bloqueia o commit).`);
+    } else {
+      console.log(`${colors.green}APROVADO${colors.reset}`);
+    }
+    if (low > 0) {
+      console.warn(`  ℹ ${low} vulnerabilidade(s) de severidade baixa em ${description}.`);
+    }
     return { success: true };
   } catch (error) {
     console.log(`${colors.red}INDISPONÍVEL${colors.reset}`);
@@ -139,14 +157,15 @@ try {
 // -------------------------------------------------------------
 // 2. ANÁLISE DE CÓDIGO DA VERSÃO WEB
 // -------------------------------------------------------------
-logStep('2/4', 'Análise de Código da Versão Web (Build & Sintaxe)');
+logStep('2/4', 'Análise de Código da Versão Web (ESLint & Build)');
 const webDir = path.join(rootDir, 'web');
-const webCheck = runCommand('npm run build', webDir, 'Compilação e validação Vite/React Web');
-if (!webCheck.success) {
-  logError('A versão Web possui erros de compilação ou sintaxe.');
+const webLintCheck = runCommand('npm run lint', webDir, 'Validação de regras e sintaxe ESLint Web');
+const webBuildCheck = runCommand('npm run build', webDir, 'Compilação e validação Vite/React Web');
+if (!webLintCheck.success || !webBuildCheck.success) {
+  logError('A versão Web possui erros de lint ou compilação/sintaxe.');
   hasErrors = true;
 } else {
-  logSuccess('Versão Web validada e compilada com sucesso.');
+  logSuccess('Versão Web validada (ESLint + build) com sucesso.');
 }
 
 // -------------------------------------------------------------
@@ -165,19 +184,20 @@ if (!mobileCheck.success) {
 // -------------------------------------------------------------
 // 4. AUDITORIA DE SEGURANÇA DE DEPENDÊNCIAS (CRITICAL)
 // -------------------------------------------------------------
-logStep('4/4', 'Auditoria de Vulnerabilidades Críticas de Dependências');
-const auditWeb = runCriticalAudit(webDir, 'npm audit Web (nível crítico)');
-const auditMobile = runCriticalAudit(mobileDir, 'npm audit Mobile (nível crítico)');
+logStep('4/4', 'Auditoria de Vulnerabilidades de Dependências (Critical | High)');
+const auditWeb = runDependencyAudit(webDir, 'Web');
+const auditMobile = runDependencyAudit(mobileDir, 'Mobile');
 
-if (auditWeb.reason === 'critical' || auditMobile.reason === 'critical') {
-  logError('Vulnerabilidades críticas detectadas nas dependências.');
+if (auditWeb.reason === 'critical' || auditMobile.reason === 'critical' ||
+    auditWeb.reason === 'high' || auditMobile.reason === 'high') {
+  logError('Vulnerabilidades críticas ou de alta severidade detectadas nas dependências.');
   hasErrors = true;
 } else if (!auditWeb.success || !auditMobile.success) {
   console.warn(`${colors.yellow}⚠ Auditoria npm indisponível; commit liberado sem confirmação online de vulnerabilidades.${colors.reset}`);
   console.warn(`${colors.yellow}  Execute npm audit manualmente quando o registry estiver disponível.${colors.reset}`);
-  logSuccess('Nenhuma vulnerabilidade crítica foi confirmada.');
+  logSuccess('Nenhuma vulnerabilidade crítica/alta foi confirmada.');
 } else {
-  logSuccess('Nenhuma vulnerabilidade crítica encontrada nas dependências.');
+  logSuccess('Nenhuma vulnerabilidade crítica ou de alta severidade encontrada nas dependências.');
 }
 
 // -------------------------------------------------------------

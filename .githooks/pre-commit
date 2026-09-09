@@ -9,8 +9,18 @@ echo ""
 echo "🛡️  Iniciando verificação pré-commit (código + segurança)..."
 echo ""
 
+root="$(git rev-parse --show-toplevel)"
+
+# Incrementa o número de versão (Web + Mobile) antes de buildar
+node "$root/scripts/bump-version.js"
+
+# Re-adiciona os arquivos de versão atualizados ao index (fazem parte do commit)
+git add "$root/web/package.json" "$root/web/package-lock.json" \
+        "$root/mobile/package.json" "$root/mobile/package-lock.json" \
+        "$root/mobile/app.json"
+
 # Executa o script de verificação com Node.js
-node "$(git rev-parse --show-toplevel)/scripts/verify.js"
+node "$root/scripts/verify.js"
 
 # Captura o código de saída do script
 exit_code=$?

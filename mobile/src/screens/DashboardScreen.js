@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import * as ExpoClipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
+import Constants from 'expo-constants';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { subscribeJogadores, getSaldoGlobalEquipamentos, getConfigFinanceira, getPagamentosAvulsosDoMes } from '../services/jogadorService';
 import { carregarHistoricoTimes } from '../services/teamDrawService';
@@ -210,6 +211,7 @@ const saldo = await getSaldoGlobalEquipamentos(activeGroupId);
           Voleizin<Text className="text-emerald-400">DosCria</Text>
         </Text>
         <Text className="text-slate-500 text-[10px] font-bold uppercase tracking-[4px] mb-4">Organização, Times e Finanças</Text>
+        <Text className="text-slate-600 text-[10px] font-mono font-bold mb-3">v{Constants.expoConfig?.version || '—'}</Text>
 
         {/* Código do grupo */}
         <View className="flex-row items-center bg-slate-900/60 p-1 rounded-2xl border border-white/5 shadow-sm">

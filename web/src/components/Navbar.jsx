@@ -3,6 +3,7 @@ import {
   LayoutDashboard, CheckSquare, Users, DollarSign,
   History, Settings, LogOut, ShieldCheck, Copy, MessageCircle
 } from 'lucide-react';
+import pkg from '../../package.json';
 import { useSession } from '../context/SessionContext';
 
 export default function Navbar({ activeTab, setActiveTab }) {
@@ -40,7 +41,10 @@ export default function Navbar({ activeTab, setActiveTab }) {
             <div>
               <div className="flex items-center space-x-2">
                 <span className="font-black text-xl tracking-tight text-white">VoleizinDosCria</span>
-                <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">PRO WEB</span>
+                <div className="flex items-center space-x-1">
+                  <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">PRO WEB</span>
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">v{pkg.version}</span>
+                </div>
               </div>
               <div className="flex items-center space-x-1.5 text-xs text-slate-400">
                 <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
