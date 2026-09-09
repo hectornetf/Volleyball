@@ -6,6 +6,7 @@ import * as ExpoClipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { subscribeJogadores, getSaldoGlobalEquipamentos, getConfigFinanceira, getPagamentosAvulsosDoMes } from '../services/jogadorService';
+import { carregarHistoricoTimes } from '../services/teamDrawService';
 import { useSession } from '../context/SessionContext';
 import { computarFechamento } from '../utils/financeiroUtils';
 
@@ -15,7 +16,8 @@ export default function DashboardScreen() {
   const [elenco, setElenco] = useState([]);
   const [saldoEquipamentos, setSaldoEquipamentos] = useState(0); 
   const [custosMes, setCustosMes] = useState(null);
-  const [pagamentosAvulsos, setPagamentosAvulsos] = useState([]);
+const [pagamentosAvulsos, setPagamentosAvulsos] = useState([]);
+  const [historicoTimes, setHistoricoTimes] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(30));
@@ -26,9 +28,10 @@ export default function DashboardScreen() {
   const carregarDados = useCallback(async () => {
     if (!activeGroupId) return;
     try {
-      const saldo = await getSaldoGlobalEquipamentos(activeGroupId);
+const saldo = await getSaldoGlobalEquipamentos(activeGroupId);
       setSaldoEquipamentos(saldo);
       setPagamentosAvulsos(await getPagamentosAvulsosDoMes(activeGroupId));
+      setHistoricoTimes(await carregarHistoricoTimes(activeGroupId));
       
       const conf = await getConfigFinanceira(activeGroupId, mesAtualNome);
       setCustosMes({
@@ -451,6 +454,39 @@ export default function DashboardScreen() {
             ))}
           </View>
         </View>
+
+        {/* ── Histórico de Jogos (Montar Times) ── */}
+        {historicoTimes.length > 0 && (
+          <View className="bg-slate-800/45 p-5 rounded-2xl border border-white/5 mb-1">
+            <View className="flex-row items-center justify-between mb-4">
+              <View className="flex-row items-center gap-2">
+                <FontAwesome5 name="history" size={14} color="#34d399" />
+                <Text className="text-white font-bold text-sm">Histórico de Jogos</Text>
+              </View>
+              <Text className="text-emerald-400 font-black text-xs">{historicoTimes.length} rodadas</Text>
+            </View>
+            <View className="space-y-2">
+              {historicoTimes.slice(0, 8).map((partida) => {
+                const totalJogadores = (partida.times || []).reduce((acc, t) => acc + (t.jogadores || []).length, 0);
+                const placar = (partida.times || []).map((t) => Number(t.vitorias) || 0).join(' x ');
+                const dataFormatada = partida.data
+                  ? `${partida.data.slice(8, 10)}/${partida.data.slice(5, 7)}/${partida.data.slice(0, 4)}`
+                  : '';
+                return (
+                  <View key={partida.id} className="flex-row items-center justify-between p-3 bg-slate-900/40 rounded-xl border border-slate-700/30">
+                    <View className="flex-1 mr-2" style={{ minWidth: 0 }}>
+                      <Text numberOfLines={1} className="text-slate-200 text-xs font-bold">{partida.dia || 'Rodada'}</Text>
+                      <Text numberOfLines={1} className="text-slate-500 text-[10px] mt-0.5">
+                        {dataFormatada} · {(partida.times || []).length} times · {totalJogadores} jogadores
+                      </Text>
+                    </View>
+                    <Text className="text-emerald-400 font-black text-xs">{placar}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        )}
 
         {/* ── Apoio ao Dev ── */}
         <View className="bg-amber-500/5 p-4 rounded-2xl border border-amber-500/10 mb-6">
