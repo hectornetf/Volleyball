@@ -11,6 +11,7 @@ import {
   getConfigFinanceira
 } from '../services/jogadorService';
 import { registrarLog } from '../services/historyService';
+import Avatar from '../components/Avatar';
 import { useSession } from '../context/SessionContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -275,6 +276,9 @@ export default function PresencaScreen() {
                     key={j.id}
                     className="flex-row items-center justify-between gap-2 p-3 bg-slate-800/50 rounded-xl border border-slate-700/50"
                   >
+                    {/* Avatar */}
+                    <Avatar jogador={j} size={38} />
+
                     {/* Info do jogador */}
                     <View className="flex-1 min-w-0">
                       <View className="flex-row items-center gap-2 flex-wrap">

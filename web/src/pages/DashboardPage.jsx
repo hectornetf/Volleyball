@@ -8,6 +8,7 @@ import { subscribeJogadores, getSaldoGlobalEquipamentos, getConfigFinanceira, ge
 import { carregarHistoricoTimes } from '../services/teamDrawService';
 import { computarFechamento } from '../utils/financeiroUtils';
 import { montarPainelEstatisticas } from '../utils/estatisticasUtils';
+import Avatar from '../components/Avatar';
 
 const diasDaSemana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 
@@ -440,6 +441,7 @@ export default function DashboardPage({ setActiveTab }) {
                     }`}>
                       {i + 1}
                     </div>
+                    <Avatar jogador={j} size={28} />
                     <span className="text-xs font-bold text-white">{j.nome}</span>
                   </div>
                   <span className="text-xs text-slate-400 font-bold">{j.historicoPresencas || 0} presenças</span>
@@ -529,6 +531,7 @@ export default function DashboardPage({ setActiveTab }) {
             {painelAtleta.map((item) => (
               <div key={item.jogador.id} className="grid grid-cols-12 gap-2 items-center py-2 border-b border-slate-800/60">
                 <div className="col-span-4 flex items-center space-x-2 min-w-0">
+                  <Avatar jogador={item.jogador} size={28} />
                   <span className="text-xs font-bold text-white truncate">{item.jogador.nome}</span>
                   {!item.historicoSuficiente && (
                     <span className="text-[8px] font-extrabold uppercase text-amber-300 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-full shrink-0">

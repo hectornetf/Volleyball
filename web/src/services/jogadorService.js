@@ -30,6 +30,7 @@ const decryptPlayer = (docData, groupId) => ({
   celular: decryptData(docData.celular, groupId),
   dataNascimento: decryptData(docData.dataNascimento, groupId),
   historicoPresencas: parseInt(docData.historicoPresencas) || 0,
+  avatar: docData.avatar || '',
   status: docData.status || 'Ativo'
 });
 
@@ -45,6 +46,7 @@ export const addJogador = async (jogador, groupId) => {
     diariaPaga: jogador.diariaPaga || false,
     presencaAtual: jogador.presencaAtual || 'Falta',
     presencas: jogador.presencas || {},
+    avatar: jogador.avatar || '',
     status: jogador.status || 'Ativo'
   });
   

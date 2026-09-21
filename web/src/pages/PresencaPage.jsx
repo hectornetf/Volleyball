@@ -9,6 +9,7 @@ import {
   incrementarPresencaHistorica, getConfigFinanceira 
 } from '../services/jogadorService';
 import { registrarLog } from '../services/historyService';
+import Avatar from '../components/Avatar';
 
 const diasDaSemana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 
@@ -229,7 +230,9 @@ export default function PresencaPage() {
               }`}
             >
               {/* Left Info */}
-              <div className="space-y-1">
+              <div className="flex items-center space-x-3 min-w-0">
+                <Avatar jogador={j} size={44} />
+                <div className="space-y-1 min-w-0">
                 <div className="flex items-center space-x-2">
                   <span className={`font-extrabold text-base ${isFalta ? 'line-through text-slate-500' : 'text-white'}`}>
                     {j.nome}
@@ -257,6 +260,7 @@ export default function PresencaPage() {
                       <span>{j.diariaPaga ? 'Diária Paga ✅' : `Pagar R$${valorAvulso}`}</span>
                     </button>
                   )}
+                </div>
                 </div>
               </div>
 

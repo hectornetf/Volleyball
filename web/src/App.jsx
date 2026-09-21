@@ -8,6 +8,7 @@ import TimesPage from './pages/TimesPage';
 import FinanceiroPage from './pages/FinanceiroPage';
 import HistoryPage from './pages/HistoryPage';
 import AdminPage from './pages/AdminPage';
+import MeuPerfilPage from './pages/MeuPerfilPage';
 
 export default function App() {
   const { activeGroupId, loading } = useSession();
@@ -42,6 +43,8 @@ export default function App() {
         return <HistoryPage />;
       case 'admin':
         return <AdminPage />;
+      case 'perfil':
+        return <MeuPerfilPage />;
       default:
         return <DashboardPage setActiveTab={setActiveTab} />;
     }

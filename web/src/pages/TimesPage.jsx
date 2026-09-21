@@ -7,6 +7,7 @@ import { useSession } from '../context/SessionContext';
 import { subscribeJogadores } from '../services/jogadorService';
 import { carregarHistoricoTimes, concluirSorteio, salvarSorteio, subscribeSorteioAberto, trocarJogadoresDoSorteio } from '../services/teamDrawService';
 import { criarEstatisticas, equilibraTimes, estatisticaJogador, gerarConfrontos } from '../utils/estatisticasUtils';
+import Avatar from '../components/Avatar';
 
 const dias = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 const diaAtual = () => dias[[6, 0, 1, 2, 3, 4, 5][new Date().getDay()]] || 'Segunda';
@@ -265,7 +266,10 @@ export default function TimesPage() {
                           : 'bg-slate-900/40 hover:bg-slate-900/70 border border-transparent'
                       }`}
                     >
-                      <span className="text-slate-100 font-bold text-xs">{j.nome} <span className="text-amber-400">★ {j.nivel || 3}</span>{!stat.historicoSuficiente && <span className="text-amber-300/90 text-[9px] ml-1">· histórico insuficiente</span>}</span>
+                      <span className="flex items-center gap-2">
+                        <Avatar jogador={j} size={28} />
+                        <span className="text-slate-100 font-bold text-xs">{j.nome} <span className="text-amber-400">★ {j.nivel || 3}</span>{!stat.historicoSuficiente && <span className="text-amber-300/90 text-[9px] ml-1">· histórico insuficiente</span>}</span>
+                      </span>
                     </button>
                   );
                 })}
@@ -333,7 +337,10 @@ export default function TimesPage() {
                         : 'bg-slate-900/40 text-slate-100 hover:bg-slate-900/70'
                     }`}
                   >
-                    {jogador.nome}{!stat.historicoSuficiente && <span className="text-amber-300/90 text-[9px] ml-1">· histórico insuficiente</span>}
+                    <span className="flex items-center gap-2">
+                      <Avatar jogador={jogador} size={24} />
+                      <span>{jogador.nome}{!stat.historicoSuficiente && <span className="text-amber-300/90 text-[9px] ml-1">· histórico insuficiente</span>}</span>
+                    </span>
                   </button>
                 );
               })}

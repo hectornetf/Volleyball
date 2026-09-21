@@ -11,6 +11,7 @@ import { carregarHistoricoTimes } from '../services/teamDrawService';
 import { useSession } from '../context/SessionContext';
 import { computarFechamento } from '../utils/financeiroUtils';
 import { montarPainelEstatisticas } from '../utils/estatisticasUtils';
+import Avatar from '../components/Avatar';
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
@@ -426,6 +427,7 @@ const saldo = await getSaldoGlobalEquipamentos(activeGroupId);
               <View key={r.id} className="flex-row justify-between items-center p-2 bg-slate-800/40 rounded-xl border border-slate-700/30">
                 <View className="flex-row items-center gap-3">
                   <Text className="text-[10px] font-black text-slate-500 w-6">#{idx + 1}</Text>
+                  <Avatar jogador={r} size={26} />
                   <Text numberOfLines={1} className="text-sm font-semibold text-slate-200">{r.nome}</Text>
                 </View>
                 <Text className="text-xs font-bold text-emerald-400">{r.historicoPresencas || 0} jogos</Text>
