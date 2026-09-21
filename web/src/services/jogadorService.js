@@ -428,15 +428,13 @@ export const gerarDadosDeTestePro = async (groupId) => {
   };
 
   // ---- 4. Presenças, pagamentos e persistência ----
+  // Presença é keyed pela DATA do jogo (yyyy-MM-dd), nunca pelo nome do dia da semana,
+  // para não "vazar" presença entre semanas (ex.: lista da Sexta passada na Sexta futura).
+  const dataHojeChamada = `${refDate.getFullYear()}-${mesAtual}-${diaAtual}`;
   const jogadoresPersistencia = elenco.map((p) => {
-    const presencas = {};
-    diasTreino.forEach((dia) => {
-      if (dia === nomeDiaHoje) {
-        presencas[dia] = participantesHoje.some((x) => x.id === p.id) ? 'Confirmado' : 'Falta';
-      } else {
-        presencas[dia] = p.tipo === 'MENSALISTA' && (p.diasMensalista || []).includes(dia) ? 'Confirmado' : 'Falta';
-      }
-    });
+    const presencas = {
+      [dataHojeChamada]: participantesHoje.some((x) => x.id === p.id) ? 'Confirmado' : 'Falta',
+    };
 
     const pagamentosMensais = {};
     if (p.tipo === 'MENSALISTA' && p.status === 'Ativo') {
@@ -457,7 +455,7 @@ export const gerarDadosDeTestePro = async (groupId) => {
       historicoPresencas: participacoes[p.id] || 0,
       mensalidadePaga: false,
       diariaPaga: false,
-      presencaAtual: p.status === 'Inativo' ? 'Falta' : 'Confirmado',
+      presencaAtual: participantesHoje.some((x) => x.id === p.id) ? 'Confirmado' : 'Falta',
       presencas,
       pagamentosMensais,
       status: p.status,

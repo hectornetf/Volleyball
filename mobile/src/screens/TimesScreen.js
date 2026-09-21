@@ -12,6 +12,27 @@ import { criarEstatisticas, equilibraTimes, estatisticaJogador, gerarConfrontos 
 const dias = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 const diaAtual = () => dias[[6, 0, 1, 2, 3, 4, 5][new Date().getDay()]] || 'Segunda';
 
+// Data do próximo jogo do dia em formato ISO yyyy-MM-dd (seguro como chave no Firestore,
+// pois o caminho do campo não aceita '/'). Janela de 24h para acessar o jogo de ontem.
+const descobrirProximaData = (nomeDia) => {
+  const mapa = { Segunda: 1, Terça: 2, Quarta: 3, Quinta: 4, Sexta: 5, Sábado: 6, Domingo: 0 };
+  const alvo = mapa[nomeDia] ?? 5;
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  let diff = (alvo - hoje.getDay() + 7) % 7;
+  if (diff === 6) diff = -1;
+  const prox = new Date(hoje);
+  prox.setDate(hoje.getDate() + diff);
+  const d = String(prox.getDate()).padStart(2, '0');
+  const m = String(prox.getMonth() + 1).padStart(2, '0');
+  return `${prox.getFullYear()}-${m}-${d}`;
+};
+
+const formatarData = (dataISO) => {
+  const [a, m, d] = (dataISO || '').split('-');
+  return a && m && d ? `${d}/${m}/${a}` : '';
+};
+
 export default function TimesScreen() {
   const insets = useSafeAreaInsets();
   const { activeGroupId } = useSession();
@@ -48,7 +69,9 @@ export default function TimesScreen() {
     setDia(diaAtual());
   }, []));
 
-  const confirmados = useMemo(() => jogadores.filter((j) => j.presencas?.[dia] === 'Confirmado'), [jogadores, dia]);
+  const dataJogo = descobrirProximaData(dia);
+
+  const confirmados = useMemo(() => jogadores.filter((j) => j.presencas?.[dataJogo] === 'Confirmado'), [jogadores, dataJogo]);
   const estatisticas = useMemo(() => criarEstatisticas(historico), [historico]);
   const infoJogador = (jogador) => estatisticaJogador(jogador, estatisticas);
   const times = useMemo(() => (sorteio?.times || []).map((time) => time.jogadores.map((registro) => {
@@ -86,7 +109,7 @@ export default function TimesScreen() {
 
   return <ScrollView className="flex-1 bg-[#0b0f1a]" contentContainerStyle={{ padding: 16, paddingBottom: 120 }}>
     <View style={{ marginTop: Math.max(insets.top, 20) }} className="flex-row justify-between items-center mb-7"><View><Text className="text-slate-500 text-[10px] font-black uppercase tracking-[4px]">Sorteio inteligente</Text><Text className="text-white text-3xl font-black mt-1">Montar <Text className="text-cyan-400">Times</Text></Text></View><FontAwesome5 name="brain" size={28} color="#22d3ee" /></View>
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-6" contentContainerStyle={{ gap: 8 }}>{dias.map((item) => <TouchableOpacity key={item} onPress={() => setDia(item)} className={`px-4 py-2 rounded-xl ${dia === item ? 'bg-cyan-500' : 'bg-slate-800'}`}><Text className="text-white text-xs font-bold">{item}</Text></TouchableOpacity>)}</ScrollView>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-6" contentContainerStyle={{ gap: 8 }}>{dias.map((item) => <TouchableOpacity key={item} onPress={() => setDia(item)} className={`px-4 py-2 rounded-xl items-center ${dia === item ? 'bg-cyan-500' : 'bg-slate-800'}`}><Text className="text-white text-xs font-bold">{item}</Text><Text className={`text-[8px] ${dia === item ? 'text-white/80' : 'text-slate-500'}`}>{formatarData(descobrirProximaData(item))}</Text></TouchableOpacity>)}</ScrollView>
     <View className="bg-slate-800/40 p-6 rounded-[32px] border border-white/5 mb-6"><View className="flex-row justify-between items-center"><View><Text className="text-white text-lg font-black">Jogadores por time</Text><Text className="text-slate-400 text-xs mt-1">Defina o formato da rodada.</Text></View><View className="flex-row items-center bg-slate-900 rounded-xl overflow-hidden"><TouchableOpacity disabled={!!sorteio || jogadoresPorTime <= 1} onPress={() => setJogadoresPorTime((valor) => Math.max(1, valor - 1))} className="px-4 py-3"><Text className="text-white font-black text-lg">−</Text></TouchableOpacity><Text className="text-cyan-300 font-black text-lg w-8 text-center">{jogadoresPorTime}</Text><TouchableOpacity disabled={!!sorteio} onPress={() => setJogadoresPorTime((valor) => valor + 1)} className="px-4 py-3"><Text className="text-white font-black text-lg">+</Text></TouchableOpacity></View></View><Text className="text-cyan-100 text-xs leading-5 mt-4">{confirmados.length} confirmados: {Math.floor(confirmados.length / jogadoresPorTime)} time(s) completo(s){confirmados.length % jogadoresPorTime ? ` e ${confirmados.length % jogadoresPorTime} reserva(s)` : ''}. O cálculo usa o nível atual, os resultados anteriores (com nota de confiança) e evita repetir duplas e trios.</Text><TouchableOpacity disabled={salvando || !!sorteio} onPress={gerar} className={`w-full py-4 rounded-2xl items-center mt-5 ${sorteio ? 'bg-slate-700' : 'bg-cyan-600'}`}>{salvando ? <ActivityIndicator color="white" /> : <Text className="text-white font-black text-xs uppercase">{sorteio ? 'Rodada aguardando conclusão' : 'Gerar times equilibrados'}</Text>}</TouchableOpacity></View>
     {carregando && <ActivityIndicator size="large" color="#22d3ee" />}
     {sorteio && <View>

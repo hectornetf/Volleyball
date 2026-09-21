@@ -18,15 +18,25 @@ import { useCallback } from 'react';
 
 const diasDaSemana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 
-// Descobre a próxima data do dia da semana (paridade legado: data embaixo do botão)
+// Data do próximo jogo do dia em formato ISO yyyy-MM-dd (seguro como chave no Firestore,
+// pois o caminho do campo não aceita '/'). Janela de 24h para acessar o jogo de ontem.
 const descobrirProximaData = (nomeDia) => {
   const mapa = { Segunda: 1, Terça: 2, Quarta: 3, Quinta: 4, Sexta: 5, Sábado: 6, Domingo: 0 };
-  const alvo = mapa[nomeDia];
+  const alvo = mapa[nomeDia] ?? 5;
   const hoje = new Date();
-  const diff = (alvo - hoje.getDay() + 7) % 7;
+  hoje.setHours(0, 0, 0, 0);
+  let diff = (alvo - hoje.getDay() + 7) % 7;
+  if (diff === 6) diff = -1;
   const prox = new Date(hoje);
-  prox.setDate(hoje.getDate() + (diff === 0 ? 0 : diff));
-  return `${String(prox.getDate()).padStart(2, '0')}/${String(prox.getMonth() + 1).padStart(2, '0')}`;
+  prox.setDate(hoje.getDate() + diff);
+  const d = String(prox.getDate()).padStart(2, '0');
+  const m = String(prox.getMonth() + 1).padStart(2, '0');
+  return `${prox.getFullYear()}-${m}-${d}`;
+};
+
+const formatarData = (dataISO) => {
+  const [a, m, d] = (dataISO || '').split('-');
+  return a && m && d ? `${d}/${m}/${a}` : '';
 };
 
 export default function PresencaScreen() {
@@ -44,6 +54,8 @@ export default function PresencaScreen() {
   const [valorAvulso, setValorAvulso] = useState(10);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(20));
+
+  const dataJogo = descobrirProximaData(diaSelecionado);
 
   const carregarValorAvulso = useCallback(() => {
     if (!activeGroupId) return;
@@ -87,7 +99,7 @@ export default function PresencaScreen() {
     .sort((a, b) => a.nome.localeCompare(b.nome));
 
   // Totais para o cabeçalho
-  const confirmados = jogadoresDoDia.filter(j => (j.presencas?.[diaSelecionado]) === 'Confirmado');
+  const confirmados = jogadoresDoDia.filter(j => (j.presencas?.[dataJogo]) === 'Confirmado');
   const totalConfirmados = {
     total: confirmados.length,
     mensalista: confirmados.filter(j => j.tipo === 'MENSALISTA' && (j.diasMensalista || []).includes(diaSelecionado)).length,
@@ -106,7 +118,7 @@ export default function PresencaScreen() {
         return;
       }
 
-      const statusAntigo = jogador.presencas?.[diaSelecionado] || 'Falta';
+      const statusAntigo = jogador.presencas?.[dataJogo] || 'Falta';
       if (statusAntigo !== 'Confirmado' && status === 'Confirmado') {
         await incrementarPresencaHistorica(jogador.id, 1);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -118,7 +130,7 @@ export default function PresencaScreen() {
       }
 
       await updateJogador(jogador.id, { 
-        [`presencas.${diaSelecionado}`]: status
+        [`presencas.${dataJogo}`]: status
       });
 
       await registrarLog('PRESENÇA', `Presença de ${jogador.nome} em ${diaSelecionado} alterada para: ${status}`, 0, activeGroupId);
@@ -152,7 +164,7 @@ export default function PresencaScreen() {
   // "Cobrar Presença" — notifica todos via WhatsApp (paridade legado)
   const notificarTodos = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const msg = `🏐 *VOLEIZIN: Confirme sua Presença!* 🏐\n\nFala galera de ${diaSelecionado}!\n\nPor favor, confirma ou cancela sua presença no jogo hoje!\n\nJá confirmados: *${totalConfirmados.total}* 🔥\n\nBora! 💪`;
+    const msg = `🏐 *VOLEIZIN: Confirme sua Presença!* 🏐\n\nFala galera de ${diaSelecionado} (${formatarData(dataJogo)})!\n\nPor favor, confirma ou cancela sua presença no jogo!\n\nJá confirmados: *${totalConfirmados.total}* 🔥\n\nBora! 💪`;
     Linking.openURL(`whatsapp://send?text=${encodeURIComponent(msg)}`).catch(() =>
       Alert.alert('Erro', 'WhatsApp não instalado.')
     );
@@ -202,7 +214,7 @@ export default function PresencaScreen() {
                     {dia.substring(0, 3).toUpperCase()}
                   </Text>
                   <Text className={`text-[9px] mt-1 ${isActive ? 'text-white/75' : 'text-slate-500'}`}>
-                    {descobrirProximaData(dia)}
+                    {formatarData(descobrirProximaData(dia))}
                   </Text>
                 </TouchableOpacity>
               );
@@ -250,7 +262,7 @@ export default function PresencaScreen() {
             {/* Lista de jogadores */}
             <View className="space-y-2">
               {jogadoresDoDia.map(j => {
-                const statusDia = j.presencas?.[diaSelecionado] || 'Falta';
+                const statusDia = j.presencas?.[dataJogo] || 'Falta';
                 const isConfirmado = statusDia === 'Confirmado';
                 const isFalta = statusDia === 'Falta';
                 

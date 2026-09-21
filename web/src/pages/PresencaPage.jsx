@@ -18,14 +18,25 @@ const getDiaAtualSemana = () => {
   return diasDaSemana[mapa[hoje]] ?? 'Segunda';
 };
 
+// Data do próximo jogo do dia em formato ISO yyyy-MM-dd (seguro como chave no Firestore,
+// pois o caminho do campo não aceita '/'). Janela de 24h para acessar o jogo de ontem.
 const descobrirProximaData = (nomeDia) => {
   const mapa = { Segunda: 1, Terça: 2, Quarta: 3, Quinta: 4, Sexta: 5, Sábado: 6, Domingo: 0 };
-  const alvo = mapa[nomeDia];
+  const alvo = mapa[nomeDia] ?? 5;
   const hoje = new Date();
-  const diff = (alvo - hoje.getDay() + 7) % 7;
+  hoje.setHours(0, 0, 0, 0);
+  let diff = (alvo - hoje.getDay() + 7) % 7;
+  if (diff === 6) diff = -1;
   const prox = new Date(hoje);
-  prox.setDate(hoje.getDate() + (diff === 0 ? 0 : diff));
-  return `${String(prox.getDate()).padStart(2, '0')}/${String(prox.getMonth() + 1).padStart(2, '0')}`;
+  prox.setDate(hoje.getDate() + diff);
+  const d = String(prox.getDate()).padStart(2, '0');
+  const m = String(prox.getMonth() + 1).padStart(2, '0');
+  return `${prox.getFullYear()}-${m}-${d}`;
+};
+
+const formatarData = (dataISO) => {
+  const [a, m, d] = (dataISO || '').split('-');
+  return a && m && d ? `${d}/${m}/${a}` : '';
 };
 
 export default function PresencaPage() {
@@ -36,6 +47,8 @@ export default function PresencaPage() {
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState(null);
   const [valorAvulso, setValorAvulso] = useState(10);
+
+  const dataJogo = descobrirProximaData(diaSelecionado);
 
   useEffect(() => {
     if (!activeGroupId) return;
@@ -64,7 +77,7 @@ export default function PresencaPage() {
         return;
       }
 
-      const statusAntigo = jogador.presencas?.[diaSelecionado] || 'Falta';
+      const statusAntigo = jogador.presencas?.[dataJogo] || 'Falta';
       if (statusAntigo !== 'Confirmado' && novoStatus === 'Confirmado') {
         await incrementarPresencaHistorica(jogador.id, 1);
       } else if (statusAntigo === 'Confirmado' && novoStatus !== 'Confirmado') {
@@ -72,7 +85,7 @@ export default function PresencaPage() {
       }
 
       await updateJogador(jogador.id, {
-        [`presencas.${diaSelecionado}`]: novoStatus
+        [`presencas.${dataJogo}`]: novoStatus
       }, activeGroupId);
 
       await registrarLog('PRESENÇA', `Presença de ${jogador.nome} em ${diaSelecionado} alterada para: ${novoStatus}`, 0, activeGroupId);
@@ -105,8 +118,8 @@ export default function PresencaPage() {
   };
 
   const handleNotificarWhatsApp = () => {
-    const confirmados = jogadores.filter(j => j.presencas?.[diaSelecionado] === 'Confirmado');
-    const msg = `🏐 *VOLEIZIN: Confirme sua Presença!* 🏐\n\nFala galera de ${diaSelecionado}!\n\nPor favor, confirme ou cancele sua presença no jogo hoje!\n\nJá confirmados: *${confirmados.length}* 🔥\n\nAcesse: https://voleizindoscria.vercel.app/\n\nBora! 💪`;
+    const confirmados = jogadores.filter(j => j.presencas?.[dataJogo] === 'Confirmado');
+    const msg = `🏐 *VOLEIZIN: Confirme sua Presença!* 🏐\n\nFala galera de ${diaSelecionado} (${formatarData(dataJogo)})!\n\nPor favor, confirme ou cancele sua presença no jogo!\n\nJá confirmados: *${confirmados.length}* 🔥\n\nAcesse: https://voleizindoscria.vercel.app/\n\nBora! 💪`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
@@ -114,7 +127,7 @@ export default function PresencaPage() {
     j.nome.toLowerCase().includes(search.toLowerCase())
   );
 
-  const confirmados = jogadores.filter(j => j.presencas?.[diaSelecionado] === 'Confirmado');
+  const confirmados = jogadores.filter(j => j.presencas?.[dataJogo] === 'Confirmado');
   const mensalistasConfirmados = confirmados.filter(j => j.tipo === 'MENSALISTA' && (j.diasMensalista || []).includes(diaSelecionado));
   const avulsosConfirmados = confirmados.filter(j => j.tipo === 'AVULSO' || (j.tipo === 'MENSALISTA' && !(j.diasMensalista || []).includes(diaSelecionado)));
 
@@ -129,7 +142,7 @@ export default function PresencaPage() {
             <span>Chamada de Presença</span>
           </h1>
           <p className="text-slate-400 text-xs mt-1">
-            Selecione o dia da semana para gerenciar a chamada sincronizada em tempo real com o aplicativo mobile.
+            Chamada do dia <strong className="text-emerald-400">{diaSelecionado} {formatarData(dataJogo)}</strong> — cada data tem sua própria lista, sincronizada em tempo real com o aplicativo mobile.
           </p>
         </div>
 
@@ -163,7 +176,7 @@ export default function PresencaPage() {
         <Calendar className="w-5 h-5 text-emerald-400 shrink-0 ml-1 mr-2" />
         {diasDaSemana.map((dia) => {
           const isActive = diaSelecionado === dia;
-          const dataStr = descobrirProximaData(dia);
+          const dataStr = formatarData(descobrirProximaData(dia));
           return (
             <button
               key={dia}
@@ -198,7 +211,7 @@ export default function PresencaPage() {
       {/* Players List Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {filtered.map((j) => {
-          const statusDia = j.presencas?.[diaSelecionado] || 'Falta';
+          const statusDia = j.presencas?.[dataJogo] || 'Falta';
           const isConfirmado = statusDia === 'Confirmado';
           const isFalta = statusDia === 'Falta';
 

@@ -53,6 +53,7 @@ export default function DashboardPage({ setActiveTab }) {
   const mesAtualNome = hoje.toLocaleString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, (c) => c.toUpperCase());
   const mesAtual = (hoje.getMonth() + 1).toString().padStart(2, '0');
   const diaAtual = hoje.getDate().toString().padStart(2, '0');
+  const hojeKey = `${hoje.getFullYear()}-${mesAtual}-${diaAtual}`;
 
   const carregarDados = useCallback(async () => {
     if (!activeGroupId) return;
@@ -96,7 +97,7 @@ export default function DashboardPage({ setActiveTab }) {
   const avulsos = ativos.filter(j => j.tipo === 'AVULSO');
   
   const confirmadosHoje = ativos.filter(j => {
-    return j.presencas?.[diaHojeStr] === 'Confirmado';
+    return j.presencas?.[hojeKey] === 'Confirmado';
   });
 
   // Aniversariantes do Mês

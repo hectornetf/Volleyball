@@ -11,6 +11,27 @@ import { criarEstatisticas, equilibraTimes, estatisticaJogador, gerarConfrontos 
 const dias = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 const diaAtual = () => dias[[6, 0, 1, 2, 3, 4, 5][new Date().getDay()]] || 'Segunda';
 
+// Data do próximo jogo do dia em formato ISO yyyy-MM-dd (seguro como chave no Firestore,
+// pois o caminho do campo não aceita '/'). Janela de 24h para acessar o jogo de ontem.
+const descobrirProximaData = (nomeDia) => {
+  const mapa = { Segunda: 1, Terça: 2, Quarta: 3, Quinta: 4, Sexta: 5, Sábado: 6, Domingo: 0 };
+  const alvo = mapa[nomeDia] ?? 5;
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  let diff = (alvo - hoje.getDay() + 7) % 7;
+  if (diff === 6) diff = -1;
+  const prox = new Date(hoje);
+  prox.setDate(hoje.getDate() + diff);
+  const d = String(prox.getDate()).padStart(2, '0');
+  const m = String(prox.getMonth() + 1).padStart(2, '0');
+  return `${prox.getFullYear()}-${m}-${d}`;
+};
+
+const formatarData = (dataISO) => {
+  const [a, m, d] = (dataISO || '').split('-');
+  return a && m && d ? `${d}/${m}/${a}` : '';
+};
+
 export default function TimesPage() {
   const { activeGroupId } = useSession();
   const [dia, setDia] = useState(diaAtual);
@@ -43,7 +64,9 @@ export default function TimesPage() {
     setConfrontos(dados?.confrontos?.length ? dados.confrontos.map((c) => ({ ...c })) : gerarConfrontos(dados?.times?.length || 0));
   }) : undefined, [activeGroupId, dia]);
 
-  const confirmados = useMemo(() => jogadores.filter((j) => j.presencas?.[dia] === 'Confirmado'), [jogadores, dia]);
+  const dataJogo = descobrirProximaData(dia);
+
+  const confirmados = useMemo(() => jogadores.filter((j) => j.presencas?.[dataJogo] === 'Confirmado'), [jogadores, dataJogo]);
   const estatisticas = useMemo(() => criarEstatisticas(historico), [historico]);
   const infoJogador = (jogador) => estatisticaJogador(jogador, estatisticas);
   const times = useMemo(() => (sorteio?.times || []).map((time) => time.jogadores.map((registro) => {
@@ -138,13 +161,14 @@ export default function TimesPage() {
             <button
               key={item}
               onClick={() => setDia(item)}
-              className={`px-4 py-2 rounded-xl font-extrabold text-xs transition-all shrink-0 ${
+              className={`px-4 py-2 rounded-xl font-extrabold text-xs transition-all shrink-0 flex flex-col items-center ${
                 isActive
                   ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/20'
                   : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-800'
               }`}
             >
-              {item}
+              <span>{item}</span>
+              <span className={`text-[9px] font-bold ${isActive ? 'text-white/80' : 'text-slate-500'}`}>{formatarData(descobrirProximaData(item))}</span>
             </button>
           );
         })}
@@ -338,8 +362,8 @@ export default function TimesPage() {
           <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest">Aguardando sorteio</h3>
           <p className="text-slate-400 text-xs mt-2 max-w-sm mx-auto">
             {confirmados.length > 0
-              ? `${confirmados.length} jogadores confirmados em ${dia}. Clique em "Gerar times equilibrados" para criar a rodada.`
-              : `Nenhum jogador confirmado em ${dia}. Marque as presenças antes de sortear.`}
+              ? `${confirmados.length} jogadores confirmados em ${dia} (${formatarData(dataJogo)}). Clique em "Gerar times equilibrados" para criar a rodada.`
+              : `Nenhum jogador confirmado em ${dia} (${formatarData(dataJogo)}). Marque as presenças antes de sortear.`}
           </p>
         </div>
       )}
@@ -349,7 +373,7 @@ export default function TimesPage() {
         <div className="flex items-center space-x-3">
           <Hash className="w-5 h-5 text-amber-400" />
           <span className="text-sm font-extrabold text-white">
-            {confirmados.length} Jogadores Confirmados para {dia}
+            {confirmados.length} Jogadores Confirmados para {dia} ({formatarData(dataJogo)})
           </span>
         </div>
         {sorteio && (
