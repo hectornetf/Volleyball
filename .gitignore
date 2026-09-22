@@ -12,6 +12,7 @@
 # Web App
 /web/node_modules
 /web/dist
+/web/scripts
 
 # Dependencies
 node_modules/

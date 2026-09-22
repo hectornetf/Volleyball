@@ -31,10 +31,23 @@ export const confrontosDoSorteio = (sorteio) => {
   return null;
 };
 
+// Total de pontos marcados na rodada (soma de todos os confrontos/vitórias).
+export const placarTotalDoSorteio = (sorteio) => {
+  const confrontos = confrontosDoSorteio(sorteio);
+  if (confrontos) {
+    return confrontos.reduce((soma, c) => soma + (Number(c.vitoriasA) || 0) + (Number(c.vitoriasB) || 0), 0);
+  }
+  return (sorteio.times || []).reduce((soma, t) => soma + (Number(t.vitorias) || 0), 0);
+};
+
+// Rodada encerrada 0 a 0 é tratada como se não tivesse acontecido: não conta
+// em jogos, vitórias, evolução, parcerias nem no histórico exibido.
+export const sorteioComPlacar = (sorteio) => placarTotalDoSorteio(sorteio) > 0;
+
 // Estatísticas agregadas por atleta: { [id]: { jogos, vitorias } }.
 export const criarEstatisticas = (historico) => {
   const resultado = {};
-  historico.forEach((sorteio) => {
+  historico.filter(sorteioComPlacar).forEach((sorteio) => {
     const times = sorteio.times || [];
     const confrontos = confrontosDoSorteio(sorteio);
     if (confrontos) {
@@ -91,7 +104,7 @@ export const criarParcerias = (historico) => {
   const trios = {};
   const chave = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
   const chaveTripla = (a, b, c) => [a, b, c].sort().join('|');
-  historico.forEach((sorteio) => {
+  historico.filter(sorteioComPlacar).forEach((sorteio) => {
     (sorteio.times || []).forEach((time) => {
       const ids = idsJogadoresDoTime(time);
       for (let i = 0; i < ids.length; i += 1) {
@@ -234,7 +247,7 @@ export const equilibraTimes = (jogadores, historico, jogadoresPorTime) => {
 export const forcasPorPeriodo = (jogador, historico) => {
   const nivel = Number(jogador.nivel) || 3;
   const eventos = [];
-  [...historico].reverse().forEach((sorteio) => {
+  [...historico].filter(sorteioComPlacar).reverse().forEach((sorteio) => {
     const registro = (sorteio.times || []).find((time) => idsJogadoresDoTime(time).includes(jogador.id));
     if (!registro) return;
     const maior = Math.max(...(sorteio.times || []).map((t) => Number(t.vitorias) || 0), 0);

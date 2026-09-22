@@ -6,7 +6,8 @@ import {
 import { useSession } from '../context/SessionContext';
 import { 
   subscribeJogadores, updateJogador, registrarOperacaoFinanceira, 
-  incrementarPresencaHistorica, getConfigFinanceira 
+  incrementarPresencaHistorica, getConfigFinanceira,
+  marcarDiariaAvulsa, removerDiariaAvulsa 
 } from '../services/jogadorService';
 import { registrarLog } from '../services/historyService';
 import Avatar from '../components/Avatar';
@@ -51,6 +52,10 @@ export default function PresencaPage() {
 
   const dataJogo = descobrirProximaData(diaSelecionado);
 
+  // Diária avulsa é paga POR DATA DO JOGO (yyyy-MM-dd), nunca por flag única,
+  // para não "vazar" o pagamento de uma semana para a próxima (ex.: Sexta passada paga na Sexta futura).
+  const pagouDiariaHoje = (jogador) => !!jogador.diariasPagas?.[dataJogo];
+
   useEffect(() => {
     if (!activeGroupId) return;
 
@@ -73,7 +78,7 @@ export default function PresencaPage() {
       const isMensalistaDesteDia = jogador.tipo === 'MENSALISTA' && (jogador.diasMensalista || []).includes(diaSelecionado);
       const isAvulsoDesteDia = !isMensalistaDesteDia;
 
-      if (isAvulsoDesteDia && !jogador.diariaPaga && novoStatus === 'Confirmado') {
+      if (isAvulsoDesteDia && !pagouDiariaHoje(jogador) && novoStatus === 'Confirmado') {
         alert(`Atenção: Para jogar em ${diaSelecionado}, ${jogador.nome} atua como Avulso e deve pagar a diária de R$${valorAvulso}!`);
         return;
       }
@@ -99,10 +104,10 @@ export default function PresencaPage() {
 
   const handleToggleDiariaAvulso = async (jogador) => {
     setUpdatingId(jogador.id);
-    const novaDiariaPaga = !jogador.diariaPaga;
+    const novaDiariaPaga = !pagouDiariaHoje(jogador);
     try {
-      await updateJogador(jogador.id, { diariaPaga: novaDiariaPaga }, activeGroupId);
       if (novaDiariaPaga) {
+        await marcarDiariaAvulsa(jogador.id, dataJogo, true, activeGroupId);
         await registrarOperacaoFinanceira(
           'ENTRADA_AVULSO',
           valorAvulso,
@@ -110,6 +115,9 @@ export default function PresencaPage() {
           activeGroupId,
           jogador.id
         );
+      } else {
+        await marcarDiariaAvulsa(jogador.id, dataJogo, false, activeGroupId);
+        await removerDiariaAvulsa(jogador.id, dataJogo, activeGroupId);
       }
     } catch (e) {
       console.error("Erro ao alterar diária: ", e);
@@ -218,7 +226,7 @@ export default function PresencaPage() {
 
           const isMensalistaDesteDia = j.tipo === 'MENSALISTA' && (j.diasMensalista || []).includes(diaSelecionado);
           const isAvulsoDesteDia = !isMensalistaDesteDia;
-          const avulsoNaoPago = isAvulsoDesteDia && !j.diariaPaga;
+          const avulsoNaoPago = isAvulsoDesteDia && !pagouDiariaHoje(j);
 
           return (
             <div
@@ -251,13 +259,13 @@ export default function PresencaPage() {
                     <button
                       onClick={() => handleToggleDiariaAvulso(j)}
                       className={`text-[11px] font-bold px-2 py-0.5 rounded flex items-center space-x-1 transition-all ${
-                        j.diariaPaga
+                        pagouDiariaHoje(j)
                           ? 'bg-amber-400/20 text-amber-400 border border-amber-400/30'
                           : 'bg-amber-500 hover:bg-amber-400 text-white font-extrabold shadow-md'
                       }`}
                     >
                       <DollarSign className="w-3 h-3" />
-                      <span>{j.diariaPaga ? 'Diária Paga ✅' : `Pagar R$${valorAvulso}`}</span>
+                      <span>{pagouDiariaHoje(j) ? 'Diária Paga ✅' : `Pagar R$${valorAvulso}`}</span>
                     </button>
                   )}
                 </div>

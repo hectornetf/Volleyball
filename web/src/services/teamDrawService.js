@@ -1,6 +1,7 @@
 import { addDoc, collection, getDoc, getDocs, onSnapshot, query, updateDoc, doc, where } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { registrarLog } from './historyService';
+import { sorteioComPlacar } from '../utils/estatisticasUtils';
 
 const COLLECTION = 'sorteios_times';
 const normalizar = (dados) => dados.docs.map((item) => ({ id: item.id, ...item.data() }));
@@ -8,13 +9,19 @@ const normalizar = (dados) => dados.docs.map((item) => ({ id: item.id, ...item.d
 export const carregarHistoricoTimes = async (groupId) => {
   if (!groupId) return [];
   const dados = await getDocs(query(collection(db, COLLECTION), where('groupId', '==', groupId)));
-  return normalizar(dados).filter((item) => item.concluido).sort((a, b) => (b.data || '').localeCompare(a.data || '')).slice(0, 100);
+  return normalizar(dados).filter((item) => item.concluido && sorteioComPlacar(item)).sort((a, b) => (b.data || '').localeCompare(a.data || '')).slice(0, 100);
 };
 
 export const subscribeSorteioAberto = (groupId, dia, callback) => {
   if (!groupId) return () => {};
+  // Janela de 7 dias: um sorteio aberto abandonado da semana passada (mesmo dia da
+  // semana) não pode "vazar" para a rodada atual, igual ao fix de presença por data.
+  const limite = new Date();
+  limite.setDate(limite.getDate() - 7);
+  const limiteISO = limite.toISOString();
   return onSnapshot(query(collection(db, COLLECTION), where('groupId', '==', groupId)), (dados) => {
-    const abertos = normalizar(dados).filter((item) => item.dia === dia && !item.concluido);
+    const abertos = normalizar(dados)
+      .filter((item) => item.dia === dia && !item.concluido && (item.criadoEm || '') > limiteISO);
     callback(abertos.sort((a, b) => (b.criadoEm || '').localeCompare(a.criadoEm || ''))[0] || null);
   });
 };

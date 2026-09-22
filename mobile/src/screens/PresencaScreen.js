@@ -58,6 +58,10 @@ export default function PresencaScreen() {
 
   const dataJogo = descobrirProximaData(diaSelecionado);
 
+  // Diária avulsa é paga POR DATA DO JOGO (yyyy-MM-dd), nunca por flag única,
+  // para não "vazar" o pagamento de uma semana para a próxima (ex.: Sexta passada paga na Sexta futura).
+  const pagouDiariaHoje = (jogador) => !!jogador.diariasPagas?.[dataJogo];
+
   const carregarValorAvulso = useCallback(() => {
     if (!activeGroupId) return;
     const hoje = new Date();
@@ -113,7 +117,7 @@ export default function PresencaScreen() {
       const isAvulsoDesteDia = !isMensalistaDesteDia;
 
       // Avulso não pago não pode confirmar
-      if (isAvulsoDesteDia && !jogador.diariaPaga && status === 'Confirmado') {
+      if (isAvulsoDesteDia && !pagouDiariaHoje(jogador) && status === 'Confirmado') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         Alert.alert('Atenção', `Para jogar hoje, ${jogador.nome} atua como Avulso e deve pagar a diária de R$${valorAvulso}!`);
         return;
@@ -150,7 +154,7 @@ export default function PresencaScreen() {
         {
           text: 'Sim, registrar', onPress: async () => {
             try {
-              await updateJogador(jogador.id, { diariaPaga: true });
+              await updateJogador(jogador.id, { [`diariasPagas.${dataJogo}`]: true });
               await registrarOperacaoFinanceira('ENTRADA_AVULSO', valorAvulso, `Pago: ${jogador.nome}`, activeGroupId, jogador.id);
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             } catch (err) {
@@ -269,7 +273,7 @@ export default function PresencaScreen() {
                 
                 const isMensalistaDesteDia = j.tipo === 'MENSALISTA' && (j.diasMensalista || []).includes(diaSelecionado);
                 const isAvulsoDesteDia = !isMensalistaDesteDia;
-                const avulsoNaoPago = isAvulsoDesteDia && !j.diariaPaga;
+                const avulsoNaoPago = isAvulsoDesteDia && !pagouDiariaHoje(j);
 
                 return (
                   <View
@@ -315,7 +319,7 @@ export default function PresencaScreen() {
                     {/* Ações */}
                     <View className="flex-row items-center gap-1.5">
                       {/* Botão Pagar Avulso */}
-                      {isAvulsoDesteDia && !j.diariaPaga && (
+                      {isAvulsoDesteDia && !pagouDiariaHoje(j) && (
                         <TouchableOpacity
                           onPress={() => pagarAvulso(j)}
                           className="bg-amber-500 px-2 py-1.5 rounded-xl shadow-lg shadow-amber-500/20 border border-amber-400/50"
@@ -327,7 +331,7 @@ export default function PresencaScreen() {
                       )}
 
                       {/* Badge "PAGO ✅" */}
-                      {isAvulsoDesteDia && j.diariaPaga && (
+                      {isAvulsoDesteDia && pagouDiariaHoje(j) && (
                         <View className="bg-amber-400/10 px-2 py-1 rounded-lg border border-amber-400/20">
                           <Text className="text-[9px] font-black text-amber-400">PAGO ✅</Text>
                         </View>

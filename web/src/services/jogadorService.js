@@ -1,7 +1,7 @@
 import { db } from '../config/firebase';
 import { 
   collection, addDoc, updateDoc, deleteDoc, doc, getDoc, onSnapshot, query, 
-  getDocs, where, writeBatch, setDoc, increment 
+  getDocs, where, writeBatch, setDoc, increment, deleteField 
 } from 'firebase/firestore';
 import { encryptData, decryptData } from '../utils/crypto';
 import { registrarLog } from './historyService';
@@ -30,6 +30,7 @@ const decryptPlayer = (docData, groupId) => ({
   celular: decryptData(docData.celular, groupId),
   dataNascimento: decryptData(docData.dataNascimento, groupId),
   historicoPresencas: parseInt(docData.historicoPresencas) || 0,
+  diariasPagas: docData.diariasPagas || {},
   avatar: docData.avatar || '',
   status: docData.status || 'Ativo'
 });
@@ -44,6 +45,7 @@ export const addJogador = async (jogador, groupId) => {
     historicoPresencas: jogador.historicoPresencas || 0,
     mensalidadePaga: jogador.mensalidadePaga || false,
     diariaPaga: jogador.diariaPaga || false,
+    diariasPagas: jogador.diariasPagas || {},
     presencaAtual: jogador.presencaAtual || 'Falta',
     presencas: jogador.presencas || {},
     avatar: jogador.avatar || '',
@@ -92,6 +94,31 @@ export const subscribeJogadores = (groupId, callback, errorCallback) => {
       .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
     callback(lista);
   }, errorCallback);
+};
+
+// Marca a diária avulsa por DATA DO JOGO. Desmarcar REMOVE o campo (deleteField),
+// para que um pagamento desfeito não deixe registro salvo no Firestore.
+export const marcarDiariaAvulsa = async (jogadorId, dataJogo, paga, groupId) => {
+  if (!groupId) throw new Error("ID do Grupo obrigatório!");
+  await updateDoc(doc(db, JOGADORES_COLLECTION, jogadorId), {
+    [`diariasPagas.${dataJogo}`]: paga ? true : deleteField()
+  });
+};
+
+// Estorna a operação financeira ENTRADA_AVULSO mais recente daquele jogador no dia.
+export const removerDiariaAvulsa = async (jogadorId, dataJogo, groupId) => {
+  if (!groupId) throw new Error("ID do Grupo obrigatório!");
+  const operacoes = await getDocs(query(
+    collection(db, FINANCEIRO_OP_COLLECTION),
+    where('groupId', '==', groupId),
+    where('jogadorId', '==', jogadorId),
+    where('tipo', '==', 'ENTRADA_AVULSO')
+  ));
+  const doDia = operacoes.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((op) => (op.data || '').slice(0, 10) === dataJogo)
+    .sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+  if (doDia.length) await deleteDoc(doc(db, FINANCEIRO_OP_COLLECTION, doDia[0].id));
 };
 
 export const registrarOperacaoFinanceira = async (tipo, valor, descricao, groupId, jogadorId = null) => {

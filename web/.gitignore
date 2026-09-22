@@ -15,6 +15,9 @@ dist-ssr/
 .env.local
 .env.*.local
 
+# Scripts de manutenção da base (usam credenciais do .env; não vão para o repo)
+/scripts/
+
 # OS e IDE
 .DS_Store
 Thumbs.db

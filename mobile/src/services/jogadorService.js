@@ -28,6 +28,7 @@ const decryptPlayer = (docData, groupId) => ({
   dataNascimento: decryptData(docData.dataNascimento, groupId),
   // Garante que o histórico seja numérico para o ranking
   historicoPresencas: parseInt(docData.historicoPresencas) || 0,
+  diariasPagas: docData.diariasPagas || {},
   avatar: docData.avatar || '',
   status: docData.status || 'Ativo'
 });
@@ -43,6 +44,7 @@ export const addJogador = async (jogador, groupId) => {
     historicoPresencas: jogador.historicoPresencas || 0,
     mensalidadePaga: jogador.mensalidadePaga || false,
     diariaPaga: jogador.diariaPaga || false,
+    diariasPagas: jogador.diariasPagas || {},
     presencaAtual: jogador.presencaAtual || 'Falto',
     avatar: jogador.avatar || '',
     status: jogador.status || 'Ativo'
