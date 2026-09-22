@@ -16,7 +16,6 @@ const SORTEIOS_COLLECTION = 'sorteios_times';
 const encryptPlayer = (jogador, groupId) => ({
   ...jogador,
   nome: encryptData(jogador.nome, groupId),
-  celular: encryptData(jogador.celular, groupId),
   dataNascimento: encryptData(jogador.dataNascimento, groupId)
 });
 
@@ -24,7 +23,6 @@ const decryptPlayer = (docData, groupId) => ({
   id: docData.id,
   ...docData,
   nome: decryptData(docData.nome, groupId),
-  celular: decryptData(docData.celular, groupId),
   dataNascimento: decryptData(docData.dataNascimento, groupId),
   // Garante que o histórico seja numérico para o ranking
   historicoPresencas: parseInt(docData.historicoPresencas) || 0,
@@ -59,7 +57,6 @@ export const updateJogador = async (id, dados, groupId) => {
   // Se o dado tiver campos sensíveis, encripta eles antes do update
   const encrypted = { ...dados };
   if (dados.nome) encrypted.nome = encryptData(dados.nome, groupId);
-  if (dados.celular) encrypted.celular = encryptData(dados.celular, groupId);
   if (dados.dataNascimento !== undefined) {
     encrypted.dataNascimento = encryptData(dados.dataNascimento, groupId);
   }
@@ -307,7 +304,6 @@ export const gerarDadosDeTestePro = async (groupId) => {
       tipo: 'MENSALISTA',
       diasMensalista: arrDiasVariados[i % arrDiasVariados.length],
       status: i === 13 ? 'Inativo' : 'Ativo',
-      celular: `(11) 98765-${String(1000 + i).slice(-4)}`,
       dataNascimento: dataNascimentoDe(i),
     });
   });
@@ -319,7 +315,6 @@ export const gerarDadosDeTestePro = async (groupId) => {
       tipo: 'AVULSO',
       diasMensalista: [],
       status: 'Ativo',
-      celular: `(11) 90000-000${i}`,
       dataNascimento: `01/01/2000`,
       presente: a.presente,
     });
@@ -461,7 +456,6 @@ export const gerarDadosDeTestePro = async (groupId) => {
     return {
       id: p.id,
       nome: encryptData(p.nome, groupId),
-      celular: encryptData(p.celular, groupId),
       dataNascimento: encryptData(p.dataNascimento, groupId),
       nivel: p.nivel,
       tipo: p.tipo,

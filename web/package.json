@@ -1,12 +1,13 @@
 {
   "name": "voleizin-web",
   "private": true,
-  "version": "1.0.16",
+  "version": "1.0.17",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint src",
+    "limpar:celulares": "node scripts/limpar-celulares.js",
     "preview": "vite preview"
   },
   "dependencies": {

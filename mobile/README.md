@@ -88,7 +88,7 @@ flowchart LR
 
 ## 🔒 Segurança
 
-- **AES-256 no cliente** via `utils/crypto.js` (nomes, telefones, datas, lançamentos).
+- **AES-256 no cliente** via `utils/crypto.js` (nomes, datas, lançamentos).
 - **Multi-Tenancy**: toda query exige `groupId` (`firestore.rules`).
 - **Segredos no `.env`** (`EXPO_PUBLIC_*`) e `EXPO_TOKEN` como secret do GitHub — nunca versionados.
 

@@ -47,18 +47,6 @@ function formatarDataNascimentoDigitos(text) {
   return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4, 8)}`;
 }
 
-const mascaraTelefone = (text) => {
-  const digits = text.replace(/\D/g, '').slice(0, 11);
-  let res = digits;
-  if (digits.length > 2) {
-    res = `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  }
-  if (digits.length > 7) {
-    res = `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-  }
-  return res;
-};
-
 function dataNascimentoValidaOuVazia(s) {
   const t = (s || '').trim();
   if (!t) return true;
@@ -83,7 +71,6 @@ export default function AdminScreen() {
   
   const [novoJogador, setNovoJogador] = useState({
     nome: '',
-    celular: '',
     nivel: 3,
     tipo: 'MENSALISTA',
     diasMensalista: [],
@@ -92,7 +79,7 @@ export default function AdminScreen() {
   });
 
   const [editandoId, setEditandoId] = useState(null);
-  const [editandoOriginal, setEditandoOriginal] = useState({ celular: '', dataNascimento: '' });
+  const [editandoOriginal, setEditandoOriginal] = useState({ dataNascimento: '' });
   const [filtroBusca, setFiltroBusca] = useState('');
   const [abaAtiva, setAbaAtiva] = useState('TODOS'); 
   const [ordemNivel, setOrdemNivel] = useState(false);
@@ -254,7 +241,6 @@ export default function AdminScreen() {
         if (!row.Nome) continue;
 
         const nome = String(row.Nome).trim();
-        let celular = row.Telefone ? String(row.Telefone).trim() : '';
         let nivel = parseInt(row['Nível (1-5)']) || 3;
         
         let tipo = 'MENSALISTA';
@@ -278,7 +264,6 @@ export default function AdminScreen() {
 
         const payload = {
           nome,
-          celular,
           nivel,
           tipo,
           diasMensalista: tipo === 'MENSALISTA' ? diasMensalista : [],
@@ -322,10 +307,9 @@ export default function AdminScreen() {
   };
 
   const salvarJogador = async () => {
-    // Se não estiver editando, celular é obrigatório. Se estiver editando, só é obrigatório se o original também não existir (o que é impossível pela regra)
-    if (!novoJogador.nome || (!novoJogador.celular && !editandoId)) {
+    if (!novoJogador.nome) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        return Alert.alert('Erro', 'Nome e Celular são obrigatórios!');
+        return Alert.alert('Erro', 'Nome é obrigatório!');
     }
 
     let dataNascFinal = (novoJogador.dataNascimento || '').trim();
@@ -335,16 +319,10 @@ export default function AdminScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return Alert.alert('Erro', 'Data de nascimento inválida. Use DD/MM/AAAA ou deixe em branco.');
     }
-
-    let celularFinal = (novoJogador.celular || '').trim();
-    if (editandoId && !celularFinal) {
-      celularFinal = editandoOriginal.celular;
-    }
     
     try {
       const payload = {
         ...novoJogador,
-        celular: celularFinal,
         dataNascimento: dataNascFinal,
         avatar: (urlInput.trim() || avatarSel || '').trim(),
         groupId: activeGroupId,
@@ -363,9 +341,9 @@ export default function AdminScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
 
-      setNovoJogador({ nome: '', celular: '', nivel: 3, tipo: 'MENSALISTA', diasMensalista: [], dataNascimento: '', status: 'Ativo' });
+      setNovoJogador({ nome: '', nivel: 3, tipo: 'MENSALISTA', diasMensalista: [], dataNascimento: '', status: 'Ativo' });
       setEditandoId(null);
-      setEditandoOriginal({ celular: '', dataNascimento: '' });
+      setEditandoOriginal({ dataNascimento: '' });
     } catch (e) {
       Alert.alert('Erro', e.message);
     }
@@ -375,14 +353,13 @@ export default function AdminScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setNovoJogador({
       nome: j.nome,
-      celular: '', // Deixa em branco para não expor
       nivel: j.nivel,
       tipo: j.tipo,
       diasMensalista: j.diasMensalista || [],
       dataNascimento: '', // Deixa em branco para não expor
       status: j.status || 'Ativo'
     });
-    setEditandoOriginal({ celular: j.celular, dataNascimento: j.dataNascimento || '' });
+    setEditandoOriginal({ dataNascimento: j.dataNascimento || '' });
     setEditandoId(j.id);
     setUrlInput('');
     setAvatarSel('');
@@ -429,19 +406,6 @@ export default function AdminScreen() {
                 placeholderTextColor="#475569"
                 autoCapitalize="words"
                 returnKeyType="next"
-                className="bg-slate-900/60 border border-white/5 rounded-2xl p-4 text-white font-bold"
-              />
-            </View>
-
-            <View>
-              <Text className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-2 ml-1">WhatsApp</Text>
-              <TextInput 
-                value={novoJogador.celular}
-                onChangeText={t => setNovoJogador({...novoJogador, celular: mascaraTelefone(t)})}
-                placeholder={editandoId ? "(Oculto) Digite para alterar..." : "(11) 99999-9999"}
-                placeholderTextColor={editandoId ? "#fbbf24" : "#475569"}
-                keyboardType="phone-pad"
-                returnKeyType="done"
                 className="bg-slate-900/60 border border-white/5 rounded-2xl p-4 text-white font-bold"
               />
             </View>
@@ -718,12 +682,11 @@ export default function AdminScreen() {
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   setEditandoId(null);
-                  setEditandoOriginal({ celular: '', dataNascimento: '' });
+                  setEditandoOriginal({ dataNascimento: '' });
                   setAvatarSel('');
                   setUrlInput('');
                   setNovoJogador({
                     nome: '',
-                    celular: '',
                     nivel: 3,
                     tipo: 'MENSALISTA',
                     diasMensalista: [],
@@ -757,7 +720,7 @@ export default function AdminScreen() {
              <View className="flex-row items-center bg-slate-900/60 rounded-2xl border border-white/5 px-4 mb-5">
                 <FontAwesome5 name="search" size={14} color="#475569" />
                 <TextInput 
-                  placeholder="Buscar por nome ou celular..."
+                  placeholder="Buscar por nome..."
                   placeholderTextColor="#475569"
                   value={filtroBusca}
                   onChangeText={setFiltroBusca}
@@ -784,9 +747,8 @@ export default function AdminScreen() {
                 .filter(j => {
                   const busca = filtroBusca.toLowerCase();
                   const matchNome = j.nome.toLowerCase().includes(busca);
-                  const matchCel = j.celular.includes(busca);
                   const matchAba = abaAtiva === 'TODOS' || j.tipo === abaAtiva;
-                  return (matchNome || matchCel) && matchAba;
+                  return matchNome && matchAba;
                 })
                 .sort((a, b) => {
                   if (ordemNivel) return (b.nivel || 3) - (a.nivel || 3);

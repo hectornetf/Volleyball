@@ -13,10 +13,10 @@
 
 ### 🌐 Sincronização em Tempo Real & Criptografia
 - **Multi-Tenancy por Código (`VO-XXXX`)**: Acesso instantâneo a qualquer grupo criado no mobile ou na web.
-- **Criptografia AES-256 no Cliente**: Dados sensíveis (nomes, telefones, datas de nascimento, lançamentos) criptografados com a chave secreta do grupo.
+- **Criptografia AES-256 no Cliente**: Dados sensíveis (nomes, datas de nascimento, lançamentos) criptografados com a chave secreta do grupo.
 - **Auditoria em Tempo Real (`logs_atividades`)**: Feed de histórico com busca por descrição, categoria e tipo.
 - **Convite do grupo**: Código copiável e compartilhável por WhatsApp no cabeçalho.
-- **Privacidade**: Telefones não são exibidos na listagem e ficam ocultos durante a edição.
+- **Privacidade**: Números de celular não são mais coletados no cadastro (`npm run limpar:celulares` remove os já gravados).
 
 ### 📅 Chamada de Presença por Dia da Semana
 - **Navegação por Dias (`Segunda`..`Domingo`)**: Chamada inteligente por dia de treino.
@@ -107,7 +107,7 @@ flowchart LR
 - **Detecção de segredos**: o `verify.js` bloqueia vazamento de `.env`, chaves privadas e credenciais Firebase no diff staged.
 - **Estrutura organizada**: `pages/`, `components/`, `services/`, `context/`, `config/`, `utils/`.
 - **Serviços desacoplados**: Firestore isolado em `services/` (`jogadorService`, `sessionService`, `historyService`).
-- **AES-256 no cliente** via `utils/crypto.js` (nomes, telefones, datas, lançamentos).
+- **AES-256 no cliente** via `utils/crypto.js` (nomes, datas, lançamentos).
 - **Multi-Tenancy**: toda query exige `groupId` (`firestore.rules`).
 - **Segredos no `.env`** (`VITE_*`) — nunca versionados.
 

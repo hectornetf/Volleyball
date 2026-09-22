@@ -55,8 +55,7 @@ Para que a aba de **Histórico** funcione, crie o índice composto no console:
 
 ### 1. Criptografia AES-256
 Dados sensíveis dos jogadores **devem** ser criptografados.
-- **Campos Encriptados**: `nome`, `celular`, `dataNascimento` (na col. jogadores) e `descricao` (nas finanças).
-
+- **Campos Encriptados**: `nome`, `dataNascimento` (na col. jogadores) e `descricao` (nas finanças).
 ### 2. Isolamento Multi-Tenancy
 Nenhuma query deve ser feita sem o filtro de `groupId`. O `SessionContext` provê o `activeGroupId` globalmente.
 
@@ -197,7 +196,7 @@ flowchart TB
 - **Estrutura organizada**: `screens/`, `components/`, `services/`, `context/`, `config/`, `utils/`.
 - **Serviços desacoplados**: Firestore isolado em `services/` (`jogadorService`, `sessionService`, `historyService`).
 - **Contexto global**: `SessionContext` centraliza `activeGroupId` e estado de carregamento.
-- **AES-256 no cliente** via `utils/crypto.js` (nomes, telefones, datas, lançamentos).
+- **AES-256 no cliente** via `utils/crypto.js` (nomes, datas, lançamentos).
 - **Multi-Tenancy**: toda query exige `groupId` (`firestore.rules`).
 - **Segredos no `.env`** (`EXPO_PUBLIC_*`) e `EXPO_TOKEN` como secret do GitHub — nunca versionados.
 

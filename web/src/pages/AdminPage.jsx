@@ -65,13 +65,6 @@ function dataNascimentoValidaOuVazia(value) {
   return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
 }
 
-function mascaraTelefone(text) {
-  const digits = text.replace(/\D/g, '').slice(0, 11);
-  if (digits.length <= 2) return digits;
-  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-}
-
 export default function AdminPage() {
   const { activeGroupId } = useSession();
   const esGrupoDemo = activeGroupId === TEST_GROUP_ID;
@@ -92,7 +85,6 @@ export default function AdminPage() {
 
   // Form State
   const [formNome, setFormNome] = useState('');
-  const [formCelular, setFormCelular] = useState('');
   const [formDataNasc, setFormDataNasc] = useState('');
   const [formTipo, setFormTipo] = useState('MENSALISTA');
   const [formNivel, setFormNivel] = useState(3);
@@ -183,7 +175,6 @@ export default function AdminPage() {
 
   const resetForm = () => {
     setFormNome('');
-    setFormCelular('');
     setFormDataNasc('');
     setFormTipo('MENSALISTA');
     setFormNivel(3);
@@ -197,7 +188,6 @@ export default function AdminPage() {
   const handleOpenEdit = (j) => {
     setEditingJogador(j);
     setFormNome(j.nome || '');
-    setFormCelular('');
     setFormDataNasc('');
     setFormTipo(j.tipo || 'MENSALISTA');
     setFormNivel(j.nivel || 3);
@@ -208,8 +198,8 @@ export default function AdminPage() {
 
   const handleSaveJogador = async (e) => {
     e.preventDefault();
-    if (!formNome.trim() || (!formCelular.trim() && !editingJogador)) {
-      alert('Nome e celular são obrigatórios!');
+    if (!formNome.trim()) {
+      alert('O nome é obrigatório!');
       return;
     }
     if (!dataNascimentoValidaOuVazia(formDataNasc)) {
@@ -219,11 +209,9 @@ export default function AdminPage() {
 
     setLoading(true);
     try {
-      const celular = formCelular.trim() || editingJogador?.celular || '';
       const dataNascimento = formDataNasc.trim() || editingJogador?.dataNascimento || '';
       const dados = {
         nome: formNome.trim(),
-        celular,
         dataNascimento,
         tipo: formTipo,
         nivel: parseInt(formNivel) || 3,
@@ -313,7 +301,6 @@ export default function AdminPage() {
         if (!row.Nome) continue;
 
         const nome = String(row.Nome).trim();
-        let celular = row.Telefone ? String(row.Telefone).trim() : '';
         let nivel = parseInt(row['Nível (1-5)']) || 3;
         
         let tipo = 'MENSALISTA';
@@ -337,7 +324,6 @@ export default function AdminPage() {
 
         const payload = {
           nome,
-          celular,
           nivel,
           tipo,
           diasMensalista: tipo === 'MENSALISTA' ? diasMensalista : [],
@@ -370,7 +356,7 @@ export default function AdminPage() {
     .filter(j => {
       const matchAba = abaAtiva === 'TODOS' || j.tipo === abaAtiva;
       const term = search.toLowerCase();
-      const matchSearch = j.nome.toLowerCase().includes(term) || (j.celular && j.celular.includes(term));
+      const matchSearch = j.nome.toLowerCase().includes(term);
       return matchAba && matchSearch;
     })
     .sort((a, b) => {
@@ -413,7 +399,7 @@ export default function AdminPage() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por nome ou celular..."
+              placeholder="Buscar por nome..."
               className="w-full bg-slate-900/80 text-white pl-12 pr-4 py-3 rounded-2xl border border-slate-800 text-xs focus:outline-none focus:border-cyan-500"
             />
           </div>
@@ -600,17 +586,6 @@ export default function AdminPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-slate-400 font-bold uppercase block mb-1">Celular</label>
-                  <input
-                    type="text"
-                    value={formCelular}
-                    onChange={(e) => setFormCelular(mascaraTelefone(e.target.value))}
-                    placeholder={editingJogador ? '(Oculto) Digite para alterar...' : '(11) 98765-4321'}
-                    inputMode="tel"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white text-sm focus:outline-none focus:border-cyan-500"
-                  />
-                </div>
                 <div>
                   <label className="text-xs text-slate-400 font-bold uppercase block mb-1">Data de nascimento</label>
                   <input

@@ -93,7 +93,7 @@ flowchart LR
 - **Detecção de segredos**: o `verify.js` bloqueia vazamento de `.env`, chaves privadas e credenciais Firebase no diff staged.
 - **Estrutura organizada**: `pages/`, `components/`, `services/`, `context/`, `config/`, `utils/`.
 - **Serviços desacoplados**: Firestore isolado em `services/` (`jogadorService`, `sessionService`, `historyService`).
-- **AES-256 no cliente** via `utils/crypto.js` (nomes, telefones, datas, lançamentos).
+- **AES-256 no cliente** via `utils/crypto.js` (nomes, datas, lançamentos).
 - **Multi-Tenancy**: toda query exige `groupId` (`firestore.rules`).
 - **Segredos no `.env`** (`VITE_*`) — nunca versionados.
 
