@@ -2,21 +2,50 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useSession } from '../context/SessionContext';
-import { generateGroupCode } from '../services/sessionService';
+import { generateGroupCode, existeGrupo, registrarGrupo } from '../services/sessionService';
+
+// Grupo oficial de demonstração disponível na home para testar o projeto.
+const TEST_GROUP_ID = 'VO-AAAAAA';
 
 export default function WelcomeScreen() {
   const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
   const { loginAsGroup } = useSession();
 
-  const handleJoin = async () => {
-    if (code.length < 4) return Alert.alert('Erro', 'O código do vôlei é inválido.');
-    let finalCode = code.toUpperCase().trim();
+  const entrarComCodigo = async (finalCode) => {
+    if (busy) return;
+    if (finalCode.length < 4) return Alert.alert('Erro', 'O código do vôlei é inválido.');
+    finalCode = finalCode.toUpperCase().trim();
     if (!finalCode.startsWith('VO-')) finalCode = `VO-${finalCode}`;
+    setBusy(true);
+    const existe = await existeGrupo(finalCode);
+    setBusy(false);
+    if (!existe) {
+      return Alert.alert(
+        'Grupo não encontrado',
+        'Este código não existe. Confira o código ou use "Criar Novo Vôlei" para gerar um novo.',
+      );
+    }
     await loginAsGroup(finalCode);
   };
 
+  const handleJoin = async () => {
+    if (busy) return;
+    await entrarComCodigo(code);
+  };
+
+  const handleTestDemo = async () => {
+    if (busy) return;
+    setCode(TEST_GROUP_ID);
+    await entrarComCodigo(TEST_GROUP_ID);
+  };
+
   const handleCreate = async () => {
+    if (busy) return;
+    setBusy(true);
     const newCode = generateGroupCode();
+    await registrarGrupo(newCode);
+    setBusy(false);
     Alert.alert(
       "Novo Vôlei", 
       `Criamos o código ${newCode} para o seu grupo. Compartilhe-o com os outros para gerenciarem juntos!`,
@@ -53,15 +82,31 @@ export default function WelcomeScreen() {
 
           <TouchableOpacity 
             onPress={handleJoin}
+            disabled={busy}
+            style={{ opacity: busy ? 0.6 : 1 }}
             className="w-full bg-cyan-600 py-4 rounded-xl flex-row justify-center items-center shadow-lg shadow-cyan-500/30"
           >
-            <Text className="text-white font-black text-base uppercase">Entrar no Grupo</Text>
+            <Text className="text-white font-black text-base uppercase">{busy ? 'Verificando...' : 'Entrar no Grupo'}</Text>
           </TouchableOpacity>
         </View>
 
-        <View className="mt-12 items-center">
+        <TouchableOpacity 
+          onPress={handleTestDemo}
+          disabled={busy}
+          style={{ opacity: busy ? 0.6 : 1 }}
+          className="mt-4 bg-amber-500/5 px-6 py-4 rounded-2xl border border-amber-500/20 items-center"
+        >
+          <View className="flex-row items-center">
+            <FontAwesome5 name="flask" size={14} color="#f59e0b" />
+            <Text className="text-amber-400 font-black text-[9px] uppercase ml-2">Quer testar o projeto?</Text>
+          </View>
+          <Text className="text-amber-300 font-black text-xs mt-2">Usar chave de demonstração</Text>
+          <Text className="text-amber-200 font-mono font-black text-base mt-1">{TEST_GROUP_ID}</Text>
+        </TouchableOpacity>
+
+        <View className="mt-10 items-center">
           <Text className="text-slate-500 text-[9px] mb-5 font-black tracking-widest uppercase">Precisa de um novo?</Text>
-          <TouchableOpacity onPress={handleCreate} className="bg-emerald-500/10 px-10 py-5 rounded-2xl border border-emerald-500/30 flex-row items-center shadow-lg active:scale-95">
+          <TouchableOpacity onPress={handleCreate} disabled={busy} style={{ opacity: busy ? 0.6 : 1 }} className="bg-emerald-500/10 px-10 py-5 rounded-2xl border border-emerald-500/30 flex-row items-center shadow-lg active:scale-95">
              <FontAwesome5 name="plus-circle" size={16} color="#10b981" />
              <Text className="text-emerald-400 font-black uppercase tracking-widest text-xs ml-3">Criar Novo Vôlei</Text>
           </TouchableOpacity>

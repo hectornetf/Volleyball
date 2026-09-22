@@ -23,6 +23,14 @@ const encryptPlayer = (jogador, groupId) => ({
   dataNascimento: encryptData(jogador.dataNascimento, groupId)
 });
 
+// Converte um instante ISO (UTC) do Firestore para a data LOCAL yyyy-MM-dd,
+// para comparar "dia do pagamento" com a data local do jogo sem off-by-one.
+const dataLocalDeISO = (iso) => {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return String(iso || '').slice(0, 10);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 const decryptPlayer = (docData, groupId) => ({
   id: docData.id,
   ...docData,
@@ -116,7 +124,7 @@ export const removerDiariaAvulsa = async (jogadorId, dataJogo, groupId) => {
   ));
   const doDia = operacoes.docs
     .map((d) => ({ id: d.id, ...d.data() }))
-    .filter((op) => (op.data || '').slice(0, 10) === dataJogo)
+    .filter((op) => op.data && dataLocalDeISO(op.data) === dataJogo)
     .sort((a, b) => (b.data || '').localeCompare(a.data || ''));
   if (doDia.length) await deleteDoc(doc(db, FINANCEIRO_OP_COLLECTION, doDia[0].id));
 };
@@ -206,13 +214,17 @@ export const resetDadosGrupo = async (groupId) => {
 
     // Garante exclusão dos registros legado (sem campo groupId) e dos meses gerados.
     const refsLegado = [doc(db, CONFIG_FINANCEIRA_COLLECTION, groupId)];
+    const agoraReset = new Date();
     [-2, -1, 0, 1, 2].forEach((offset) => {
-      const d = new Date();
-      d.setMonth(d.getMonth() + offset);
+      const d = new Date(agoraReset.getFullYear(), agoraReset.getMonth() + offset, 1);
       const mes = d.toLocaleString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, (c) => c.toUpperCase());
       refsLegado.push(doc(db, CONFIG_FINANCEIRA_COLLECTION, `${groupId}_${mes}`));
     });
     await commitEmLotes(refsLegado, (lote, ref) => lote.delete(ref));
+
+    // Regrava um registro mínimo: após zerar, o grupo precisa continuar "existindo"
+    // para quem tentar acessar pelo código novamente.
+    await registrarLog('SISTEMA', 'Dados do grupo zerados.', 0, groupId);
   } catch (e) {
     console.error("Erro no reset: ", e);
     throw e;
@@ -308,7 +320,7 @@ export const gerarDadosDeTestePro = async (groupId) => {
   const dataNascimentoDe = (i) => {
     if (i === 0) return `15/${mesAtual}/1989`; // aniversariante do mês
     if (i === 1) return `${diaAtual}/${mesAtual}/1992`; // aniversariante de hoje
-    if (i % 5 === 0) return `${String(2 + i)}/${mesAtual}/199${i % 10}`; // mais aniversariantes do mês
+    if (i % 5 === 0) return `${String(2 + i).padStart(2, '0')}/${mesAtual}/199${i % 10}`; // mais aniversariantes do mês
     const dia = String(1 + ((i * 7) % 27)).padStart(2, '0');
     const mes = String(1 + ((i * 3) % 12)).padStart(2, '0');
     return `${dia}/${mes}/199${i % 10}`;
@@ -445,7 +457,7 @@ export const gerarDadosDeTestePro = async (groupId) => {
   const sorteioAberto = {
     groupId,
     dia: nomeDiaHoje,
-    data: refDate.toISOString().slice(0, 10),
+    data: `${refDate.getFullYear()}-${mesAtual}-${diaAtual}`,
     criadoEm: refDate.toISOString(),
     concluido: false,
     times: draw.times.map((time, t) => ({
@@ -539,7 +551,8 @@ export const gerarDadosDeTestePro = async (groupId) => {
     { categoria: 'FINANCEIRO', descricao: 'Custo da quadra configurado.', valor: 0 },
     { categoria: 'FINANCEIRO', descricao: 'Diária avulsa recebida.', valor: valorDiariaAvulso },
     { categoria: 'PARTIDAS', descricao: 'Resultados registrados por confronto.', valor: 0 },
-  ].map((log) => ({ ...log, groupId, createdAt: new Date(), dataHora: new Date().toISOString() }));
+  ].map((log) => ({ ...log, groupId, mes: `${refDate.getFullYear()}-${mesAtual}`,
+    createdAt: new Date(), dataHora: new Date().toISOString() }));
 
   await commitEmLotes(jogadoresPersistencia, (lote, jogador) => {
     const { id, ...dados } = jogador;

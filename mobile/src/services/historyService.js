@@ -32,14 +32,17 @@ export const limparLogsAntigos = async (groupId, meses = 3) => {
 export const registrarLog = async (categoria, descricao, valor = 0, groupId, status = 'Sucesso') => {
   if (!groupId) return;
   try {
+    const agora = new Date();
+    const mes = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}`;
     await addDoc(collection(db, LOGS_COLLECTION), {
       categoria,
       descricao,
       valor: parseFloat(valor) || 0,
       status,
       groupId,
+      mes,
       createdAt: serverTimestamp(),
-      dataHora: new Date().toISOString() // Fallback string para ordenação se necessário
+      dataHora: agora.toISOString()
     });
   } catch (e) {
     console.error("Erro ao registrar log: ", e);
@@ -47,30 +50,45 @@ export const registrarLog = async (categoria, descricao, valor = 0, groupId, sta
 };
 
 /**
- * Subscreve aos logs de atividade do grupo
+ * Subscreve aos logs de atividade do grupo.
+ * Se `mes` (yyyy-MM) for informado, filtra apenas os logs daquele mês.
+ * A consulta usa apenas igualdades (index-merge do Firestore, sem índice
+ * composto manual) e ordena no cliente por createdAt/dataHora.
  */
-export const subscribeLogs = (groupId, callback, errorCallback) => {
+export const subscribeLogs = (groupId, callback, errorCallback, mes = '') => {
   if (!groupId) return () => {};
-  
-  const q = query(
-    collection(db, LOGS_COLLECTION),
-    where('groupId', '==', groupId),
-    orderBy('createdAt', 'desc'),
-    limit(50)
-  );
+
+  const q = mes
+    ? query(
+        collection(db, LOGS_COLLECTION),
+        where('groupId', '==', groupId),
+        where('mes', '==', mes)
+      )
+    : query(
+        collection(db, LOGS_COLLECTION),
+        where('groupId', '==', groupId),
+        orderBy('createdAt', 'desc'),
+        limit(50)
+      );
 
   return onSnapshot(q, (snapshot) => {
-    const logs = snapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        ...data,
-        // Converte Firestore Timestamp para string amigável se existir
-        tipo: data.createdAt ? 
-          new Date(data.createdAt.seconds * 1000).toLocaleString('pt-BR') : 
-          new Date().toLocaleString('pt-BR')
-      };
-    });
+    const logs = snapshot.docs
+      .map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          tipo: data.createdAt ? 
+            new Date(data.createdAt.seconds * 1000).toLocaleString('pt-BR') : 
+            (data.dataHora ? new Date(data.dataHora).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR'))
+        };
+      })
+      .sort((a, b) => {
+        const ta = a.createdAt ? a.createdAt.seconds : (a.dataHora ? new Date(a.dataHora).getTime() / 1000 : 0);
+        const tb = b.createdAt ? b.createdAt.seconds : (b.dataHora ? new Date(b.dataHora).getTime() / 1000 : 0);
+        return (tb || 0) - (ta || 0);
+      })
+      .slice(0, 50);
     callback(logs);
   }, errorCallback);
 };

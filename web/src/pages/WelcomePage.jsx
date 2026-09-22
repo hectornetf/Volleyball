@@ -1,27 +1,52 @@
 import React, { useState } from 'react';
-import { Key, PlusCircle, ArrowRight, ShieldCheck, Sparkles } from 'lucide-react';
+import { Key, PlusCircle, ArrowRight, ShieldCheck, Sparkles, Loader2, FlaskConical } from 'lucide-react';
 import { useSession } from '../context/SessionContext';
-import { generateGroupCode } from '../services/sessionService';
+import { generateGroupCode, existeGrupo, registrarGrupo } from '../services/sessionService';
+
+// Grupo oficial de demonstração disponível na home para testar o projeto.
+const TEST_GROUP_ID = 'VO-AAAAAA';
 
 export default function WelcomePage() {
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
   const { loginAsGroup } = useSession();
 
-  const handleJoin = async (e) => {
-    e.preventDefault();
-    if (code.trim().length < 4) {
+  const entrarComCodigo = async (finalCode) => {
+    if (finalCode.trim().length < 4) {
       setError('Por favor, informe um código válido (Ex: VO-ABCDEF ou ABCDEF).');
       return;
     }
-    let finalCode = code.toUpperCase().trim();
+    finalCode = finalCode.toUpperCase().trim();
     if (!finalCode.startsWith('VO-')) finalCode = `VO-${finalCode}`;
     setError('');
+    setBusy(true);
+    const existe = await existeGrupo(finalCode);
+    setBusy(false);
+    if (!existe) {
+      setError('Este grupo não existe. Confira o código ou use "Criar Novo Vôlei (Gerar Código)".');
+      return;
+    }
     await loginAsGroup(finalCode);
   };
 
+  const handleJoin = async (e) => {
+    e.preventDefault();
+    await entrarComCodigo(code);
+  };
+
+  const handleTestDemo = async () => {
+    if (busy) return;
+    setCode(TEST_GROUP_ID);
+    await entrarComCodigo(TEST_GROUP_ID);
+  };
+
   const handleCreate = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError('');
     const newCode = generateGroupCode();
+    await registrarGrupo(newCode);
     await loginAsGroup(newCode);
   };
 
@@ -71,25 +96,38 @@ export default function WelcomePage() {
 
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-white font-extrabold py-4 px-6 rounded-2xl flex items-center justify-center space-x-2 shadow-lg shadow-cyan-500/25 transition-all transform active:scale-98"
+              disabled={busy}
+              className="w-full bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-white font-extrabold py-4 px-6 rounded-2xl flex items-center justify-center space-x-2 shadow-lg shadow-cyan-500/25 transition-all transform active:scale-98 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <span>ENTRAR NO GRUPO</span>
-              <ArrowRight className="w-5 h-5" />
+              {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : <><span>ENTRAR NO GRUPO</span><ArrowRight className="w-5 h-5" /></>}
             </button>
           </form>
         </div>
 
+        {/* Test Demo Group */}
+        <button
+          onClick={handleTestDemo}
+          disabled={busy}
+          className="mt-6 w-full bg-amber-500/5 hover:bg-amber-500/10 text-amber-300 border border-amber-500/20 font-bold py-3.5 px-6 rounded-2xl flex items-center justify-center space-x-3 transition-all active:scale-98 disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {busy ? <Loader2 className="w-5 h-5 animate-spin text-amber-300" /> : <FlaskConical className="w-5 h-5 text-amber-300" />}
+          <span className="text-xs uppercase tracking-wider">
+            Quer testar o projeto? Usar chave de demonstração <span className="font-mono font-extrabold text-amber-200">{TEST_GROUP_ID}</span>
+          </span>
+        </button>
+
         {/* Create New Group Footer */}
-        <div className="mt-8 text-center space-y-4">
+        <div className="mt-6 text-center space-y-4">
           <p className="text-xs font-extrabold uppercase tracking-widest text-slate-500">
             Precisa de um novo grupo?
           </p>
 
           <button
             onClick={handleCreate}
-            className="w-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-extrabold py-4 px-6 rounded-2xl flex items-center justify-center space-x-3 shadow-lg transition-all active:scale-98"
+            disabled={busy}
+            className="w-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-extrabold py-4 px-6 rounded-2xl flex items-center justify-center space-x-3 shadow-lg transition-all active:scale-98 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            <PlusCircle className="w-5 h-5 text-emerald-400" />
+            {busy ? <Loader2 className="w-5 h-5 animate-spin text-emerald-400" /> : <PlusCircle className="w-5 h-5 text-emerald-400" />}
             <span className="uppercase text-xs tracking-wider">Criar Novo Vôlei (Gerar Código)</span>
           </button>
 

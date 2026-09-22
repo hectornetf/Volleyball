@@ -11,12 +11,23 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 /** Firestore usa números; 0 é válido — não usar `||` que apaga o zero. */
 const strCampoCusto = (v) => (v !== undefined && v !== null ? String(v) : '');
 
+/** Date do mês exibido no seletor (offset relativo ao mês civil atual), fixado no dia 1
+ *  para não "pular" meses em dias 29-31 por overflow do setMonth. */
+const dataMesComOffset = (offset) => {
+  const agora = new Date();
+  return new Date(agora.getFullYear(), agora.getMonth() + offset, 1);
+};
+
 /** YYYY-MM do mês exibido no seletor (offset relativo ao mês civil atual). */
 const yyyymmFromMesOffset = (offset) => {
-  const d = new Date();
-  d.setMonth(d.getMonth() + offset);
+  const d = dataMesComOffset(offset);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 };
+
+/** Nome localizado (ex.: "Setembro de 2026") do mês exibido no seletor. */
+const nomeMesComOffset = (offset) => dataMesComOffset(offset)
+  .toLocaleString('pt-BR', { month: 'long', year: 'numeric' })
+  .replace(/^\w/, (c) => c.toUpperCase());
 
 import { computarFechamento } from '../utils/financeiroUtils';
 const diasDaSemana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
@@ -64,20 +75,12 @@ export default function FinanceiroScreen() {
   const [modalVal, setModalVal] = useState('');
   const [modalDesc, setModalDesc] = useState('');
 
-  const mesRef = useMemo(() => {
-    const d = new Date();
-    d.setMonth(d.getMonth() + mesOffset);
-    return d
-      .toLocaleString('pt-BR', { month: 'long', year: 'numeric' })
-      .replace(/^\w/, (c) => c.toUpperCase());
-  }, [mesOffset]);
+  const mesRef = useMemo(() => nomeMesComOffset(mesOffset), [mesOffset]);
 
   const persistirMesReferencia = useCallback(
     (offset) => {
       if (!activeGroupId) return;
-      const d = new Date();
-      d.setMonth(d.getMonth() + offset);
-      const strMes = d.toLocaleString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, (c) => c.toUpperCase());
+      const strMes = nomeMesComOffset(offset);
       
       saveConfigFinanceira(activeGroupId, strMes, {
         mesReferenciaOffset: offset,
@@ -93,9 +96,7 @@ export default function FinanceiroScreen() {
       const s = await getSaldoGlobalEquipamentos(activeGroupId);
       setSaldoAvulsos(s);
 
-      const d = new Date();
-      d.setMonth(d.getMonth() + mesOffset);
-      const strMesAtual = d.toLocaleString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, (c) => c.toUpperCase());
+      const strMesAtual = nomeMesComOffset(mesOffset);
       const conf = await getConfigFinanceira(activeGroupId, strMesAtual);
       
       const novosCustos = {

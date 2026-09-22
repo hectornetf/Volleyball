@@ -90,7 +90,7 @@ export default function TimesScreen() {
       const dadosHistoricos = await carregarHistoricoTimes(activeGroupId);
       setHistorico(dadosHistoricos);
       const resultado = equilibraTimes(confirmados, dadosHistoricos, jogadoresPorTime);
-      await salvarSorteio({ groupId: activeGroupId, dia, ...resultado });
+      await salvarSorteio({ groupId: activeGroupId, dia, dataJogo, ...resultado });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (_) { Alert.alert('Não foi possível salvar', 'Verifique sua conexão e tente novamente.'); } finally { setSalvando(false); }
   };

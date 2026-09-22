@@ -6,6 +6,12 @@ import { sorteioComPlacar } from '../utils/estatisticasUtils';
 const COLLECTION = 'sorteios_times';
 const normalizar = (dados) => dados.docs.map((item) => ({ id: item.id, ...item.data() }));
 
+// Data local de hoje em yyyy-MM-dd (seguro como chave/ordenação junto às presenças).
+const dataLocalHoje = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 export const carregarHistoricoTimes = async (groupId) => {
   if (!groupId) return [];
   const dados = await getDocs(query(collection(db, COLLECTION), where('groupId', '==', groupId)));
@@ -26,10 +32,10 @@ export const subscribeSorteioAberto = (groupId, dia, callback) => {
   });
 };
 
-export const salvarSorteio = async ({ groupId, dia, times, reservas, diagnostico }) => {
+export const salvarSorteio = async ({ groupId, dia, times, reservas, diagnostico, dataJogo }) => {
   const agora = new Date();
   const docRef = await addDoc(collection(db, COLLECTION), {
-    groupId, dia, data: agora.toISOString().slice(0, 10), criadoEm: agora.toISOString(), concluido: false, diagnostico,
+    groupId, dia, data: dataJogo || dataLocalHoje(), criadoEm: agora.toISOString(), concluido: false, diagnostico,
     times: times.map((time, indice) => ({ nome: `Time ${indice + 1}`, jogadores: time.map((j) => ({ id: j.id, nivelNoSorteio: Number(j.nivel) || 3 })), vitorias: 0 })),
     reservas: reservas.map((j) => j.id)
   });

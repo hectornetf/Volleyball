@@ -15,6 +15,9 @@ import { montarPainelEstatisticas, idsJogadoresDoTime, confrontosDoSorteio } fro
 import Avatar from '../components/Avatar';
 import { gerarAvatarAleatorio } from '../utils/avatarUtils';
 
+// Grupo oficial de demonstração: apenas nele os botões "Gerar Amostra" e "Resetar" aparecem.
+const TEST_GROUP_ID = 'VO-AAAAAA';
+
 const formatarData = (iso) => {
   const [a, m, d] = (iso || '').split('-');
   return d && m && a ? `${d}/${m}/${a}` : iso || '—';
@@ -71,6 +74,7 @@ function mascaraTelefone(text) {
 
 export default function AdminPage() {
   const { activeGroupId } = useSession();
+  const esGrupoDemo = activeGroupId === TEST_GROUP_ID;
   const [jogadores, setJogadores] = useState([]);
   const [search, setSearch] = useState('');
   const [modalNovo, setModalNovo] = useState(false);
@@ -550,23 +554,27 @@ export default function AdminPage() {
             <span>Importar Planilha</span>
           </button>
 
-          <button
-            onClick={handleGerarMock}
-            disabled={loading}
-            className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center space-x-2 transition-all"
-          >
-            <Sparkles className="w-4 h-4" />
-            <span>Gerar Amostra Completa de Teste PRO</span>
-          </button>
+          {esGrupoDemo && (
+            <>
+              <button
+                onClick={handleGerarMock}
+                disabled={loading}
+                className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center space-x-2 transition-all"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>Gerar Amostra Completa de Teste PRO</span>
+              </button>
 
-          <button
-            onClick={handleResetGeral}
-            disabled={loading}
-            className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center space-x-2 transition-all"
-          >
-            <AlertTriangle className="w-4 h-4" />
-            <span>Resetar Todos os Dados do Grupo</span>
-          </button>
+              <button
+                onClick={handleResetGeral}
+                disabled={loading}
+                className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center space-x-2 transition-all"
+              >
+                <AlertTriangle className="w-4 h-4" />
+                <span>Resetar Todos os Dados do Grupo</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
 

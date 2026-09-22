@@ -30,8 +30,8 @@ export default function FinanceiroPage() {
   const [fechamentoIniciado, setFechamentoIniciado] = useState(true);
   const [statusMes, setStatusMes] = useState('Em Aberto');
 
-  const refDate = new Date();
-  refDate.setMonth(refDate.getMonth() + offsetMes);
+  const agora = new Date();
+  const refDate = new Date(agora.getFullYear(), agora.getMonth() + offsetMes, 1);
   const mesRefStr = refDate.toLocaleString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase());
 
   useEffect(() => {

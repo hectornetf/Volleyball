@@ -88,7 +88,7 @@ export default function TimesPage() {
       const dadosHistoricos = await carregarHistoricoTimes(activeGroupId);
       setHistorico(dadosHistoricos);
       const resultado = equilibraTimes(confirmados, dadosHistoricos, jogadoresPorTime);
-      await salvarSorteio({ groupId: activeGroupId, dia, ...resultado });
+      await salvarSorteio({ groupId: activeGroupId, dia, dataJogo, ...resultado });
     } catch (_) {
       alert('Não foi possível salvar o sorteio. Verifique sua conexão e tente novamente.');
     } finally {

@@ -20,6 +20,9 @@ const formatarData = (iso) => {
 
 const diasDaSemana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 
+// Grupo oficial de demonstração: apenas nele os botões "Mock Data" e "Zerar Grupo" aparecem.
+const TEST_GROUP_ID = 'VO-AAAAAA';
+
 const base64ToArrayBuffer = (base64) => {
   const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
   const clean = base64.replace(/=+$/, '');
@@ -74,6 +77,7 @@ function dataNascimentoValidaOuVazia(s) {
 export default function AdminScreen() {
   const insets = useSafeAreaInsets();
   const { activeGroupId, logout: logoutSession } = useSession();
+  const esGrupoDemo = activeGroupId === TEST_GROUP_ID;
   const [jogadores, setJogadores] = useState([]);
   const [carregando, setCarregando] = useState(true);
   
@@ -839,23 +843,25 @@ export default function AdminScreen() {
             </TouchableOpacity>
           </View>
 
-          <View className="flex-row justify-between">
-            <TouchableOpacity 
-              onPress={handleGerarTeste}
-              className="flex-1 bg-emerald-500/5 border border-emerald-500/10 p-5 rounded-[32px] items-center mr-3"
-            >
-              <FontAwesome5 name="vial" size={16} color="#10b981" />
-              <Text className="text-emerald-500 font-black text-[9px] uppercase mt-3">Mock Data</Text>
-            </TouchableOpacity>
+          {esGrupoDemo && (
+            <View className="flex-row justify-between">
+              <TouchableOpacity 
+                onPress={handleGerarTeste}
+                className="flex-1 bg-emerald-500/5 border border-emerald-500/10 p-5 rounded-[32px] items-center mr-3"
+              >
+                <FontAwesome5 name="vial" size={16} color="#10b981" />
+                <Text className="text-emerald-500 font-black text-[9px] uppercase mt-3">Mock Data</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity 
-              onPress={handleReset}
-              className="flex-1 bg-red-500/5 border border-red-500/10 p-5 rounded-[32px] items-center"
-            >
-              <FontAwesome5 name="trash-alt" size={16} color="#ef4444" />
-              <Text className="text-red-500 font-black text-[9px] uppercase mt-3">Zerar Grupo</Text>
-            </TouchableOpacity>
-          </View>
+              <TouchableOpacity 
+                onPress={handleReset}
+                className="flex-1 bg-red-500/5 border border-red-500/10 p-5 rounded-[32px] items-center"
+              >
+                <FontAwesome5 name="trash-alt" size={16} color="#ef4444" />
+                <Text className="text-red-500 font-black text-[9px] uppercase mt-3">Zerar Grupo</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
       </Animated.View>
