@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   LayoutDashboard, CheckSquare, Users, DollarSign,
-  History, Settings, LogOut, ShieldCheck, Copy, MessageCircle, UserCircle
+  History, Settings, LogOut, ShieldCheck, Copy, MessageCircle
 } from 'lucide-react';
 import pkg from '../../package.json';
 import { useSession } from '../context/SessionContext';
@@ -25,7 +25,6 @@ export default function Navbar({ activeTab, setActiveTab }) {
     { id: 'times', label: 'Times', icon: Users },
     { id: 'financeiro', label: 'Financeiro', icon: DollarSign },
     { id: 'historico', label: 'Histórico', icon: History },
-    { id: 'perfil', label: 'Perfil', icon: UserCircle },
     { id: 'admin', label: 'Admin', icon: Settings },
   ];
 

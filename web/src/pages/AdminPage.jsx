@@ -1,13 +1,45 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Settings, UserPlus, Search, Edit, Trash2, Power, 
-  Sparkles, AlertTriangle, Upload
+  Sparkles, AlertTriangle, Upload, UserCircle,
+  Link as LinkIcon, Shuffle, BarChart3, History, TrendingUp,
+  Save, Loader2, Check
 } from 'lucide-react';
 import { useSession } from '../context/SessionContext';
 import { 
   subscribeJogadores, addJogador, updateJogador, deleteJogador, 
   gerarDadosDeTestePro, resetDadosGrupo 
 } from '../services/jogadorService';
+import { carregarHistoricoTimes } from '../services/teamDrawService';
+import { montarPainelEstatisticas, idsJogadoresDoTime, confrontosDoSorteio } from '../utils/estatisticasUtils';
+import Avatar from '../components/Avatar';
+import { gerarAvatarAleatorio } from '../utils/avatarUtils';
+
+const formatarData = (iso) => {
+  const [a, m, d] = (iso || '').split('-');
+  return d && m && a ? `${d}/${m}/${a}` : iso || '—';
+};
+
+const Sparkline = ({ serie }) => {
+  if (!serie || serie.length < 2) return <span className="text-slate-600 text-[10px] font-bold">—</span>;
+  const min = Math.min(...serie);
+  const max = Math.max(...serie);
+  const range = max - min || 1;
+  const pontos = serie.map((v, i) => `${(i / (serie.length - 1)) * 40},${16 - ((v - min) / range) * 12}`).join(' ');
+  const tendencia = serie[serie.length - 1] - serie[0];
+  return (
+    <svg width="40" height="18" viewBox="0 0 40 18" className="shrink-0">
+      <polyline
+        points={pontos}
+        fill="none"
+        stroke={tendencia > 0.05 ? '#34d399' : tendencia < -0.05 ? '#f87171' : '#94a3b8'}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+};
 
 function formatarDataNascimentoDigitos(text) {
   const digits = text.replace(/\D/g, '').slice(0, 8);
@@ -46,6 +78,11 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [abaAtiva, setAbaAtiva] = useState('TODOS');
   const [ordemNivel, setOrdemNivel] = useState(false);
+  const [avatarSel, setAvatarSel] = useState('');
+  const [urlInput, setUrlInput] = useState('');
+  const [salvando, setSalvando] = useState(false);
+  const [toast, setToast] = useState('');
+  const [historicoTimes, setHistoricoTimes] = useState([]);
   
   const fileInputRef = useRef(null);
 
@@ -67,6 +104,79 @@ export default function AdminPage() {
     return () => unsub();
   }, [activeGroupId]);
 
+  const editingId = editingJogador?.id || null;
+
+  useEffect(() => {
+    if (!activeGroupId || !editingId) return;
+    let ativo = true;
+    carregarHistoricoTimes(activeGroupId).then((historico) => {
+      if (ativo) setHistoricoTimes(historico);
+    });
+    return () => { ativo = false; };
+  }, [activeGroupId, editingId]);
+
+  const jogadorPerfil = jogadores.find((j) => j.id === editingId) || editingJogador;
+
+  useEffect(() => {
+    if (!editingId) return;
+    if (jogadorPerfil?.avatar) setAvatarSel(jogadorPerfil.avatar);
+    else setAvatarSel((prev) => prev || gerarAvatarAleatorio());
+  }, [editingId, jogadores]);
+
+  const painelPerfil =
+    montarPainelEstatisticas(jogadores, historicoTimes).find((p) => p.jogador.id === jogadorPerfil?.id) || {
+      jogos: 0,
+      vitorias: 0,
+      aproveitamento: 0,
+      presencas: Number(jogadorPerfil?.historicoPresencas) || 0,
+      forca: Number(jogadorPerfil?.nivel) || 3,
+      historicoSuficiente: false,
+      serie: [],
+      evolucao: 0,
+    };
+
+  const presencasRecentes = Object.entries(jogadorPerfil?.presencas || {})
+    .sort(([a], [b]) => b.localeCompare(a))
+    .slice(0, 8);
+
+  const partidasRecentes = historicoTimes
+    .filter((sorteio) => (sorteio.times || []).some((t) => idsJogadoresDoTime(t).includes(jogadorPerfil?.id)))
+    .map((sorteio) => {
+      const times = sorteio.times || [];
+      const idx = times.findIndex((t) => idsJogadoresDoTime(t).includes(jogadorPerfil.id));
+      const confrontos = confrontosDoSorteio(sorteio) || [];
+      const vitorias = confrontos
+        .filter((c) => c.a === idx).reduce((s, c) => s + (Number(c.vitoriasA) || 0), 0)
+        + confrontos.filter((c) => c.b === idx).reduce((s, c) => s + (Number(c.vitoriasB) || 0), 0);
+      const derrotas = confrontos
+        .filter((c) => c.a === idx).reduce((s, c) => s + (Number(c.vitoriasB) || 0), 0)
+        + confrontos.filter((c) => c.b === idx).reduce((s, c) => s + (Number(c.vitoriasA) || 0), 0);
+      return { data: sorteio.data, dia: sorteio.dia, time: `Time ${idx + 1}`, vitorias, derrotas };
+    })
+    .slice(0, 8);
+
+  const tendencia = painelPerfil.evolucao;
+
+  const mostrarToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(''), 2500);
+  };
+
+  const salvarAvatar = async (url) => {
+    if (!jogadorPerfil) return;
+    setSalvando(true);
+    try {
+      await updateJogador(jogadorPerfil.id, { avatar: (url ?? avatarSel).trim() }, activeGroupId);
+      if (url !== undefined) setAvatarSel(url);
+      setUrlInput('');
+      mostrarToast((url ?? avatarSel).trim() ? 'Avatar salvo com sucesso!' : 'Avatar removido.');
+    } catch (e) {
+      alert('Erro ao salvar avatar: ' + e.message);
+    } finally {
+      setSalvando(false);
+    }
+  };
+
   const resetForm = () => {
     setFormNome('');
     setFormCelular('');
@@ -76,6 +186,8 @@ export default function AdminPage() {
     setFormDias(['Segunda', 'Quarta']);
     setEditingJogador(null);
     setModalNovo(false);
+    setAvatarSel('');
+    setUrlInput('');
   };
 
   const handleOpenEdit = (j) => {
@@ -86,6 +198,7 @@ export default function AdminPage() {
     setFormTipo(j.tipo || 'MENSALISTA');
     setFormNivel(j.nivel || 3);
     setFormDias(j.diasMensalista || ['Segunda', 'Quarta']);
+    setUrlInput('');
     setModalNovo(true);
   };
 
@@ -110,7 +223,8 @@ export default function AdminPage() {
         dataNascimento,
         tipo: formTipo,
         nivel: parseInt(formNivel) || 3,
-        diasMensalista: formTipo === 'MENSALISTA' ? formDias : []
+        diasMensalista: formTipo === 'MENSALISTA' ? formDias : [],
+        avatar: (urlInput.trim() || avatarSel || '').trim()
       };
 
       if (editingJogador) {
@@ -352,16 +466,19 @@ export default function AdminPage() {
               }`}
             >
               <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-extrabold text-base text-white">{j.nome}</h3>
-                  <div className="flex items-center space-x-2 text-[11px] text-slate-400 mt-0.5">
-                    <span className="text-amber-400 font-bold">{j.nivel || 3} ⭐</span>
-                    <span>•</span>
-                    <span className={`font-extrabold uppercase px-1.5 py-0.5 rounded text-[10px] ${
-                      j.tipo === 'MENSALISTA' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-amber-500/20 text-amber-400'
-                    }`}>
-                      {j.tipo}
-                    </span>
+                <div className="flex items-center space-x-3 min-w-0">
+                  <Avatar jogador={j} size={44} />
+                  <div className="min-w-0">
+                    <h3 className="font-extrabold text-base text-white truncate">{j.nome}</h3>
+                    <div className="flex items-center space-x-2 text-[11px] text-slate-400 mt-0.5">
+                      <span className="text-amber-400 font-bold">{j.nivel || 3} ⭐</span>
+                      <span>•</span>
+                      <span className={`font-extrabold uppercase px-1.5 py-0.5 rounded text-[10px] ${
+                        j.tipo === 'MENSALISTA' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-amber-500/20 text-amber-400'
+                      }`}>
+                        {j.tipo}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
@@ -553,6 +670,184 @@ export default function AdminPage() {
                 </div>
               )}
 
+              {editingJogador && jogadorPerfil && (
+                <div className="border-t border-slate-800 pt-5 space-y-5">
+                  <div className="flex items-center gap-4">
+                    <Avatar jogador={{ ...jogadorPerfil, avatar: avatarSel }} size={72} />
+                    <div className="flex-1 space-y-2">
+                      <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center space-x-2">
+                        <UserCircle className="w-4 h-4 text-cyan-400" />
+                        <span>Perfil & Avatar</span>
+                      </h4>
+                      <button
+                        type="button"
+                        onClick={() => setAvatarSel(gerarAvatarAleatorio())}
+                        className="flex items-center space-x-2 bg-violet-600 hover:bg-violet-500 text-white font-extrabold px-3 py-2 rounded-xl text-xs transition-all"
+                      >
+                        <Shuffle className="w-3.5 h-3.5" />
+                        <span>Gerar aleatório</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider flex items-center space-x-2">
+                      <LinkIcon className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Usar uma foto por link</span>
+                    </h4>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        value={urlInput}
+                        onChange={(e) => setUrlInput(e.target.value)}
+                        placeholder="https://exemplo.com/minha-foto.jpg"
+                        className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => urlInput.trim() && salvarAvatar(urlInput.trim())}
+                        disabled={!urlInput.trim() || salvando}
+                        className="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-white font-extrabold px-4 py-2.5 rounded-xl text-xs"
+                      >
+                        {salvando ? 'Salvando...' : 'Usar esta foto'}
+                      </button>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => salvarAvatar()}
+                        disabled={salvando}
+                        className="flex-1 flex items-center justify-center space-x-2 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-white font-extrabold px-3 py-2.5 rounded-xl text-xs"
+                      >
+                        {salvando ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                        <span>Salvar avatar</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => salvarAvatar('')}
+                        disabled={salvando}
+                        className="flex-1 flex items-center justify-center space-x-2 bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-700 rounded-xl text-xs font-bold py-2.5"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Remover</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Análise do jogador */}
+                  <div>
+                    <h4 className="text-xs font-black text-white uppercase tracking-wider mb-3 flex items-center space-x-2">
+                      <BarChart3 className="w-4 h-4 text-cyan-400" />
+                      <span>Análise do jogador</span>
+                      {!painelPerfil.historicoSuficiente && (
+                        <span className="text-[9px] font-extrabold uppercase text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
+                          insuficiente
+                        </span>
+                      )}
+                    </h4>
+                    <p className="text-[11px] text-slate-500 mb-3">
+                      {painelPerfil.historicoSuficiente
+                        ? 'Baseada nas partidas concluídas, presença e força estimada.'
+                        : 'Continue jogando para o sistema estimar sua força com confiança a partir de 8 partidas.'}
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-slate-950/50 rounded-xl p-3 border border-slate-800">
+                        <div className="text-[9px] uppercase font-extrabold text-slate-500">Partidas</div>
+                        <div className="text-lg font-black text-white">{painelPerfil.jogos || '—'}</div>
+                        <div className="text-[10px] font-bold text-slate-400">{painelPerfil.vitorias} vitória(s)</div>
+                      </div>
+                      <div className="bg-slate-950/50 rounded-xl p-3 border border-slate-800">
+                        <div className="text-[9px] uppercase font-extrabold text-slate-500">Aproveitamento</div>
+                        <div className={`text-lg font-black ${painelPerfil.aproveitamento >= 60 ? 'text-emerald-400' : painelPerfil.aproveitamento >= 40 ? 'text-cyan-300' : 'text-white'}`}>
+                          {painelPerfil.jogos ? `${painelPerfil.aproveitamento}%` : '—'}
+                        </div>
+                        <div className="text-[10px] font-bold text-slate-400">de vitórias</div>
+                      </div>
+                      <div className="bg-slate-950/50 rounded-xl p-3 border border-slate-800">
+                        <div className="text-[9px] uppercase font-extrabold text-slate-500">Presença</div>
+                        <div className="text-lg font-black text-white">{painelPerfil.presencas}</div>
+                        <div className="text-[10px] font-bold text-slate-400">{painelPerfil.presencas === 1 ? 'presença' : 'presenças'}</div>
+                      </div>
+                      <div className="bg-slate-950/50 rounded-xl p-3 border border-slate-800">
+                        <div className="text-[9px] uppercase font-extrabold text-slate-500">Força estimada</div>
+                        <div className={`text-lg font-black ${painelPerfil.historicoSuficiente ? 'text-cyan-300' : 'text-slate-600'}`}>
+                          {painelPerfil.historicoSuficiente ? `⭐ ${painelPerfil.forca.toFixed(1)}` : '—'}
+                        </div>
+                        <div className="text-[10px] font-bold text-slate-400">{painelPerfil.jogos ? `${painelPerfil.jogos} de 8 partidas` : 'na criação → 3.0'}</div>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-400 font-bold">
+                      <TrendingUp className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Evolução:</span>
+                      {painelPerfil.serie.length ? (
+                        <>
+                          <Sparkline serie={painelPerfil.serie} />
+                          <span className={tendencia > 0.05 ? 'text-emerald-400' : tendencia < -0.05 ? 'text-rose-400' : 'text-slate-500'}>
+                            {tendencia === 0 ? '0.0' : `${tendencia > 0 ? '+' : '−'}${Math.abs(tendencia).toFixed(1)} pts`}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-slate-600">sem partidas suficientes ainda</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Histórico do jogador */}
+                  <div>
+                    <h4 className="text-xs font-black text-white uppercase tracking-wider mb-3 flex items-center space-x-2">
+                      <History className="w-4 h-4 text-emerald-400" />
+                      <span>Histórico do jogador</span>
+                    </h4>
+
+                    <h5 className="text-[10px] uppercase font-extrabold text-slate-500 mb-1.5">Presenças recentes</h5>
+                    {presencasRecentes.length === 0 ? (
+                      <p className="text-[11px] text-slate-500 italic mb-3">Sem presenças registradas ainda.</p>
+                    ) : (
+                      <div className="divide-y divide-slate-800/60 mb-3">
+                        {presencasRecentes.map(([data, status]) => (
+                          <div key={data} className="flex items-center justify-between py-1.5">
+                            <span className="text-[11px] font-bold text-slate-300">{formatarData(data)}</span>
+                            <span
+                              className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${
+                                status === 'Confirmado'
+                                  ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+                                  : 'text-rose-400 bg-rose-500/10 border-rose-500/20'
+                              }`}
+                            >
+                              {status || '—'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <h5 className="text-[10px] uppercase font-extrabold text-slate-500 mb-1.5">Partidas recentes</h5>
+                    {partidasRecentes.length === 0 ? (
+                      <p className="text-[11px] text-slate-500 italic">Ainda não participou de partidas concluídas.</p>
+                    ) : (
+                      <div className="divide-y divide-slate-800/60">
+                        {partidasRecentes.map((partida, i) => (
+                          <div key={`${partida.data}-${i}`} className="flex items-center justify-between py-1.5">
+                            <div className="min-w-0">
+                              <span className="text-[11px] font-bold text-slate-300">{formatarData(partida.data)} · {partida.dia || ''}</span>
+                              <span className="text-[9px] text-slate-500 font-bold ml-1.5">{partida.time}</span>
+                            </div>
+                            <span className={`text-[10px] font-black ${
+                              partida.vitorias === partida.derrotas
+                                ? 'text-slate-400'
+                                : partida.vitorias > partida.derrotas
+                                  ? 'text-emerald-400'
+                                  : 'text-rose-400'
+                            }`}>
+                              {partida.vitorias}V · {partida.derrotas}D
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center space-x-2 pt-4">
                 <button
                   type="button"
@@ -571,6 +866,14 @@ export default function AdminPage() {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+    {/* Notificação de sucesso */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center space-x-2 bg-emerald-500 text-white font-bold text-sm px-5 py-3 rounded-2xl shadow-2xl shadow-emerald-500/30">
+          <Check className="w-4 h-4" />
+          <span>{toast}</span>
         </div>
       )}
 

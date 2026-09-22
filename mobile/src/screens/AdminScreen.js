@@ -6,8 +6,17 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { readSheet } from 'read-excel-file/universal';
 import { subscribeJogadores, addJogador, updateJogador, gerarDadosDeTestePro, resetDadosGrupo } from '../services/jogadorService';
+import { carregarHistoricoTimes } from '../services/teamDrawService';
+import { montarPainelEstatisticas, idsJogadoresDoTime, confrontosDoSorteio } from '../utils/estatisticasUtils';
 import { useSession } from '../context/SessionContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Avatar from '../components/Avatar';
+import { gerarAvatarAleatorio } from '../utils/avatarUtils';
+
+const formatarData = (iso) => {
+  const [a, m, d] = (iso || '').split('-');
+  return d && m && a ? `${d}/${m}/${a}` : iso || '—';
+};
 
 const diasDaSemana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 
@@ -85,6 +94,10 @@ export default function AdminScreen() {
   const [ordemNivel, setOrdemNivel] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(20));
+  const [avatarSel, setAvatarSel] = useState('');
+  const [urlInput, setUrlInput] = useState('');
+  const [salvandoAvatar, setSalvandoAvatar] = useState(false);
+  const [historicoTimes, setHistoricoTimes] = useState([]);
 
   useEffect(() => {
     if (!activeGroupId) return;
@@ -100,6 +113,74 @@ export default function AdminScreen() {
 
     return () => unsub();
   }, [activeGroupId]);
+
+  useEffect(() => {
+    if (!activeGroupId || !editandoId) return;
+    let ativo = true;
+    carregarHistoricoTimes(activeGroupId).then((historico) => {
+      if (ativo) setHistoricoTimes(historico);
+    });
+    return () => { ativo = false; };
+  }, [activeGroupId, editandoId]);
+
+  const jogadorPerfil = jogadores.find((j) => j.id === editandoId) || null;
+
+  useEffect(() => {
+    if (!editandoId) return;
+    if (jogadorPerfil?.avatar) setAvatarSel(jogadorPerfil.avatar);
+    else setAvatarSel((prev) => prev || gerarAvatarAleatorio());
+  }, [editandoId, jogadores]);
+
+  const painelPerfil =
+    montarPainelEstatisticas(jogadores, historicoTimes).find((p) => p.jogador.id === jogadorPerfil?.id) || {
+      jogos: 0,
+      vitorias: 0,
+      aproveitamento: 0,
+      presencas: Number(jogadorPerfil?.historicoPresencas) || 0,
+      forca: Number(jogadorPerfil?.nivel) || 3,
+      historicoSuficiente: false,
+      serie: [],
+      evolucao: 0,
+    };
+
+  const presencasRecentes = Object.entries(jogadorPerfil?.presencas || {})
+    .sort(([a], [b]) => b.localeCompare(a))
+    .slice(0, 8);
+
+  const partidasRecentes = historicoTimes
+    .filter((sorteio) => (sorteio.times || []).some((t) => idsJogadoresDoTime(t).includes(jogadorPerfil?.id)))
+    .map((sorteio) => {
+      const times = sorteio.times || [];
+      const idx = times.findIndex((t) => idsJogadoresDoTime(t).includes(jogadorPerfil.id));
+      const confrontos = confrontosDoSorteio(sorteio) || [];
+      const vitorias = confrontos
+        .filter((c) => c.a === idx).reduce((s, c) => s + (Number(c.vitoriasA) || 0), 0)
+        + confrontos.filter((c) => c.b === idx).reduce((s, c) => s + (Number(c.vitoriasB) || 0), 0);
+      const derrotas = confrontos
+        .filter((c) => c.a === idx).reduce((s, c) => s + (Number(c.vitoriasB) || 0), 0)
+        + confrontos.filter((c) => c.b === idx).reduce((s, c) => s + (Number(c.vitoriasA) || 0), 0);
+      return { data: sorteio.data, dia: sorteio.dia, time: `Time ${idx + 1}`, vitorias, derrotas };
+    })
+    .slice(0, 8);
+
+  const tendenciaPerfil = painelPerfil.evolucao;
+  const corFlecha = tendenciaPerfil > 0.05 ? '#34d399' : tendenciaPerfil < -0.05 ? '#f87171' : '#94a3b8';
+
+  const salvarAvatar = async (url) => {
+    if (!jogadorPerfil) return;
+    setSalvandoAvatar(true);
+    try {
+      await updateJogador(jogadorPerfil.id, { avatar: (url ?? avatarSel).trim() }, activeGroupId);
+      if (url !== undefined) setAvatarSel(url);
+      setUrlInput('');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Pronto', (url ?? avatarSel).trim() ? 'Avatar salvo com sucesso!' : 'Avatar removido.');
+    } catch (e) {
+      Alert.alert('Erro ao salvar avatar', e.message);
+    } finally {
+      setSalvandoAvatar(false);
+    }
+  };
 
   const handleGerarTeste = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -261,6 +342,7 @@ export default function AdminScreen() {
         ...novoJogador,
         celular: celularFinal,
         dataNascimento: dataNascFinal,
+        avatar: (urlInput.trim() || avatarSel || '').trim(),
         groupId: activeGroupId,
         presencas: {},
         presencaAtual: 'Falta', // Mantido por compatibilidade
@@ -298,6 +380,8 @@ export default function AdminScreen() {
     });
     setEditandoOriginal({ celular: j.celular, dataNascimento: j.dataNascimento || '' });
     setEditandoId(j.id);
+    setUrlInput('');
+    setAvatarSel('');
   };
 
   return (
@@ -450,6 +534,175 @@ export default function AdminScreen() {
               </View>
             )}
 
+            {editandoId && jogadorPerfil && (
+              <View className="border-t border-white/5 pt-5 space-y-4">
+                <View className="flex-row items-center gap-4">
+                  <Avatar jogador={{ ...jogadorPerfil, avatar: avatarSel }} size={72} />
+                  <View className="flex-1">
+                    <View className="flex-row items-center gap-2 mb-2">
+                      <FontAwesome5 name="user-circle" size={13} color="#22d3ee" />
+                      <Text className="text-cyan-400 font-bold text-[10px] uppercase tracking-widest">Perfil & Avatar</Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => setAvatarSel(gerarAvatarAleatorio())}
+                      className="self-start flex-row items-center gap-2 bg-violet-600 px-4 py-2 rounded-xl"
+                    >
+                      <FontAwesome5 name="random" size={12} color="#fff" />
+                      <Text className="text-white font-extrabold text-[10px] uppercase tracking-wider">Gerar aleatório</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <View>
+                  <Text className="text-slate-400 font-black text-[9px] uppercase tracking-widest mb-2 ml-1 flex-row items-center">
+                    <FontAwesome5 name="link" size={11} color="#22d3ee" />  Usar uma foto por link
+                  </Text>
+                  <TextInput
+                    value={urlInput}
+                    onChangeText={setUrlInput}
+                    placeholder="https://exemplo.com/minha-foto.jpg"
+                    placeholderTextColor="#475569"
+                    autoCapitalize="none"
+                    className="bg-slate-900/60 border border-white/5 rounded-2xl px-4 py-3 text-white text-sm mb-2"
+                  />
+                  <View className="flex-row gap-2">
+                    <TouchableOpacity
+                      onPress={() => urlInput.trim() && salvarAvatar(urlInput.trim())}
+                      disabled={!urlInput.trim() || salvandoAvatar}
+                      className={`flex-1 rounded-2xl py-3 items-center ${urlInput.trim() && !salvandoAvatar ? 'bg-cyan-600' : 'bg-slate-700/60'}`}
+                    >
+                      <Text className="text-white font-extrabold text-[10px] uppercase tracking-wider">
+                        {salvandoAvatar ? 'Salvando...' : 'Usar esta foto'}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => salvarAvatar()}
+                      disabled={salvandoAvatar}
+                      className="flex-1 rounded-2xl py-3 items-center bg-emerald-500"
+                    >
+                      <Text className="text-white font-extrabold text-[10px] uppercase tracking-wider">
+                        {salvandoAvatar ? 'Salvando...' : 'Salvar'}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => salvarAvatar('')}
+                      disabled={salvandoAvatar}
+                      className="flex-1 rounded-2xl py-3 items-center bg-slate-800/60 border border-white/10"
+                    >
+                      <Text className="text-rose-400 font-extrabold text-[10px] uppercase tracking-wider">Remover</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Análise do jogador */}
+                <View>
+                  <View className="flex-row items-center justify-between mb-1">
+                    <View className="flex-row items-center gap-2">
+                      <FontAwesome5 name="chart-bar" size={13} color="#22d3ee" />
+                      <Text className="text-white font-bold text-xs">Análise do jogador</Text>
+                    </View>
+                    {!painelPerfil.historicoSuficiente && (
+                      <Text className="text-[7px] font-extrabold uppercase text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
+                        insuficiente
+                      </Text>
+                    )}
+                  </View>
+                  <Text className="text-slate-500 text-[9px] mb-3">
+                    {painelPerfil.historicoSuficiente
+                      ? 'Baseada nas partidas concluídas, presença e força estimada.'
+                      : 'Continue jogando para estimar sua força com confiança a partir de 8 partidas.'}
+                  </Text>
+                  <View className="flex-row flex-wrap justify-between mb-2">
+                    <View className="w-[48%] bg-slate-900/40 rounded-2xl p-3 border border-white/5 mb-2">
+                      <Text className="text-[8px] uppercase font-extrabold text-slate-500">Partidas</Text>
+                      <Text className="text-base font-black text-white">{painelPerfil.jogos || '—'}</Text>
+                      <Text className="text-[8px] font-bold text-slate-400">{painelPerfil.vitorias} vitória(s)</Text>
+                    </View>
+                    <View className="w-[48%] bg-slate-900/40 rounded-2xl p-3 border border-white/5 mb-2">
+                      <Text className="text-[8px] uppercase font-extrabold text-slate-500">Aproveitamento</Text>
+                      <Text className={`text-base font-black ${painelPerfil.aproveitamento >= 60 ? 'text-emerald-400' : painelPerfil.aproveitamento >= 40 ? 'text-cyan-300' : 'text-white'}`}>
+                        {painelPerfil.jogos ? `${painelPerfil.aproveitamento}%` : '—'}
+                      </Text>
+                      <Text className="text-[8px] font-bold text-slate-400">de vitórias</Text>
+                    </View>
+                    <View className="w-[48%] bg-slate-900/40 rounded-2xl p-3 border border-white/5">
+                      <Text className="text-[8px] uppercase font-extrabold text-slate-500">Presença</Text>
+                      <Text className="text-base font-black text-white">{painelPerfil.presencas}</Text>
+                      <Text className="text-[8px] font-bold text-slate-400">{painelPerfil.presencas === 1 ? 'presença' : 'presenças'}</Text>
+                    </View>
+                    <View className="w-[48%] bg-slate-900/40 rounded-2xl p-3 border border-white/5">
+                      <Text className="text-[8px] uppercase font-extrabold text-slate-500">Força estimada</Text>
+                      <Text className={`text-base font-black ${painelPerfil.historicoSuficiente ? 'text-cyan-300' : 'text-slate-600'}`}>
+                        {painelPerfil.historicoSuficiente ? `⭐ ${painelPerfil.forca.toFixed(1)}` : '—'}
+                      </Text>
+                      <Text className="text-[8px] font-bold text-slate-400">{painelPerfil.jogos ? `${painelPerfil.jogos} de 8 partidas` : 'na criação → 3.0'}</Text>
+                    </View>
+                  </View>
+                  <View className="flex-row items-center gap-2 bg-slate-900/40 rounded-2xl px-3 py-2.5 border border-white/5">
+                    <FontAwesome5 name="chart-line" size={12} color="#22d3ee" />
+                    <Text className="text-slate-300 font-bold text-[11px]">Evolução:</Text>
+                    {painelPerfil.serie.length ? (
+                      <>
+                        <FontAwesome5 name={tendenciaPerfil > 0.05 ? 'arrow-up' : tendenciaPerfil < -0.05 ? 'arrow-down' : 'minus'} size={9} color={corFlecha} />
+                        <Text className={`text-[10px] font-black ${tendenciaPerfil > 0.05 ? 'text-emerald-400' : tendenciaPerfil < -0.05 ? 'text-rose-400' : 'text-slate-500'}`}>
+                          {tendenciaPerfil === 0 ? '0.0' : `${tendenciaPerfil > 0 ? '+' : '−'}${Math.abs(tendenciaPerfil).toFixed(1)} pts`}
+                        </Text>
+                      </>
+                    ) : (
+                      <Text className="text-slate-600 text-[10px] font-bold">sem partidas suficientes ainda</Text>
+                    )}
+                  </View>
+                </View>
+
+                {/* Histórico do jogador */}
+                <View>
+                  <View className="flex-row items-center gap-2 mb-3">
+                    <FontAwesome5 name="history" size={13} color="#34d399" />
+                    <Text className="text-white font-bold text-xs">Histórico do jogador</Text>
+                  </View>
+
+                  <Text className="text-[9px] uppercase font-extrabold text-slate-500 mb-1.5">Presenças recentes</Text>
+                  {presencasRecentes.length === 0 ? (
+                    <Text className="text-slate-500 text-[10px] italic mb-3">Sem presenças registradas ainda.</Text>
+                  ) : (
+                    <View className="mb-3">
+                      {presencasRecentes.map(([data, status]) => (
+                        <View key={data} className="flex-row items-center justify-between py-1.5 border-b border-slate-800/60">
+                          <Text className="text-slate-300 font-bold text-[11px]">{formatarData(data)}</Text>
+                          <Text className={`text-[8px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${
+                            status === 'Confirmado' ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : 'text-rose-400 bg-rose-500/10 border-rose-500/20'
+                          }`}>
+                            {status || '—'}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  <Text className="text-[9px] uppercase font-extrabold text-slate-500 mb-1.5">Partidas recentes</Text>
+                  {partidasRecentes.length === 0 ? (
+                    <Text className="text-slate-500 text-[10px] italic">Ainda não participou de partidas concluídas.</Text>
+                  ) : (
+                    <View>
+                      {partidasRecentes.map((partida, i) => (
+                        <View key={`${partida.data}-${i}`} className="flex-row items-center justify-between py-1.5 border-b border-slate-800/60">
+                          <View className="flex-1 mr-2" style={{ minWidth: 0 }}>
+                            <Text className="text-slate-300 font-bold text-[11px]">{formatarData(partida.data)}</Text>
+                            <Text className="text-[8px] text-slate-500 font-bold">{partida.dia || ''} · {partida.time}</Text>
+                          </View>
+                          <Text className={`text-[9px] font-black ${
+                            partida.vitorias === partida.derrotas ? 'text-slate-400' : partida.vitorias > partida.derrotas ? 'text-emerald-400' : 'text-rose-400'
+                          }`}>
+                            {partida.vitorias}V · {partida.derrotas}D
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              </View>
+            )}
+
             <TouchableOpacity onPress={salvarJogador} className={`w-full py-4.5 rounded-2xl items-center shadow-lg active:scale-[0.98] ${editandoId ? 'bg-amber-500' : 'bg-purple-600'}`}>
               <Text className={`font-black text-sm uppercase tracking-widest ${editandoId ? 'text-slate-900' : 'text-white'}`}>
                 {editandoId ? 'Atualizar Jogador' : 'Salvar no Elenco'}
@@ -462,6 +715,8 @@ export default function AdminScreen() {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   setEditandoId(null);
                   setEditandoOriginal({ celular: '', dataNascimento: '' });
+                  setAvatarSel('');
+                  setUrlInput('');
                   setNovoJogador({
                     nome: '',
                     celular: '',
@@ -535,15 +790,18 @@ export default function AdminScreen() {
                 })
                 .map(j => (
                 <View key={j.id} className="bg-slate-900/60 p-5 rounded-3xl border border-white/5 flex-row justify-between items-center mb-3">
-                  <View className="flex-1 pr-4">
-                    <Text className="text-white font-black text-sm">{j.nome}</Text>
-                    <View className="flex-row items-center mt-1">
-                      {j.status === 'Inativo' && (
-                        <View className="bg-red-500/20 px-1.5 py-0.5 rounded mr-2 border border-red-500/30">
-                          <Text className="text-red-400 font-black text-[7px] uppercase tracking-tighter">Inativo</Text>
-                        </View>
-                      )}
-                      <Text className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">⭐ Nível {j.nivel || 3} • {j.tipo}</Text>
+                  <View className="flex-1 flex-row items-center">
+                    <Avatar jogador={j} size={40} />
+                    <View className="flex-1 pl-3 pr-2">
+                      <Text className="text-white font-black text-sm" numberOfLines={1}>{j.nome}</Text>
+                      <View className="flex-row items-center mt-1">
+                        {j.status === 'Inativo' && (
+                          <View className="bg-red-500/20 px-1.5 py-0.5 rounded mr-2 border border-red-500/30">
+                            <Text className="text-red-400 font-black text-[7px] uppercase tracking-tighter">Inativo</Text>
+                          </View>
+                        )}
+                        <Text className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">⭐ Nível {j.nivel || 3} • {j.tipo}</Text>
+                      </View>
                     </View>
                   </View>
                   <TouchableOpacity onPress={() => prepararEdicao(j)} className="bg-slate-800/80 w-11 h-11 rounded-2xl items-center justify-center border border-white/5">
