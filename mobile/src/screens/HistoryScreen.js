@@ -1,10 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Animated } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
-import { subscribeLogs } from '../services/historyService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { subscribeLogs, limparLogsAntigos } from '../services/historyService';
 import { useSession } from '../context/SessionContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
+
+const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+const MESES_RETENCAO = 3;
+const mesAtual = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+const rotularMes = (mes) => {
+  const [a, m] = (mes || '').split('-');
+  if (!a || !m) return mes || '';
+  return `${MESES[Number(m) - 1]} de ${a}`;
+};
+const somarMes = (mes, delta) => {
+  const [a, m] = (mes || '').split('-').map(Number);
+  const d = new Date(a, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
+const mesMinimo = () => somarMes(mesAtual(), -(MESES_RETENCAO - 1));
 
 export default function HistoryScreen() {
   const insets = useSafeAreaInsets();
@@ -12,6 +28,7 @@ export default function HistoryScreen() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState('');
+  const [mes, setMes] = useState(mesAtual());
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(20));
 
@@ -24,7 +41,7 @@ export default function HistoryScreen() {
     }, (err) => {
       console.error(err);
       setLoading(false);
-    });
+    }, mes);
 
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
@@ -32,6 +49,15 @@ export default function HistoryScreen() {
     ]).start();
 
     return () => unsub();
+  }, [activeGroupId, mes]);
+
+  useEffect(() => {
+    if (!activeGroupId) return;
+    const chave = `voleizin_logs_limpos_${activeGroupId}_${mesAtual()}`;
+    AsyncStorage.getItem(chave).then((feito) => {
+      if (feito) return;
+      limparLogsAntigos(activeGroupId).finally(() => AsyncStorage.setItem(chave, '1'));
+    });
   }, [activeGroupId]);
 
   const filteredLogs = logs.filter(log => {
@@ -86,6 +112,33 @@ export default function HistoryScreen() {
                   <FontAwesome5 name="times-circle" size={16} color="#475569" />
                 </TouchableOpacity>
               )}
+            </View>
+
+            {/* Navegação por mês (máx. 3 meses) */}
+            <View className="flex-row items-center justify-between bg-slate-800/60 rounded-2xl border border-white/5 px-2 py-1.5 mb-6">
+              <TouchableOpacity
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); if (mes !== mesMinimo()) setMes(somarMes(mes, -1)); }}
+                disabled={mes === mesMinimo()}
+                className={`p-2 rounded-xl ${mes === mesMinimo() ? 'opacity-30' : ''}`}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <FontAwesome5 name="chevron-left" size={14} color="#94a3b8" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setMes(mesAtual()); }}
+                className="p-2"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text className="text-white font-extrabold text-[11px] uppercase tracking-wider text-center">{rotularMes(mes)}</Text>
+                <Text className="text-cyan-400 text-[8px] font-bold text-center uppercase mt-0.5">voltar ao atual</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setMes(somarMes(mes, 1)); }}
+                className="p-2 rounded-xl"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <FontAwesome5 name="chevron-right" size={14} color="#94a3b8" />
+              </TouchableOpacity>
             </View>
 
             {loading ? (

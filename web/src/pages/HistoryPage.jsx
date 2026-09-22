@@ -1,12 +1,33 @@
 import React, { useState, useEffect } from 'react';
-import { History, Clock, ShieldAlert, DollarSign, UserPlus, CheckCircle2, Search } from 'lucide-react';
+import { History, Clock, ShieldAlert, DollarSign, UserPlus, CheckCircle2, Search, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
 import { useSession } from '../context/SessionContext';
-import { subscribeLogs } from '../services/historyService';
+import { subscribeLogs, limparLogsAntigos } from '../services/historyService';
+
+const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+
+const mesAtual = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+const rotularMes = (mes) => {
+  const [a, m] = (mes || '').split('-');
+  if (!a || !m) return mes || '—';
+  return `${MESES[Number(m) - 1]} de ${a}`;
+};
+
+const somarMes = (mes, delta) => {
+  const [a, m] = (mes || '').split('-').map(Number);
+  const d = new Date(a, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
+
+// Retenção/análise: apenas 3 meses (atual e 2 anteriores).
+const MESES_RETENCAO = 3;
+const mesMinimo = () => somarMes(mesAtual(), -(MESES_RETENCAO - 1));
 
 export default function HistoryPage() {
   const { activeGroupId } = useSession();
   const [logs, setLogs] = useState([]);
   const [categoriaFiltro, setCategoriaFiltro] = useState('TODAS');
+  const [mes, setMes] = useState(mesAtual());
   const [busca, setBusca] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -15,8 +36,15 @@ export default function HistoryPage() {
     const unsub = subscribeLogs(activeGroupId, (list) => {
       setLogs(list);
       setLoading(false);
-    });
+    }, undefined, mes);
     return () => unsub();
+  }, [activeGroupId, mes]);
+
+  useEffect(() => {
+    if (!activeGroupId) return;
+    const chave = `voleizin_logs_limpos_${activeGroupId}_${mesAtual()}`;
+    if (localStorage.getItem(chave)) return;
+    limparLogsAntigos(activeGroupId).finally(() => localStorage.setItem(chave, '1'));
   }, [activeGroupId]);
 
   const categorias = ['TODAS', 'SISTEMA', 'FINANCEIRO', 'CADASTRO', 'PRESENÇA'];
@@ -84,6 +112,35 @@ export default function HistoryPage() {
               {cat}
             </button>
           ))}
+        </div>
+
+        {/* Navegação por mês (máx. 3 meses) */}
+        <div className="flex items-center justify-between gap-3 bg-slate-800 p-1.5 rounded-2xl border border-slate-700">
+          <button
+            onClick={() => mes !== mesMinimo() && setMes(somarMes(mes, -1))}
+            className={`p-2 rounded-xl transition-all ${
+              mes === mesMinimo() ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400 hover:text-white hover:bg-slate-700'
+            }`}
+            aria-label="Mês anterior"
+            disabled={mes === mesMinimo()}
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setMes(mesAtual())}
+            className="flex items-center space-x-2 text-slate-200 font-extrabold text-[11px] uppercase tracking-wider hover:text-cyan-300 transition-all"
+            title="Voltar ao mês atual"
+          >
+            <CalendarDays className="w-4 h-4 text-cyan-400" />
+            <span>{rotularMes(mes)}</span>
+          </button>
+          <button
+            onClick={() => setMes(somarMes(mes, 1))}
+            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-700 transition-all"
+            aria-label="Próximo mês"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
       </div>
 

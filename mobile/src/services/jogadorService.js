@@ -92,17 +92,19 @@ export const subscribeJogadores = (groupId, callback, errorCallback) => {
 
 export const registrarOperacaoFinanceira = async (tipo, valor, descricao, groupId, jogadorId = null) => {
   if (!groupId) throw new Error("ID do Grupo obrigatório!");
-  
+
+  const valorAssinado = tipo === 'SAIDA_DESPESA' ? -Math.abs(valor) : Math.abs(valor);
+
   const docRef = await addDoc(collection(db, FINANCEIRO_OP_COLLECTION), {
     tipo,
     groupId,
-    valor: tipo === 'SAIDA_DESPESA' ? -Math.abs(valor) : Math.abs(valor),
+    valor: valorAssinado,
     descricao: encryptData(descricao, groupId), // Criptografa descrição por segurança
     data: new Date().toISOString(),
     ...(jogadorId ? { jogadorId } : {})
   });
 
-  await registrarLog('FINANCEIRO', descricao, valor, groupId);
+  await registrarLog('FINANCEIRO', descricao, valorAssinado, groupId);
   return docRef;
 };
 
