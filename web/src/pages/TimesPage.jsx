@@ -408,6 +408,9 @@ export default function TimesPage() {
                 const local = { tipo: 'reserva', indice };
                 const isSel = estaSelecionado(local);
                 const jogador = jogadores.find((j) => j.id === id) || { id, nome: 'Jogador' };
+                const posicoesReserva = Array.isArray(jogador.posicoes) && jogador.posicoes.length
+                  ? jogador.posicoes
+                  : (typeof registro === 'string' ? [] : registro.posicoes || []);
                 const stat = infoJogador(jogador);
                 return (
                   <button
@@ -422,7 +425,14 @@ export default function TimesPage() {
                   >
                     <span className="flex items-center gap-2">
                       <Avatar jogador={jogador} size={24} />
-                      <span>{jogador.nome}{!stat.historicoSuficiente && <span className="text-amber-300/90 text-[9px] ml-1">· histórico insuficiente</span>}</span>
+                      <span className="flex-1">
+                        <span>{jogador.nome}{!stat.historicoSuficiente && <span className="text-amber-300/90 text-[9px] ml-1">· histórico insuficiente</span>}</span>
+                        <span className="block mt-1 text-[9px] text-cyan-200">
+                          {posicoesReserva.length
+                            ? `Posições: ${posicoesReserva.map((idPosicao) => POSICOES_QUADRA.find((posicao) => posicao.id === String(idPosicao))?.nome || `Posição ${idPosicao}`).join(' · ')}`
+                            : 'Posições não cadastradas'}
+                        </span>
+                      </span>
                     </span>
                   </button>
                 );
