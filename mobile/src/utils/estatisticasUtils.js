@@ -7,6 +7,40 @@
 // Jogos necessários para considerar o histórico de um atleta confiável.
 export const LIMIAR_HISTORICO = 8;
 
+// Ordem visual da quadra: frente (4, 6, 2) e fundo (5, 1, 3).
+export const POSICOES_QUADRA = [
+  { id: '4', nome: 'Ponta esquerda', descricao: 'Ataca pelas pontas e ajuda na recepção.' },
+  { id: '6', nome: 'Levantador', descricao: 'Organiza as jogadas e prepara os ataques.' },
+  { id: '2', nome: 'Ponta direita', descricao: 'Ataca pela direita e ajuda na recepção.' },
+  { id: '5', nome: 'Líbero', descricao: 'Especialista em defesa e recepção.' },
+  { id: '1', nome: 'Oposto', descricao: 'Principal atacante, especialmente pela saída de rede.' },
+  { id: '3', nome: 'Central', descricao: 'Bloqueia e faz ataques rápidos pelo meio.' },
+];
+
+export const POSICOES_POR_JOGADOR = 2;
+
+export const NOMES_TIMES = [
+  'Águias',
+  'Falcões',
+  'Araras',
+  'Tucanos',
+  'Corujas',
+  'Gaviões',
+  'Andorinhas',
+  'Beija-flores',
+  'Canários',
+  'Pavões',
+  'Sabiás',
+  'Pica-paus',
+];
+
+export const nomeDoTime = (time, indice) => {
+  if (time?.nome && !/^Time\s+\d+$/i.test(time.nome)) return time.nome;
+  const nomeAve = NOMES_TIMES[indice % NOMES_TIMES.length];
+  const repeticao = Math.floor(indice / NOMES_TIMES.length);
+  return repeticao ? `${nomeAve} ${repeticao + 1}` : nomeAve;
+};
+
 // Extrai os ids de um time persistido no Firestore (objeto ou string).
 export const idsJogadoresDoTime = (time) => (time.jogadores || []).map((j) => (typeof j === 'string' ? j : j.id));
 
@@ -29,6 +63,20 @@ export const confrontosDoSorteio = (sorteio) => {
     return [{ a: 0, b: 1, vitoriasA: Number(times[0].vitorias) || 0, vitoriasB: Number(times[1].vitorias) || 0 }];
   }
   return null;
+};
+
+export const formatarPlacarSorteio = (sorteio) => {
+  const times = sorteio.times || [];
+  const confrontos = confrontosDoSorteio(sorteio);
+  if (confrontos?.length) {
+    return confrontos.map((confronto) => (
+      `${nomeDoTime(times[confronto.a], confronto.a)} ${Number(confronto.vitoriasA) || 0}`
+      + ` × ${Number(confronto.vitoriasB) || 0} ${nomeDoTime(times[confronto.b], confronto.b)}`
+    )).join(' · ');
+  }
+  return times.map((time, indice) => (
+    `${nomeDoTime(time, indice)} ${Number(time.vitorias) || 0} vitórias`
+  )).join(' · ');
 };
 
 // Total de pontos marcados na rodada (soma de todos os confrontos/vitórias).
@@ -151,28 +199,80 @@ export const repeticaoDoTime = ({ parcerias, trios, chave, chaveTripla }, ids) =
 };
 
 // Sorteio equilibrado com variedade de parcerias (duplas e trios).
-export const equilibraTimes = (jogadores, historico, jogadoresPorTime) => {
+export const equilibraTimes = (jogadores, historico) => {
+  const jogadoresPorTime = POSICOES_QUADRA.length;
   const estatisticas = criarEstatisticas(historico);
   const parcerias = criarParcerias(historico);
   const quantidadeTimes = Math.floor(jogadores.length / jogadoresPorTime);
-  if (quantidadeTimes < 1) {
+  if (quantidadeTimes < 2) {
     return { times: [], reservas: jogadores, diagnostico: { poderes: [], jogadoresComHistorico: 0, repeticaoTotal: 0, variedadeAplicada: 0 } };
   }
 
-  const ordenados = [...jogadores]
-    .sort((a, b) => poderJogador(b, estatisticas) - poderJogador(a, estatisticas) || Math.random() - 0.5);
   const times = Array.from({ length: quantidadeTimes }, () => []);
   const poderes = Array(quantidadeTimes).fill(0);
+  const elegivel = (jogador, posicao) => !Array.isArray(jogador.posicoes) || jogador.posicoes.length === 0
+    || jogador.posicoes.map(String).includes(posicao.id);
+  const slots = times.flatMap((_, time) => POSICOES_QUADRA.map((posicao, indicePosicao) => ({
+    time, indicePosicao, posicao
+  })));
+  const elegiveisPorPosicao = POSICOES_QUADRA.map((posicao) => jogadores
+    .map((jogador, indice) => elegivel(jogador, posicao) ? indice : -1)
+    .filter((indice) => indice >= 0));
+  const slotPorJogador = Array(jogadores.length).fill(-1);
+  const jogadorPorSlot = Array(slots.length).fill(-1);
+  const pendentes = new Set(slots.map((_, indice) => indice));
 
-  // 1) Distribuição gulosa: menor poder, com leve penalidade para evitar parcerias repetidas.
-  ordenados.slice(0, quantidadeTimes * jogadoresPorTime).forEach((jogador) => {
-    const candidatos = poderes
-      .map((poder, i) => ({ poder: poder + Math.log1p(repeticaoDe(parcerias, jogador.id, times[i].map((m) => m.id))) * 1.2, i }))
-      .filter(({ i }) => times[i].length < jogadoresPorTime);
-    const indice = candidatos.reduce((a, b) => (b.poder < a.poder ? b : a)).i;
-    times[indice].push(jogador);
-    poderes[indice] += poderJogador(jogador, estatisticas);
-  });
+  const atribuirSlot = (indiceSlot, visitados) => {
+    const slot = slots[indiceSlot];
+    const candidatos = [...elegiveisPorPosicao[slot.indicePosicao]]
+      .sort((a, b) => poderJogador(jogadores[b], estatisticas) - poderJogador(jogadores[a], estatisticas) || Math.random() - 0.5);
+    for (const indiceJogador of candidatos) {
+      if (visitados.has(indiceJogador)) continue;
+      visitados.add(indiceJogador);
+      const slotAnterior = slotPorJogador[indiceJogador];
+      if (slotAnterior === -1 || atribuirSlot(slotAnterior, visitados)) {
+        slotPorJogador[indiceJogador] = indiceSlot;
+        jogadorPorSlot[indiceSlot] = indiceJogador;
+        return true;
+      }
+    }
+    return false;
+  };
+
+  while (pendentes.size) {
+    const indiceSlot = [...pendentes].sort((a, b) =>
+      elegiveisPorPosicao[slots[a].indicePosicao].length - elegiveisPorPosicao[slots[b].indicePosicao].length
+      || poderes[slots[a].time] - poderes[slots[b].time]
+      || Math.random() - 0.5
+    )[0];
+    pendentes.delete(indiceSlot);
+    if (!atribuirSlot(indiceSlot, new Set())) {
+      const insuficientes = POSICOES_QUADRA
+        .map((posicao, indice) => ({
+          ...posicao,
+          disponiveis: elegiveisPorPosicao[indice].length,
+          necessarios: quantidadeTimes,
+        }))
+        .filter((posicao) => posicao.disponiveis < posicao.necessarios)
+        .map((posicao) => `${posicao.nome} (${posicao.disponiveis}/${posicao.necessarios})`);
+      const detalhes = insuficientes.length
+        ? insuficientes.join(', ')
+        : 'as preferências cadastradas não permitem completar todas as posições';
+      const erro = new Error(`Não foi possível montar os times. Verifique: ${detalhes}.`);
+      erro.code = 'POSICOES_INSUFICIENTES';
+      throw erro;
+    }
+    times.forEach((time, indiceTime) => {
+      poderes[indiceTime] = 0;
+      time.length = 0;
+    });
+    jogadorPorSlot.forEach((indiceJogador, indice) => {
+      if (indiceJogador < 0) return;
+      const { time, indicePosicao } = slots[indice];
+      times[time][indicePosicao] = jogadores[indiceJogador];
+      poderes[time] += poderJogador(jogadores[indiceJogador], estatisticas);
+    });
+  }
 
   // 2) Ajuste de equilíbrio: trocas entre o time mais forte e o mais fraco.
   for (let tentativa = 0; tentativa < 80; tentativa += 1) {
@@ -181,6 +281,7 @@ export const equilibraTimes = (jogadores, historico, jogadoresPorTime) => {
     let melhor = null;
     let diferenca = poderes[forte] - poderes[fraco];
     times[forte].forEach((a, ia) => times[fraco].forEach((b, ib) => {
+      if (ia !== ib) return;
       const nova = Math.abs(
         (poderes[forte] - poderJogador(a, estatisticas) + poderJogador(b, estatisticas)) -
         (poderes[fraco] - poderJogador(b, estatisticas) + poderJogador(a, estatisticas))
@@ -204,6 +305,7 @@ export const equilibraTimes = (jogadores, historico, jogadoresPorTime) => {
       for (let j = i + 1; j < times.length; j += 1) {
         if (Math.abs(poderes[i] - poderes[j]) > limiteEquilibrio) continue;
         times[i].forEach((a, ia) => times[j].forEach((b, ib) => {
+          if (ia !== ib) return;
           const novaDiff = Math.abs(
             (poderes[i] - poderJogador(a, estatisticas) + poderJogador(b, estatisticas)) -
             (poderes[j] - poderJogador(b, estatisticas) + poderJogador(a, estatisticas))
@@ -233,7 +335,9 @@ export const equilibraTimes = (jogadores, historico, jogadoresPorTime) => {
 
   return {
     times,
-    reservas: ordenados.slice(quantidadeTimes * jogadoresPorTime),
+    reservas: jogadores
+      .filter((_, indice) => slotPorJogador[indice] === -1)
+      .sort((a, b) => poderJogador(b, estatisticas) - poderJogador(a, estatisticas) || Math.random() - 0.5),
     diagnostico: {
       poderes: poderes.map((p) => Math.round(p * 10) / 10),
       jogadoresComHistorico: Object.keys(estatisticas).length,

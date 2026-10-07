@@ -2,11 +2,10 @@
   "expo": {
     "name": "Voleizin Dos Cria",
     "slug": "voleizin-dos-cria",
-    "version": "1.0.18",
+    "version": "1.0.20",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": false,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.voleizindoscria.app",
@@ -45,7 +44,8 @@
             "image": "./assets/splash-icon.png"
           }
         }
-      ]
+      ],
+      "expo-font"
     ]
   }
 }

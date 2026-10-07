@@ -147,6 +147,12 @@ O workflow de atualização OTA usa o ambiente `preview` do próprio Expo. Assim
 
 Depois de cadastrá-las, faça uma nova build `preview`, instale o novo APK e publique uma OTA somente após conferir que o workflow concluiu sem erro.
 
+### Erro "Failed to download remote update"
+
+Se o aplicativo instalado mostrar `Failed to download remote update`, confira a conexão e se há uma atualização publicada no canal `preview`. Uma resposta `NO_UPDATE_AVAILABLE` significa apenas que não existe OTA compatível disponível naquele momento; não é, por si só, falha de configuração.
+
+Quando forem alterados módulos nativos do Expo, como `expo-updates`, é necessário gerar e instalar um APK novo — uma OTA atualiza apenas o JavaScript e não substitui os componentes nativos do aplicativo. Antes de gerar a build, rode `npx expo install --fix`, `npx -y expo-doctor` e `npm run lint`; confirme também que o workflow EAS concluiu a build e a publicação OTA. Se a build falhar por limite de uso do plano EAS, a OTA não será publicada por esse workflow.
+
 ### 4. Atualizações automáticas (Build + EAS Update)
 
 O workflow `.github/workflows/mobile-update.yml` roda a cada push na branch `main` com alterações em `mobile/` e:

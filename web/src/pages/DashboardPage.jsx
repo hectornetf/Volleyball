@@ -7,7 +7,7 @@ import { useSession } from '../context/SessionContext';
 import { subscribeJogadores, getSaldoGlobalEquipamentos, getConfigFinanceira, getPagamentosAvulsosDoMes } from '../services/jogadorService';
 import { carregarHistoricoTimes } from '../services/teamDrawService';
 import { computarFechamento } from '../utils/financeiroUtils';
-import { montarPainelEstatisticas } from '../utils/estatisticasUtils';
+import { formatarPlacarSorteio, montarPainelEstatisticas } from '../utils/estatisticasUtils';
 import Avatar from '../components/Avatar';
 
 const diasDaSemana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
@@ -346,7 +346,7 @@ export default function DashboardPage({ setActiveTab }) {
               <div className="space-y-2">
                 {historicoTimes.slice(0, 8).map((partida) => {
                   const totalJogadores = (partida.times || []).reduce((acc, t) => acc + (t.jogadores || []).length, 0);
-                  const placar = (partida.times || []).map((t) => Number(t.vitorias) || 0).join(' x ');
+                  const placar = formatarPlacarSorteio(partida);
                   const dataFormatada = partida.data
                     ? `${partida.data.slice(8, 10)}/${partida.data.slice(5, 7)}/${partida.data.slice(0, 4)}`
                     : '';
@@ -358,7 +358,7 @@ export default function DashboardPage({ setActiveTab }) {
                           {dataFormatada} · {(partida.times || []).length} times · {totalJogadores} jogadores
                         </p>
                       </div>
-                      <span className="text-emerald-400 font-black text-xs whitespace-nowrap">{placar}</span>
+                      <span className="text-emerald-400 font-black text-xs text-right">{placar}</span>
                     </div>
                   );
                 })}

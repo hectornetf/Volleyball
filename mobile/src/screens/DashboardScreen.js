@@ -10,7 +10,7 @@ import { subscribeJogadores, getSaldoGlobalEquipamentos, getConfigFinanceira, ge
 import { carregarHistoricoTimes } from '../services/teamDrawService';
 import { useSession } from '../context/SessionContext';
 import { computarFechamento } from '../utils/financeiroUtils';
-import { montarPainelEstatisticas } from '../utils/estatisticasUtils';
+import { formatarPlacarSorteio, montarPainelEstatisticas } from '../utils/estatisticasUtils';
 import Avatar from '../components/Avatar';
 
 export default function DashboardScreen() {
@@ -476,7 +476,7 @@ const saldo = await getSaldoGlobalEquipamentos(activeGroupId);
             <View className="space-y-2">
               {historicoTimes.slice(0, 8).map((partida) => {
                 const totalJogadores = (partida.times || []).reduce((acc, t) => acc + (t.jogadores || []).length, 0);
-                const placar = (partida.times || []).map((t) => Number(t.vitorias) || 0).join(' x ');
+                const placar = formatarPlacarSorteio(partida);
                 const dataFormatada = partida.data
                   ? `${partida.data.slice(8, 10)}/${partida.data.slice(5, 7)}/${partida.data.slice(0, 4)}`
                   : '';
@@ -488,7 +488,7 @@ const saldo = await getSaldoGlobalEquipamentos(activeGroupId);
                         {dataFormatada} · {(partida.times || []).length} times · {totalJogadores} jogadores
                       </Text>
                     </View>
-                    <Text className="text-emerald-400 font-black text-xs">{placar}</Text>
+                    <Text className="text-emerald-400 font-black text-xs text-right flex-1">{placar}</Text>
                   </View>
                 );
               })}

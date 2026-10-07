@@ -6,8 +6,9 @@ import {
 import { useSession } from '../context/SessionContext';
 import { subscribeJogadores } from '../services/jogadorService';
 import { carregarHistoricoTimes, concluirSorteio, salvarSorteio, subscribeSorteioAberto, trocarJogadoresDoSorteio } from '../services/teamDrawService';
-import { criarEstatisticas, equilibraTimes, estatisticaJogador, gerarConfrontos } from '../utils/estatisticasUtils';
+import { criarEstatisticas, equilibraTimes, estatisticaJogador, gerarConfrontos, POSICOES_QUADRA, nomeDoTime } from '../utils/estatisticasUtils';
 import Avatar from '../components/Avatar';
+import PlayerFigure from '../components/PlayerFigure';
 
 const dias = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 const diaAtual = () => dias[[6, 0, 1, 2, 3, 4, 5][new Date().getDay()]] || 'Segunda';
@@ -40,7 +41,7 @@ export default function TimesPage() {
   const [sorteio, setSorteio] = useState(null);
   const [confrontos, setConfrontos] = useState([]);
   const [historico, setHistorico] = useState([]);
-  const [jogadoresPorTime, setJogadoresPorTime] = useState(6);
+  const jogadoresPorTime = POSICOES_QUADRA.length;
   const [selecao, setSelecao] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
@@ -68,11 +69,21 @@ export default function TimesPage() {
   const dataJogo = descobrirProximaData(dia);
 
   const confirmados = useMemo(() => jogadores.filter((j) => j.presencas?.[dataJogo] === 'Confirmado'), [jogadores, dataJogo]);
+  const quantidadeTimesPossiveis = Math.floor(confirmados.length / jogadoresPorTime);
+  const jogadoresSemPosicoes = confirmados.filter((j) => !Array.isArray(j.posicoes) || j.posicoes.length === 0).length;
+  const coberturaPosicoes = POSICOES_QUADRA.map((posicao) => ({
+    ...posicao,
+    disponiveis: confirmados.filter((j) => !Array.isArray(j.posicoes) || j.posicoes.length === 0 || j.posicoes.map(String).includes(posicao.id)).length,
+  }));
+  const posicoesSemCobertura = coberturaPosicoes.filter((posicao) => posicao.disponiveis < quantidadeTimesPossiveis);
   const estatisticas = useMemo(() => criarEstatisticas(historico), [historico]);
   const infoJogador = (jogador) => estatisticaJogador(jogador, estatisticas);
-  const times = useMemo(() => (sorteio?.times || []).map((time) => time.jogadores.map((registro) => {
+  const times = useMemo(() => (sorteio?.times || []).map((time) => time.jogadores.map((registro, indice) => {
     const id = typeof registro === 'string' ? registro : registro.id;
-    return jogadores.find((j) => j.id === id) || { ...(typeof registro === 'string' ? { id } : registro), nome: 'Jogador removido', nivel: registro.nivelNoSorteio };
+    return {
+      ...(jogadores.find((j) => j.id === id) || { ...(typeof registro === 'string' ? { id } : registro), nome: 'Jogador removido', nivel: registro.nivelNoSorteio }),
+      posicaoId: typeof registro === 'string' ? POSICOES_QUADRA[indice]?.id : registro.posicaoId || POSICOES_QUADRA[indice]?.id,
+    };
   })), [sorteio, jogadores]);
 
   const vitoriasDoTime = (indice) => confrontos.reduce((soma, c) => soma + (c.a === indice ? Number(c.vitoriasA) || 0 : c.b === indice ? Number(c.vitoriasB) || 0 : 0), 0);
@@ -83,14 +94,20 @@ export default function TimesPage() {
       alert(`Faltam atletas: são necessários pelo menos ${jogadoresPorTime * 2} confirmados para formar dois times de ${jogadoresPorTime}.`);
       return;
     }
+    if (posicoesSemCobertura.length) {
+      alert(`Faltam jogadores para cobrir as posições em ${quantidadeTimesPossiveis} time(s): ${posicoesSemCobertura.map((p) => `${p.nome} (${p.disponiveis}/${quantidadeTimesPossiveis})`).join(', ')}.`);
+      return;
+    }
     setSalvando(true);
     try {
       const dadosHistoricos = await carregarHistoricoTimes(activeGroupId);
       setHistorico(dadosHistoricos);
-      const resultado = equilibraTimes(confirmados, dadosHistoricos, jogadoresPorTime);
+      const resultado = equilibraTimes(confirmados, dadosHistoricos);
       await salvarSorteio({ groupId: activeGroupId, dia, dataJogo, ...resultado });
-    } catch (_) {
-      alert('Não foi possível salvar o sorteio. Verifique sua conexão e tente novamente.');
+    } catch (err) {
+      alert(err.code === 'POSICOES_INSUFICIENTES'
+        ? err.message
+        : 'Não foi possível salvar o sorteio. Verifique sua conexão e tente novamente.');
     } finally {
       setSalvando(false);
     }
@@ -113,8 +130,10 @@ export default function TimesPage() {
     setSalvando(true);
     try {
       await trocarJogadoresDoSorteio(sorteio.id, selecao, local, activeGroupId);
-    } catch (_) {
-      alert('Não foi possível alterar a escalação. Tente novamente.');
+    } catch (err) {
+      alert(err.code === 'POSICAO_INCOMPATIVEL'
+        ? err.message
+        : 'Não foi possível alterar a escalação. Tente novamente.');
     } finally {
       setSalvando(false);
       setSelecao(null);
@@ -124,7 +143,7 @@ export default function TimesPage() {
   const estaSelecionado = (local) => selecao && selecao.tipo === local.tipo && selecao.indice === local.indice && selecao.posicao === local.posicao;
 
   const whatsapp = () => {
-    const texto = times.map((time, i) => `*Time ${i + 1}*\n${time.map((j) => `- ${j.nome} (Nível ${j.nivel || 3})`).join('\n')}`).join('\n\n');
+    const texto = times.map((time, i) => `*${nomeDoTime(sorteio?.times?.[i], i)}*\n${time.map((j) => `- ${j.posicaoId ? `${POSICOES_QUADRA.find((p) => p.id === j.posicaoId)?.nome || `Posição ${j.posicaoId}`}: ` : ''}${j.nome} (Nível ${j.nivel || 3})`).join('\n')}`).join('\n\n');
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`🏐 *VOLEIZIN: TIMES SORTEADOS*\n\n${texto}\n\nAcesse: https://voleizindoscria.vercel.app/`)}`, '_blank');
   };
 
@@ -179,32 +198,24 @@ export default function TimesPage() {
       <div className="bg-slate-800/40 p-6 rounded-3xl border border-slate-700/40">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-white text-base font-black">Jogadores por time</h2>
-            <p className="text-slate-400 text-xs mt-1">Defina o formato da rodada.</p>
+            <h2 className="text-white text-base font-black">Formação 6 × 6</h2>
+            <p className="text-slate-400 text-xs mt-1">Cada equipe terá uma vaga para cada posição da quadra.</p>
           </div>
-          <div className="flex items-center bg-slate-900 rounded-xl overflow-hidden">
-            <button
-              disabled={!!sorteio || jogadoresPorTime <= 1}
-              onClick={() => setJogadoresPorTime((valor) => Math.max(1, valor - 1))}
-              className="px-4 py-3 text-white font-black text-lg disabled:opacity-30 hover:bg-slate-800 transition-colors"
-            >
-              −
-            </button>
-            <span className="text-cyan-300 font-black text-lg w-8 text-center">{jogadoresPorTime}</span>
-            <button
-              disabled={!!sorteio}
-              onClick={() => setJogadoresPorTime((valor) => valor + 1)}
-              className="px-4 py-3 text-white font-black text-lg disabled:opacity-30 hover:bg-slate-800 transition-colors"
-            >
-              +
-            </button>
-          </div>
+          <span className="bg-slate-900 text-cyan-300 font-black text-lg px-4 py-2 rounded-xl">6 posições</span>
         </div>
         <p className="text-cyan-100 text-xs leading-5 mt-4">
-          {confirmados.length} confirmados: {Math.floor(confirmados.length / jogadoresPorTime)} time(s) completo(s)
+          {confirmados.length} confirmados: {quantidadeTimesPossiveis} time(s) completo(s)
           {confirmados.length % jogadoresPorTime ? ` e ${confirmados.length % jogadoresPorTime} reserva(s)` : ''}.
-          O cálculo usa o nível atual, os resultados anteriores (com nota de confiança) e evita repetir duplas e trios.
+          A quadra segue as posições 4 · 6 · 2 na frente e 5 · 1 · 3 atrás; o sorteio equilibra os níveis e evita repetir parcerias.
         </p>
+        {jogadoresSemPosicoes > 0 && <p className="text-amber-300 text-xs mt-2">{jogadoresSemPosicoes} atleta(s) sem posições cadastradas serão considerados aptos a qualquer vaga até atualizar o cadastro.</p>}
+        {quantidadeTimesPossiveis > 0 && (
+          <p className={`text-xs mt-3 ${posicoesSemCobertura.length ? 'text-rose-300' : 'text-emerald-300'}`}>
+            {posicoesSemCobertura.length
+              ? `Cobertura insuficiente: ${posicoesSemCobertura.map((p) => `${p.nome} ${p.disponiveis}/${quantidadeTimesPossiveis}`).join(' · ')}`
+              : 'Há jogadores disponíveis para cobrir todas as posições.'}
+          </p>
+        )}
         <button
           onClick={gerar}
           disabled={salvando || !!sorteio}
@@ -218,13 +229,26 @@ export default function TimesPage() {
         </button>
       </div>
 
+      <section className="bg-slate-900/70 p-5 rounded-3xl border border-slate-800" aria-labelledby="guia-posicoes">
+        <h2 id="guia-posicoes" className="text-white text-sm font-black uppercase tracking-wide">Guia rápido das posições</h2>
+        <p className="text-slate-400 text-xs mt-1 mb-4">Os números indicam o lugar no rodízio. A frente fica perto da rede; o fundo fica mais distante.</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {POSICOES_QUADRA.map((posicao) => (
+            <div key={posicao.id} className="bg-slate-950/70 border border-slate-800 rounded-xl p-3">
+              <p className="text-cyan-300 text-xs font-black">{posicao.id} · {posicao.nome}</p>
+              <p className="text-slate-300 text-[11px] leading-4 mt-1">{posicao.descricao}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {sorteio && (
         <div>
           {/* Aviso de edição + WhatsApp + diagnóstico */}
           <div className="bg-indigo-500/10 border border-indigo-500/20 p-4 rounded-2xl mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <p className="text-indigo-200 text-xs font-bold flex items-center space-x-2">
               <ArrowRightLeft className="w-4 h-4 shrink-0" />
-              <span>Para ajustar: toque em um jogador e depois no atleta com quem deseja trocar. As equipes manterão a mesma quantidade de jogadores.</span>
+              <span>Para ajustar: toque em um jogador e depois no atleta com quem deseja trocar. As equipes manterão a mesma quantidade e as trocas respeitarão as posições cadastradas.</span>
             </p>
             <button
               onClick={whatsapp}
@@ -247,32 +271,91 @@ export default function TimesPage() {
           {times.map((time, indice) => (
             <div key={indice} className="bg-slate-800/60 rounded-3xl border border-slate-700/40 mb-4 overflow-hidden">
               <div className="p-4 bg-cyan-500/10 flex flex-col sm:flex-row justify-between gap-1">
-                <span className="text-cyan-300 font-black text-xs uppercase">Time {indice + 1} · {time.length} atletas</span>
+                <span className="text-cyan-300 font-black text-xs uppercase">{nomeDoTime(sorteio?.times?.[indice], indice)} · {time.length} atletas</span>
                 <span className="text-cyan-200 text-xs font-bold">Poder {poderes[indice] ?? '—'} · V {vitoriasDoTime(indice)}</span>
               </div>
-              <div className="p-4">
-                {time.map((j, posicao) => {
+              <div className={time.some((j) => j.posicaoId) ? 'p-2 sm:p-3 bg-cyan-950/40 border-x-2 border-b-2 border-white/70' : 'p-4'}>
+                {time.some((j) => j.posicaoId) && (
+                  <>
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="w-1.5 h-8 rounded-full bg-blue-500 shadow-sm shadow-blue-300/50" />
+                      <span
+                        aria-label="Rede de vôlei"
+                        className="relative flex-1 h-8 border-y-2 border-white/70"
+                        style={{
+                          backgroundImage: 'linear-gradient(rgba(255,255,255,.45) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.45) 1px, transparent 1px)',
+                          backgroundSize: '8px 6px',
+                        }}
+                      >
+                        <span className="absolute inset-x-0 top-1/2 -translate-y-1/2 bg-slate-950/80 text-white text-[8px] font-black uppercase tracking-[.25em] text-center">Rede</span>
+                      </span>
+                      <span className="w-1.5 h-8 rounded-full bg-blue-500 shadow-sm shadow-blue-300/50" />
+                    </div>
+                    <p className="text-center text-cyan-200 text-[9px] font-black uppercase tracking-widest mb-2">Frente · perto da rede</p>
+                  </>
+                )}
+                <div className={time.some((j) => j.posicaoId) ? 'grid grid-cols-3 gap-2' : ''}>
+                {time.slice(0, 3).map((j, posicao) => {
                   const local = { tipo: 'time', indice, posicao };
                   const isSel = estaSelecionado(local);
                   const stat = infoJogador(j);
+                  const role = POSICOES_QUADRA.find((item) => item.id === j.posicaoId);
                   return (
                     <button
                       key={j.id}
                       disabled={salvando}
                       onClick={() => selecionarJogador(local)}
-                      className={`w-full text-left p-3 rounded-xl mb-2 transition-all ${
+                      className={`w-full text-left p-2 sm:p-3 rounded-xl transition-all ${
                         isSel
                           ? 'bg-indigo-500 border border-indigo-300 text-white'
-                          : 'bg-slate-900/40 hover:bg-slate-900/70 border border-transparent'
+                          : 'bg-slate-900/70 hover:bg-slate-900 border border-white/5'
                       }`}
                     >
-                      <span className="flex items-center gap-2">
-                        <Avatar jogador={j} size={28} />
-                        <span className="text-slate-100 font-bold text-xs">{j.nome} <span className="text-amber-400">★ {j.nivel || 3}</span>{!stat.historicoSuficiente && <span className="text-amber-300/90 text-[9px] ml-1">· histórico insuficiente</span>}</span>
+                      <span className="flex flex-col items-center gap-1 text-center min-h-24 justify-center">
+                        {role && <span className="text-[9px] uppercase font-black text-cyan-300">{role.id} · {role.nome}</span>}
+                        <PlayerFigure posicaoId={role?.id || String(posicao + 1)} />
+                        <span className="text-slate-100 font-bold text-[10px] sm:text-xs break-words">{j.nome}</span>
+                        {role && <span className="text-slate-400 text-[8px] leading-3">{role.descricao}</span>}
+                        <span className="text-amber-400 text-[10px]">★ {j.nivel || 3}</span>
+                        {!stat.historicoSuficiente && <span className="text-amber-300/90 text-[8px]">histórico insuficiente</span>}
                       </span>
                     </button>
                   );
                 })}
+                </div>
+                {time.some((j) => j.posicaoId) && (
+                  <p className="text-center text-amber-100/80 text-[9px] font-black uppercase tracking-widest mb-2">Fundo · defesa e recepção</p>
+                )}
+                <div className={time.some((j) => j.posicaoId) ? 'grid grid-cols-3 gap-2' : ''}>
+                {time.slice(3).map((j, indiceFundo) => {
+                  const posicao = indiceFundo + 3;
+                  const local = { tipo: 'time', indice, posicao };
+                  const isSel = estaSelecionado(local);
+                  const stat = infoJogador(j);
+                  const role = POSICOES_QUADRA.find((item) => item.id === j.posicaoId);
+                  return (
+                    <button
+                      key={j.id}
+                      disabled={salvando}
+                      onClick={() => selecionarJogador(local)}
+                      className={`w-full text-left p-2 sm:p-3 rounded-xl transition-all ${
+                        isSel
+                          ? 'bg-indigo-500 border border-indigo-300 text-white'
+                          : 'bg-slate-900/70 hover:bg-slate-900 border border-white/5'
+                      }`}
+                    >
+                      <span className="flex flex-col items-center gap-1 text-center min-h-24 justify-center">
+                        {role && <span className="text-[9px] uppercase font-black text-cyan-300">{role.id} · {role.nome}</span>}
+                        <PlayerFigure posicaoId={role?.id || String(posicao + 1)} />
+                        <span className="text-slate-100 font-bold text-[10px] sm:text-xs break-words">{j.nome}</span>
+                        {role && <span className="text-slate-400 text-[8px] leading-3">{role.descricao}</span>}
+                        <span className="text-amber-400 text-[10px]">★ {j.nivel || 3}</span>
+                        {!stat.historicoSuficiente && <span className="text-amber-300/90 text-[8px]">histórico insuficiente</span>}
+                      </span>
+                    </button>
+                  );
+                })}
+                </div>
               </div>
             </div>
           ))}
@@ -288,7 +371,7 @@ export default function TimesPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {confrontos.map((confronto, indice) => (
                   <div key={`${confronto.a}-${confronto.b}`} className="bg-slate-900/40 p-3 rounded-xl flex items-center justify-between gap-2">
-                    <span className="text-slate-200 text-[10px] font-black shrink-0">Time {confronto.a + 1}</span>
+                    <span className="text-slate-200 text-[10px] font-black shrink-0">{nomeDoTime(sorteio?.times?.[confronto.a], confronto.a)}</span>
                     <div className="flex items-center gap-2">
                       <input
                         type="number"
@@ -306,7 +389,7 @@ export default function TimesPage() {
                         className="bg-slate-900 text-white text-center font-black w-14 py-2 rounded-xl border border-slate-700 focus:outline-none focus:border-cyan-500"
                       />
                     </div>
-                    <span className="text-slate-200 text-[10px] font-black shrink-0">Time {confronto.b + 1}</span>
+                    <span className="text-slate-200 text-[10px] font-black shrink-0">{nomeDoTime(sorteio?.times?.[confronto.b], confronto.b)}</span>
                   </div>
                 ))}
               </div>

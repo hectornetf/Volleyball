@@ -1,6 +1,6 @@
 {
   "name": "mobile",
-  "version": "1.0.18",
+  "version": "1.0.20",
   "main": "index.js",
   "scripts": {
     "start": "expo start",
@@ -14,18 +14,18 @@
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-navigation/bottom-tabs": "^7.15.9",
     "@react-navigation/native": "^7.2.2",
-    "babel-preset-expo": "~54.0.10",
+    "babel-preset-expo": "~57.0.0",
     "crypto-js": "^4.2.0",
-    "expo": "~57.0.20",
-    "expo-clipboard": "~57.0.1",
-    "expo-constants": "~57.0.17",
-    "expo-document-picker": "~57.0.1",
-    "expo-file-system": "~57.0.6",
-    "expo-font": "~57.0.2",
-    "expo-haptics": "~57.0.2",
-    "expo-splash-screen": "~57.0.8",
+    "expo": "~57.0.27",
+    "expo-clipboard": "~57.0.2",
+    "expo-constants": "~57.0.21",
+    "expo-document-picker": "~57.0.3",
+    "expo-file-system": "~57.0.7",
+    "expo-font": "~57.0.4",
+    "expo-haptics": "~57.0.3",
+    "expo-splash-screen": "~57.0.9",
     "expo-status-bar": "~57.0.1",
-    "expo-updates": "~57.0.21",
+    "expo-updates": "~57.0.25",
     "firebase": "^12.11.0",
     "nativewind": "^2.0.11",
     "react": "19.2.3",
@@ -46,5 +46,8 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-native": "^5.0.0",
     "prettier": "^3.8.1"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.13.6"
   }
 }

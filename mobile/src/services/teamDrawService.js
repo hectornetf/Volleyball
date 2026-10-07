@@ -1,7 +1,7 @@
 import { addDoc, collection, getDoc, getDocs, onSnapshot, query, updateDoc, doc, where } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { registrarLog } from './historyService';
-import { sorteioComPlacar } from '../utils/estatisticasUtils';
+import { sorteioComPlacar, POSICOES_QUADRA, nomeDoTime } from '../utils/estatisticasUtils';
 
 const COLLECTION = 'sorteios_times';
 const normalizar = (dados) => dados.docs.map((item) => ({ id: item.id, ...item.data() }));
@@ -36,8 +36,17 @@ export const salvarSorteio = async ({ groupId, dia, times, reservas, diagnostico
   const agora = new Date();
   const docRef = await addDoc(collection(db, COLLECTION), {
     groupId, dia, data: dataJogo || dataLocalHoje(), criadoEm: agora.toISOString(), concluido: false, diagnostico,
-    times: times.map((time, indice) => ({ nome: `Time ${indice + 1}`, jogadores: time.map((j) => ({ id: j.id, nivelNoSorteio: Number(j.nivel) || 3 })), vitorias: 0 })),
-    reservas: reservas.map((j) => j.id)
+    times: times.map((time, indice) => ({
+      nome: nomeDoTime(null, indice),
+      jogadores: time.map((j, posicao) => ({
+        id: j.id,
+        nivelNoSorteio: Number(j.nivel) || 3,
+        posicaoId: j.posicaoId || POSICOES_QUADRA[posicao].id,
+        ...(Array.isArray(j.posicoes) ? { posicoes: j.posicoes } : {}),
+      })),
+      vitorias: 0,
+    })),
+    reservas: reservas.map((j) => ({ id: j.id, ...(Array.isArray(j.posicoes) ? { posicoes: j.posicoes } : {}) }))
   });
   await registrarLog('SORTEIO', `Sorteio de ${dia} criado com ${times.length} times completos.`, 0, groupId);
   return docRef.id;
@@ -83,7 +92,7 @@ export const concluirSorteio = async (id, confrontos, groupId) => {
   await updateDoc(referencia, atualizacao);
 
   const resumo = listaConfrontos
-    ? `Time ${listaConfrontos[0].a + 1} ${listaConfrontos[0].vitoriasA} x ${listaConfrontos[0].vitoriasB} Time ${listaConfrontos[0].b + 1}${listaConfrontos.length > 1 ? ` (+${listaConfrontos.length - 1} confrontos)` : ''}`
+    ? `${nomeDoTime(times[listaConfrontos[0].a], listaConfrontos[0].a)} ${listaConfrontos[0].vitoriasA} x ${listaConfrontos[0].vitoriasB} ${nomeDoTime(times[listaConfrontos[0].b], listaConfrontos[0].b)}${listaConfrontos.length > 1 ? ` (+${listaConfrontos.length - 1} confrontos)` : ''}`
     : `${valoresLegados.join(' x ')} vitórias por time`;
   await registrarLog('PARTIDAS', `Resultados registrados por confronto: ${resumo}.`, 0, groupId);
 };
@@ -101,16 +110,40 @@ export const trocarJogadoresDoSorteio = async (id, origem, destino, groupId) => 
       const jogador = times[local.indice].jogadores[local.posicao];
       return typeof jogador === 'string' ? { id: jogador } : jogador;
     })();
-  const colocar = (local, valor) => {
-    // Reservas são persistidas apenas pelo ID; isso evita objetos duplicados no array.
-    if (local.tipo === 'reserva') reservas[local.indice] = valor.id;
-    else times[local.indice] = { ...times[local.indice], jogadores: times[local.indice].jogadores.map((j, i) => i === local.posicao ? valor : j) };
+  const posicaoDaEscala = (local) => local.tipo === 'time'
+    ? times[local.indice]?.jogadores?.[local.posicao]?.posicaoId
+    : null;
+  const jogadorPodeAtuarEm = (jogador, posicaoId) => !posicaoId
+    || !Array.isArray(jogador.posicoes)
+    || jogador.posicoes.length === 0
+    || jogador.posicoes.map(String).includes(String(posicaoId));
+  const colocar = (local, valor, posicaoId) => {
+    if (local.tipo === 'reserva') {
+      const jogadorReserva = { ...valor };
+      delete jogadorReserva.posicaoId;
+      reservas[local.indice] = jogadorReserva;
+    } else {
+      const jogadorEscalado = { ...valor };
+      if (posicaoId) jogadorEscalado.posicaoId = posicaoId;
+      else delete jogadorEscalado.posicaoId;
+      times[local.indice] = {
+        ...times[local.indice],
+        jogadores: times[local.indice].jogadores.map((j, i) => i === local.posicao ? jogadorEscalado : j),
+      };
+    }
   };
   const jogadorOrigem = pegar(origem);
   const jogadorDestino = pegar(destino);
   if (!jogadorOrigem || !jogadorDestino) throw new Error('Jogador não encontrado');
-  colocar(origem, jogadorDestino);
-  colocar(destino, jogadorOrigem);
+  const posicaoOrigem = posicaoDaEscala(origem);
+  const posicaoDestino = posicaoDaEscala(destino);
+  if (!jogadorPodeAtuarEm(jogadorOrigem, posicaoDestino) || !jogadorPodeAtuarEm(jogadorDestino, posicaoOrigem)) {
+    const erro = new Error('A troca não é possível: cada jogador precisa atuar na posição de destino.');
+    erro.code = 'POSICAO_INCOMPATIVEL';
+    throw erro;
+  }
+  colocar(origem, jogadorDestino, posicaoOrigem);
+  colocar(destino, jogadorOrigem, posicaoDestino);
   await updateDoc(referencia, { times, reservas, editadoEm: new Date().toISOString() });
   await registrarLog('SORTEIO', 'Escalação ajustada manualmente.', 0, groupId);
 };

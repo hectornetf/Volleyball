@@ -65,10 +65,10 @@ Para usar o endereço `https://voleizindoscria.vercel.app/`, o projeto Vercel de
 1. **Acesso por Código (`VO-XXXX`)**: Compartilhado com o App Mobile.
 2. **Dashboard**: Resumo geral, saldo do caixa, contagem de presenças e **Painel do Atleta** (partidas, aproveitamento, presença, força e evolução).
 3. **Presença em Tempo Real**: Chamada rápida (Confirmado/Falta) e diária de avulsos.
-4. **Sorteio de Times Equilibrados**: Algoritmo por nível (1 a 5) que evita duplas/trios repetidos, registra o **placar por confronto** (2 ou 3 times) e marca "histórico insuficiente" para quem tem menos de 8 jogos, com botão **Copiar para WhatsApp**.
+4. **Sorteio de Times Equilibrados**: Formação visual de seis posições (4 · 6 · 2 na frente; 5 · 1 · 3 atrás), com a função de cada posição descrita na escalação e em um guia. Respeita até duas posições cadastradas por atleta; cadastros antigos sem posições são tratados como flexíveis até serem atualizados. O sorteio equilibra nível (1 a 5), resultados anteriores e parcerias; avisa quando não há cobertura para completar as equipes, registra o **placar por confronto** e inclui as posições ao compartilhar no WhatsApp.
 5. **Financeiro & Rateios**: Cálculo automático de custo da quadra por dia da semana e caixa de equipamentos.
 6. **Histórico**: Log de auditoria em tempo real.
-7. **Admin de Jogadores**: Cadastro, edição de nível, ativação/desativação e ferramentas de simulação — **Gerar Amostra Completa de Teste PRO** (16 jogadores, 12 rodadas concluídas com placar por confronto, rodada aberta do dia, presenças, finanças e config) e **Resetar Todos os Dados** (limpa em lotes jogadores, rodadas, finanças e configurações).
+7. **Admin de Jogadores**: Cadastro de até duas posições por atleta, edição de nível, ativação/desativação e ferramentas de simulação — **Gerar Amostra Completa de Teste PRO** (16 jogadores com duas posições cada, times nomeados com aves, 12 rodadas concluídas com placar por confronto, rodada aberta do dia, presenças, finanças e config) e **Resetar Todos os Dados** (limpa em lotes jogadores, sorteios e históricos, finanças e configurações). Após o reset, gere a amostra novamente para recriar os dados de teste e os nomes dos times.
 
 ---
 
