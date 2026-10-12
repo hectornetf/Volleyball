@@ -48,3 +48,32 @@ export function computarFechamento(custos, elenco, mesRefStr, statusAtual) {
 
   return { dias, metaArrecadacao, totalArrecadadoMensalistas, statusGeral };
 }
+
+export function agruparPendenciasPorJogador(fechamento) {
+  const jogadores = new Map();
+  Object.entries(fechamento?.dias || {}).forEach(([dia, infoDia]) => {
+    infoDia.jogadores.forEach((jogador) => {
+      const resumo = jogadores.get(jogador.id) || {
+        id: jogador.id,
+        nome: jogador.nome,
+        total: 0,
+        totalPago: 0,
+        totalPendente: 0,
+        dias: [],
+        diasPagos: [],
+        diasPendentes: [],
+      };
+      resumo.total += infoDia.valorPorPessoa;
+      resumo.dias.push(dia);
+      if (jogador.mensalidadePaga) {
+        resumo.totalPago += infoDia.valorPorPessoa;
+        resumo.diasPagos.push(dia);
+      } else {
+        resumo.totalPendente += infoDia.valorPorPessoa;
+        resumo.diasPendentes.push(dia);
+      }
+      jogadores.set(jogador.id, resumo);
+    });
+  });
+  return [...jogadores.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+}

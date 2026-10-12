@@ -11,12 +11,20 @@ import {
   gerarDadosDeTestePro, resetDadosGrupo 
 } from '../services/jogadorService';
 import { carregarHistoricoTimes } from '../services/teamDrawService';
-import { montarPainelEstatisticas, idsJogadoresDoTime, confrontosDoSorteio } from '../utils/estatisticasUtils';
+import { montarPainelEstatisticas, idsJogadoresDoTime, confrontosDoSorteio, POSICOES_QUADRA, POSICOES_POR_JOGADOR, nomeDoTime } from '../utils/estatisticasUtils';
 import Avatar from '../components/Avatar';
 import { gerarAvatarAleatorio } from '../utils/avatarUtils';
 
 // Grupo oficial de demonstração: apenas nele os botões "Gerar Amostra" e "Resetar" aparecem.
 const TEST_GROUP_ID = 'VO-AAAAAA';
+const posicoesDoJogador = (jogador) => {
+  const valores = Array.isArray(jogador.posicoes) && jogador.posicoes.length > 0
+    ? jogador.posicoes
+    : [jogador.posicaoId ?? jogador.posicao].filter((id) => id !== undefined && id !== null);
+  return [...new Set(valores.map(String))]
+    .filter((id) => POSICOES_QUADRA.some((posicao) => posicao.id === id))
+    .slice(0, POSICOES_POR_JOGADOR);
+};
 
 const formatarData = (iso) => {
   const [a, m, d] = (iso || '').split('-');
@@ -89,6 +97,7 @@ export default function AdminPage() {
   const [formTipo, setFormTipo] = useState('MENSALISTA');
   const [formNivel, setFormNivel] = useState(3);
   const [formDias, setFormDias] = useState(['Segunda', 'Quarta']);
+  const [formPosicoes, setFormPosicoes] = useState([]);
 
   const diasDisponiveis = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 
@@ -147,7 +156,7 @@ export default function AdminPage() {
       const derrotas = confrontos
         .filter((c) => c.a === idx).reduce((s, c) => s + (Number(c.vitoriasB) || 0), 0)
         + confrontos.filter((c) => c.b === idx).reduce((s, c) => s + (Number(c.vitoriasA) || 0), 0);
-      return { data: sorteio.data, dia: sorteio.dia, time: `Time ${idx + 1}`, vitorias, derrotas };
+      return { data: sorteio.data, dia: sorteio.dia, time: nomeDoTime(times[idx], idx), vitorias, derrotas };
     })
     .slice(0, 8);
 
@@ -179,6 +188,7 @@ export default function AdminPage() {
     setFormTipo('MENSALISTA');
     setFormNivel(3);
     setFormDias(['Segunda', 'Quarta']);
+    setFormPosicoes([]);
     setEditingJogador(null);
     setModalNovo(false);
     setAvatarSel('');
@@ -192,6 +202,7 @@ export default function AdminPage() {
     setFormTipo(j.tipo || 'MENSALISTA');
     setFormNivel(j.nivel || 3);
     setFormDias(j.diasMensalista || ['Segunda', 'Quarta']);
+    setFormPosicoes(posicoesDoJogador(j));
     setUrlInput('');
     setModalNovo(true);
   };
@@ -206,6 +217,10 @@ export default function AdminPage() {
       alert('Data de nascimento inválida. Use DD/MM/AAAA ou deixe em branco.');
       return;
     }
+    if (!formPosicoes.length || formPosicoes.length > POSICOES_POR_JOGADOR) {
+      alert(`Selecione de 1 a ${POSICOES_POR_JOGADOR} posições.`);
+      return;
+    }
 
     setLoading(true);
     try {
@@ -215,6 +230,7 @@ export default function AdminPage() {
         dataNascimento,
         tipo: formTipo,
         nivel: parseInt(formNivel) || 3,
+        posicoes: posicoesDoJogador({ posicoes: formPosicoes }),
         diasMensalista: formTipo === 'MENSALISTA' ? formDias : [],
         avatar: (urlInput.trim() || avatarSel || '').trim()
       };
@@ -227,6 +243,7 @@ export default function AdminPage() {
       resetForm();
     } catch (err) {
       console.error("Erro ao salvar jogador: ", err);
+      alert(`Não foi possível salvar o jogador: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -244,11 +261,11 @@ export default function AdminPage() {
   };
 
   const handleGerarMock = async () => {
-    if (confirm("Gerar amostra completa do sistema: 16 jogadores (elenco), 12 rodadas concluídas com placar por confronto, 1 rodada aberta, presenças, finanças e configuração?")) {
+    if (confirm("Gerar amostra completa do sistema: 16 jogadores com duas posições cadastradas para cada um, times de teste nomeados com aves, 12 rodadas concluídas com placar por confronto, 1 rodada aberta, presenças, finanças e configuração?")) {
       setLoading(true);
       try {
         await gerarDadosDeTestePro(activeGroupId);
-        alert("Amostra completa de teste gerada com sucesso!");
+        alert("Amostra completa gerada com sucesso! Os times de teste já estão identificados por nomes de aves.");
       } catch (e) {
         alert(e.message);
       } finally {
@@ -258,10 +275,11 @@ export default function AdminPage() {
   };
 
   const handleResetGeral = async () => {
-    if (confirm(`ATENÇÃO: Deseja apagar TODOS os dados do grupo ${activeGroupId}? Isso apagará jogadores, rodadas, finanças e configurações. Essa ação não pode ser desfeita.`)) {
+    if (confirm(`ATENÇÃO: Deseja apagar TODOS os dados do grupo ${activeGroupId}? Isso apagará jogadores, sorteios e históricos (incluindo nomes dos times e placares), finanças e configurações. Essa ação não pode ser desfeita. Para voltar a usar jogadores e times de teste com nomes de aves, gere a amostra novamente.`)) {
       setLoading(true);
       try {
         await resetDadosGrupo(activeGroupId);
+        alert("Dados do grupo resetados. Para recriar jogadores e times de teste com posições, nomes de aves e placares, gere a amostra novamente.");
       } catch (e) {
         alert(e.message);
       } finally {
@@ -276,6 +294,15 @@ export default function AdminPage() {
     } else {
       setFormDias([...formDias, dia]);
     }
+  };
+
+  const togglePosicao = (id) => {
+    setFormPosicoes((atuais) => {
+      const selecionadas = posicoesDoJogador({ posicoes: atuais });
+      if (selecionadas.includes(id)) return selecionadas.filter((posicao) => posicao !== id);
+      if (selecionadas.length >= POSICOES_POR_JOGADOR) return selecionadas;
+      return [...selecionadas, id];
+    });
   };
 
   const handleImportarPlanilha = async (e) => {
@@ -499,6 +526,23 @@ export default function AdminPage() {
                 </div>
               </div>
 
+              <div className="flex flex-wrap gap-1.5 border-t border-slate-800/60 pt-2" aria-label={`Posições de ${j.nome}`}>
+                {posicoesDoJogador(j).length > 0
+                  ? posicoesDoJogador(j).map((id) => {
+                    const posicao = POSICOES_QUADRA.find((item) => item.id === String(id));
+                    return (
+                      <span
+                        key={id}
+                        title={posicao?.descricao || ''}
+                        className="text-[9px] font-extrabold px-2 py-1 rounded-lg bg-cyan-500/10 text-cyan-300 border border-cyan-500/20"
+                      >
+                        {id} · {posicao?.nome || 'Posição'}
+                      </span>
+                    );
+                  })
+                  : <span className="text-[9px] text-amber-300">Posições não cadastradas · editar para selecionar</span>}
+              </div>
+
               {j.tipo === 'MENSALISTA' && j.diasMensalista && j.diasMensalista.length > 0 && (
                 <div className="flex flex-wrap gap-1 pt-1 border-t border-slate-800/60">
                   {j.diasMensalista.map(d => (
@@ -628,6 +672,40 @@ export default function AdminPage() {
                   <span>Intermediário (3)</span>
                   <span>Avançado (5)</span>
                 </div>
+              </div>
+
+              <div>
+                <label className="text-xs text-slate-400 font-bold uppercase block mb-2">
+                  Posições que joga ({posicoesDoJogador({ posicoes: formPosicoes }).length}/{POSICOES_POR_JOGADOR})
+                </label>
+                <p className="text-cyan-200 text-xs font-bold mb-2" aria-live="polite">
+                  {posicoesDoJogador({ posicoes: formPosicoes }).length
+                    ? `Selecionadas: ${posicoesDoJogador({ posicoes: formPosicoes }).map((id) => POSICOES_QUADRA.find((posicao) => posicao.id === id)?.nome).join(' e ')}`
+                    : 'Nenhuma posição selecionada. Escolha pelo menos uma.'}
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {POSICOES_QUADRA.map((posicao) => {
+                    const selecionadas = posicoesDoJogador({ posicoes: formPosicoes });
+                    const selecionada = selecionadas.includes(posicao.id);
+                    const bloqueada = !selecionada && selecionadas.length >= POSICOES_POR_JOGADOR;
+                    return (
+                      <button
+                        key={posicao.id}
+                        type="button"
+                        disabled={bloqueada}
+                        onClick={() => togglePosicao(posicao.id)}
+                        className={`px-3 py-2 rounded-xl font-extrabold text-xs transition-all ${
+                          selecionada
+                            ? 'bg-cyan-500 text-white border-2 border-cyan-200 shadow-lg shadow-cyan-500/30 ring-2 ring-cyan-400/30'
+                            : 'bg-slate-950 text-slate-400 border border-slate-800 disabled:opacity-40'
+                        }`}
+                      >
+                        {selecionada ? '✓ ' : ''}{posicao.id} · {posicao.nome}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] text-slate-500 mt-2">Selecione uma ou duas posições para orientar a montagem dos times.</p>
               </div>
 
               {formTipo === 'MENSALISTA' && (

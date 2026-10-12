@@ -7,7 +7,7 @@ import * as FileSystem from 'expo-file-system';
 import { readSheet } from 'read-excel-file/universal';
 import { subscribeJogadores, addJogador, updateJogador, gerarDadosDeTestePro, resetDadosGrupo } from '../services/jogadorService';
 import { carregarHistoricoTimes } from '../services/teamDrawService';
-import { montarPainelEstatisticas, idsJogadoresDoTime, confrontosDoSorteio } from '../utils/estatisticasUtils';
+import { montarPainelEstatisticas, idsJogadoresDoTime, confrontosDoSorteio, POSICOES_QUADRA, POSICOES_POR_JOGADOR, nomeDoTime } from '../utils/estatisticasUtils';
 import { useSession } from '../context/SessionContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Avatar from '../components/Avatar';
@@ -22,6 +22,14 @@ const diasDaSemana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado
 
 // Grupo oficial de demonstração: apenas nele os botões "Mock Data" e "Zerar Grupo" aparecem.
 const TEST_GROUP_ID = 'VO-AAAAAA';
+const posicoesDoJogador = (jogador) => {
+  const valores = Array.isArray(jogador.posicoes) && jogador.posicoes.length > 0
+    ? jogador.posicoes
+    : [jogador.posicaoId ?? jogador.posicao].filter((id) => id !== undefined && id !== null);
+  return [...new Set(valores.map(String))]
+    .filter((id) => POSICOES_QUADRA.some((posicao) => posicao.id === id))
+    .slice(0, POSICOES_POR_JOGADOR);
+};
 
 const base64ToArrayBuffer = (base64) => {
   const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
@@ -74,6 +82,7 @@ export default function AdminScreen() {
     nivel: 3,
     tipo: 'MENSALISTA',
     diasMensalista: [],
+    posicoes: [],
     dataNascimento: '',
     status: 'Ativo'
   });
@@ -150,7 +159,7 @@ export default function AdminScreen() {
       const derrotas = confrontos
         .filter((c) => c.a === idx).reduce((s, c) => s + (Number(c.vitoriasB) || 0), 0)
         + confrontos.filter((c) => c.b === idx).reduce((s, c) => s + (Number(c.vitoriasA) || 0), 0);
-      return { data: sorteio.data, dia: sorteio.dia, time: `Time ${idx + 1}`, vitorias, derrotas };
+      return { data: sorteio.data, dia: sorteio.dia, time: nomeDoTime(times[idx], idx), vitorias, derrotas };
     })
     .slice(0, 8);
 
@@ -175,14 +184,14 @@ export default function AdminScreen() {
 
   const handleGerarTeste = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert('Simulação', 'Gerar amostra completa do sistema: 16 jogadores (elenco), 12 rodadas concluídas com placar por confronto, 1 rodada aberta, presenças, finanças e configuração?', [
+    Alert.alert('Simulação', 'Gerar amostra completa do sistema: 16 jogadores com duas posições cadastradas para cada um, times de teste nomeados com aves, 12 rodadas concluídas com placar por confronto, 1 rodada aberta, presenças, finanças e configuração?', [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Gerar', onPress: async () => {
          try {
            setCarregando(true);
            await gerarDadosDeTestePro(activeGroupId);
            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-           Alert.alert('Sucesso', 'Amostra completa de teste gerada com sucesso!');
+           Alert.alert('Sucesso', 'Amostra completa gerada com sucesso! Os times de teste já estão identificados por nomes de aves.');
          } catch (e) {
            Alert.alert('Erro', e.message);
          } finally {
@@ -194,14 +203,14 @@ export default function AdminScreen() {
 
   const handleReset = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    Alert.alert('PERIGO', 'Isso irá apagar TODOS os dados deste grupo: jogadores, rodadas, finanças e configurações. Confirmar?', [
+    Alert.alert('PERIGO', 'Isso irá apagar TODOS os dados deste grupo: jogadores, sorteios e históricos (incluindo nomes dos times e placares), finanças e configurações. Esta ação não pode ser desfeita. Para voltar a usar jogadores e times de teste com nomes de aves, gere a amostra novamente.', [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'APAGAR TUDO', style: 'destructive', onPress: async () => {
         try {
           setCarregando(true);
           await resetDadosGrupo(activeGroupId);
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          Alert.alert('Sucesso', 'Dados do grupo resetados.');
+          Alert.alert('Sucesso', 'Dados do grupo resetados. Para recriar jogadores e times de teste com posições, nomes de aves e placares, gere a amostra novamente.');
         } catch (e) {
           Alert.alert('Erro', e.message);
         } finally {
@@ -306,10 +315,25 @@ export default function AdminScreen() {
     setNovoJogador({ ...novoJogador, diasMensalista: novosDias });
   };
 
+  const togglePosicao = (id) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setNovoJogador((atual) => {
+      const selecionadas = posicoesDoJogador({ posicoes: atual.posicoes });
+      if (selecionadas.includes(id)) return { ...atual, posicoes: selecionadas.filter((posicao) => posicao !== id) };
+      if (selecionadas.length >= POSICOES_POR_JOGADOR) return atual;
+      return { ...atual, posicoes: [...selecionadas, id] };
+    });
+  };
+
   const salvarJogador = async () => {
     if (!novoJogador.nome) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         return Alert.alert('Erro', 'Nome é obrigatório!');
+    }
+    const posicoesSelecionadas = posicoesDoJogador(novoJogador);
+    if (!posicoesSelecionadas.length || posicoesSelecionadas.length > POSICOES_POR_JOGADOR) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return Alert.alert('Erro', `Selecione de 1 a ${POSICOES_POR_JOGADOR} posições.`);
     }
 
     let dataNascFinal = (novoJogador.dataNascimento || '').trim();
@@ -323,6 +347,7 @@ export default function AdminScreen() {
     try {
       const payload = {
         ...novoJogador,
+        posicoes: posicoesSelecionadas,
         dataNascimento: dataNascFinal,
         avatar: (urlInput.trim() || avatarSel || '').trim(),
         groupId: activeGroupId,
@@ -341,7 +366,7 @@ export default function AdminScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
 
-      setNovoJogador({ nome: '', nivel: 3, tipo: 'MENSALISTA', diasMensalista: [], dataNascimento: '', status: 'Ativo' });
+      setNovoJogador({ nome: '', nivel: 3, tipo: 'MENSALISTA', diasMensalista: [], posicoes: [], dataNascimento: '', status: 'Ativo' });
       setEditandoId(null);
       setEditandoOriginal({ dataNascimento: '' });
     } catch (e) {
@@ -356,6 +381,7 @@ export default function AdminScreen() {
       nivel: j.nivel,
       tipo: j.tipo,
       diasMensalista: j.diasMensalista || [],
+      posicoes: posicoesDoJogador(j),
       dataNascimento: '', // Deixa em branco para não expor
       status: j.status || 'Ativo'
     });
@@ -458,6 +484,39 @@ export default function AdminScreen() {
                     </TouchableOpacity>
                   </View>
                </View>
+            </View>
+
+            <View>
+              <Text className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-2 ml-1">
+                Posições que joga ({posicoesDoJogador(novoJogador).length}/{POSICOES_POR_JOGADOR})
+              </Text>
+              <Text className="text-cyan-200 text-xs font-bold mb-2 ml-1">
+                {posicoesDoJogador(novoJogador).length
+                  ? `Selecionadas: ${posicoesDoJogador(novoJogador).map((id) => POSICOES_QUADRA.find((posicao) => posicao.id === id)?.nome).join(' e ')}`
+                  : 'Nenhuma posição selecionada. Escolha pelo menos uma.'}
+              </Text>
+              <View className="flex-row flex-wrap">
+                {POSICOES_QUADRA.map((posicao) => {
+                  const selecionadas = posicoesDoJogador(novoJogador);
+                  const selecionada = selecionadas.includes(posicao.id);
+                  const bloqueada = !selecionada && selecionadas.length >= POSICOES_POR_JOGADOR;
+                  return (
+                    <TouchableOpacity
+                      key={posicao.id}
+                      disabled={bloqueada}
+                      onPress={() => togglePosicao(posicao.id)}
+                      className={`mr-2 mb-2 px-3 py-2 rounded-xl border ${
+                        selecionada ? 'bg-cyan-500 border-cyan-200 border-2' : 'bg-slate-900/60 border-white/5'
+                      } ${bloqueada ? 'opacity-40' : ''}`}
+                    >
+                      <Text className={`text-[9px] font-bold ${selecionada ? 'text-white' : 'text-slate-400'}`}>
+                        {selecionada ? '✓ ' : ''}{posicao.id} · {posicao.nome}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              <Text className="text-[9px] text-slate-500 ml-1">Selecione uma ou duas posições para orientar a montagem dos times.</Text>
             </View>
 
             {novoJogador.tipo === 'MENSALISTA' && (
@@ -690,6 +749,7 @@ export default function AdminScreen() {
                     nivel: 3,
                     tipo: 'MENSALISTA',
                     diasMensalista: [],
+                    posicoes: [],
                     dataNascimento: '',
                     status: 'Ativo'
                   });
@@ -755,10 +815,11 @@ export default function AdminScreen() {
                   return a.nome.localeCompare(b.nome);
                 })
                 .map(j => (
-                <View key={j.id} className="bg-slate-900/60 p-5 rounded-3xl border border-white/5 flex-row justify-between items-center mb-3">
-                  <View className="flex-1 flex-row items-center">
-                    <Avatar jogador={j} size={40} />
-                    <View className="flex-1 pl-3 pr-2">
+                <View key={j.id} className="bg-slate-900/60 p-5 rounded-3xl border border-white/5 mb-3">
+                  <View className="flex-row justify-between items-center">
+                <View className="flex-1 flex-row items-center">
+                  <Avatar jogador={j} size={40} />
+                  <View className="flex-1 pl-3 pr-2">
                       <Text className="text-white font-black text-sm" numberOfLines={1}>{j.nome}</Text>
                       <View className="flex-row items-center mt-1">
                         {j.status === 'Inativo' && (
@@ -773,6 +834,19 @@ export default function AdminScreen() {
                   <TouchableOpacity onPress={() => prepararEdicao(j)} className="bg-slate-800/80 w-11 h-11 rounded-2xl items-center justify-center border border-white/5">
                     <FontAwesome5 name="pen" size={14} color="#22d3ee" />
                   </TouchableOpacity>
+                  </View>
+                  <View className="flex-row flex-wrap mt-3 pt-3 border-t border-white/5">
+                    {posicoesDoJogador(j).length > 0
+                      ? posicoesDoJogador(j).map((id) => {
+                        const posicao = POSICOES_QUADRA.find((item) => item.id === String(id));
+                        return (
+                          <View key={id} className="bg-cyan-500/10 border border-cyan-500/20 rounded-lg px-2 py-1 mr-1.5 mb-1">
+                            <Text className="text-cyan-300 text-[9px] font-extrabold">{id} · {posicao?.nome || 'Posição'}</Text>
+                          </View>
+                        );
+                      })
+                      : <Text className="text-amber-300 text-[9px]">Posições não cadastradas · editar para selecionar</Text>}
+                  </View>
                 </View>
               ))}
               

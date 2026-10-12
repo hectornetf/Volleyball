@@ -96,7 +96,7 @@ flowchart LR
 
 ## 🛠️ Stack
 - React Native + Expo SDK 57
-- Tailwind CSS (NativeWind)
+- Tailwind CSS 4 com NativeWind 5.0.0-rc.0 e react-native-css 3.1.0-rc.0 (pré-lançamentos)
 - Firebase Firestore (v12) + AES-256 Crypto
 
 > Projeto desenvolvido pela equipe **Antigravity**. 🏐🔥

@@ -29,19 +29,8 @@ const nomeMesComOffset = (offset) => dataMesComOffset(offset)
   .toLocaleString('pt-BR', { month: 'long', year: 'numeric' })
   .replace(/^\w/, (c) => c.toUpperCase());
 
-import { computarFechamento } from '../utils/financeiroUtils';
+import { agruparPendenciasPorJogador, computarFechamento } from '../utils/financeiroUtils';
 const diasDaSemana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
-
-// Cor de destaque por dia da semana — paridade legado
-const corPorDia = {
-  Segunda: { border: 'border-l-yellow-400', text: 'text-yellow-400' },
-  Terça:   { border: 'border-l-blue-400',   text: 'text-blue-400'   },
-  Quarta:  { border: 'border-l-purple-400', text: 'text-purple-400' },
-  Quinta:  { border: 'border-l-pink-400',   text: 'text-pink-400'   },
-  Sexta:   { border: 'border-l-orange-400', text: 'text-orange-400' },
-  Sábado:  { border: 'border-l-emerald-400',text: 'text-emerald-400'},
-  Domingo: { border: 'border-l-red-400',    text: 'text-red-400'    },
-};
 
 export default function FinanceiroScreen() {
   const insets = useSafeAreaInsets();
@@ -52,6 +41,7 @@ export default function FinanceiroScreen() {
   const [loading, setLoading] = useState(true);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(20));
+  const [pagamentoEmAndamentoId, setPagamentoEmAndamentoId] = useState(null);
 
   // Configuração de custos
   const [custos, setCustos] = useState({
@@ -62,6 +52,7 @@ export default function FinanceiroScreen() {
   // Resultado do fechamento (rateio)
   const [fechamento, setFechamento] = useState(null);
   const [statusMes, setStatusMes] = useState('Em Aberto');
+  const pendenciasPorJogador = agruparPendenciasPorJogador(fechamento);
 
   // Seletor de mês (paridade legado: ◀ Mês Referência ▶) — offset 0 = mês civil atual
   const [mesOffset, setMesOffset] = useState(0);
@@ -209,46 +200,60 @@ export default function FinanceiroScreen() {
     }
   };
 
-  // Marcar/desmarcar mensalidadePaga individualmente (paridade legado)
-  const fazerPagamento = async (jogador, dia) => {
+  const fazerPagamentoConsolidado = async (jogador) => {
+    if (pagamentoEmAndamentoId) return;
+    const marcarComoPago = jogador.totalPendente > 0;
+    const diasAtualizar = marcarComoPago ? jogador.diasPendentes : jogador.diasPagos;
+    if (!diasAtualizar.length) return;
+
+    setPagamentoEmAndamentoId(jogador.id);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
-      const key = `${dia}_${mesRef}`;
-      const valorAtual = !!(jogador.pagamentosMensais && jogador.pagamentosMensais[key]);
-      await updateJogador(jogador.id, { [`pagamentosMensais.${key}`]: !valorAtual }, activeGroupId);
-      
-      await registrarLog('FINANCEIRO', `Mensalidade (${dia}) de ${jogador.nome} marcada como: ${!valorAtual ? 'PAGO' : 'PENDENTE'}`, 0, activeGroupId);
-      
-      // Atualiza estado local no fechamento
-      setFechamento(prev => {
-        if (!prev) return prev;
-        const novosDias = { ...prev.dias };
-        if (novosDias[dia]) {
-          novosDias[dia] = {
-            ...novosDias[dia],
-            jogadores: novosDias[dia].jogadores.map(j =>
-              j.id === jogador.id ? { ...j, mensalidadePaga: !valorAtual } : j
-            ),
-          };
-        }
-        
-        // Recalcula o status geral após o pagamento
-        const f = computarFechamento(custos, elenco, mesRef, statusMes);
-        if (activeGroupId && f.statusGeral !== statusMes) {
-           setStatusMes(f.statusGeral);
-           saveConfigFinanceira(activeGroupId, mesRef, { status: f.statusGeral }).catch(() => {});
-        }
+      const pagamentosAtualizados = Object.fromEntries(diasAtualizar.map(dia => [
+        `pagamentosMensais.${dia}_${mesRef}`,
+        marcarComoPago
+      ]));
+      await updateJogador(jogador.id, pagamentosAtualizados, activeGroupId);
+      const elencoAtualizado = elenco.map(item => item.id === jogador.id
+        ? {
+            ...item,
+            pagamentosMensais: {
+              ...(item.pagamentosMensais || {}),
+              ...Object.fromEntries(diasAtualizar.map(dia => [`${dia}_${mesRef}`, marcarComoPago]))
+            }
+          }
+        : item
+      );
+      setElenco(elencoAtualizado);
 
-        return { ...prev, dias: novosDias, statusGeral: f.statusGeral, totalArrecadadoMensalistas: f.totalArrecadadoMensalistas };
-      });
-    } catch (e) { Alert.alert('Erro', e.message); }
+      const statusParaCalcular = statusMes === 'Pago Totalmente' && !marcarComoPago ? 'Em Aberto' : statusMes;
+      const novoFechamento = computarFechamento(custos, elencoAtualizado, mesRef, statusParaCalcular);
+      setFechamento(novoFechamento);
+      if (activeGroupId && novoFechamento.statusGeral !== statusMes) {
+        setStatusMes(novoFechamento.statusGeral);
+        await saveConfigFinanceira(activeGroupId, mesRef, { status: novoFechamento.statusGeral });
+      }
+      await registrarLog(
+        'FINANCEIRO',
+        `Mensalidade consolidada de ${jogador.nome} marcada como: ${marcarComoPago ? 'PAGO' : 'PENDENTE'}`,
+        0,
+        activeGroupId
+      );
+    } catch (e) {
+      Alert.alert('Erro', `Não foi possível atualizar o pagamento: ${e.message}`);
+    } finally {
+      setPagamentoEmAndamentoId(null);
+    }
   };
 
-  // Cobrar mensalistas de um dia específico via WhatsApp (paridade legado)
-  const cobrarMensalidadeDia = (valorPorPessoa, nomeDia) => {
+  const compartilharPendencias = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const v = valorPorPessoa.toFixed(2).replace('.', ',');
-    const msg = `🏐 *VOLEIZIN: Mensalidade ${nomeDia}* 🏐\n\nGalera de ${nomeDia}!\n\nO valor da mensalidade deste mês é:\n💰 *R$ ${v} por pessoa*\n\nPor favor, efetuem o pagamento para garantir a quadra! 🙏`;
+    const pendencias = pendenciasPorJogador.filter(jogador => jogador.totalPendente > 0);
+    const totalGeral = pendencias.reduce((soma, jogador) => soma + jogador.totalPendente, 0);
+    const lista = pendencias
+      .map((jogador) => `• ${jogador.nome}: *${jogador.totalPendente.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}*`)
+      .join('\n');
+    const msg = `🏐 *VOLEIZIN — Cobranças de ${mesRef}* 🏐\n\n${lista}\n\n*Total pendente: ${totalGeral.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}*`;
     Linking.openURL(`whatsapp://send?text=${encodeURIComponent(msg)}`).catch(() =>
       Alert.alert('Erro', 'WhatsApp não instalado.')
     );
@@ -440,6 +445,50 @@ export default function FinanceiroScreen() {
 
         {/* ── Rateio Mensalistas ── */}
         {fechamento && (
+          <View className="bg-slate-800/45 p-5 rounded-2xl border border-emerald-500/20 mb-3">
+            <View className="flex-row items-center justify-between gap-3 mb-4">
+              <View className="flex-1">
+                <Text className="text-white font-black">Total pendente por jogador</Text>
+                <Text className="text-slate-400 text-[10px] mt-1">Valores somados entre todos os dias do mês.</Text>
+              </View>
+              <TouchableOpacity
+                onPress={compartilharPendencias}
+                disabled={!pendenciasPorJogador.some(jogador => jogador.totalPendente > 0)}
+                className={`px-3 py-2 rounded-xl flex-row items-center gap-2 ${pendenciasPorJogador.some(jogador => jogador.totalPendente > 0) ? 'bg-emerald-500/20' : 'bg-slate-700 opacity-50'}`}
+              >
+                <FontAwesome5 name="whatsapp" size={14} color="#34d399" />
+                <Text className="text-emerald-300 text-[10px] font-black">ENVIAR LISTA</Text>
+              </TouchableOpacity>
+            </View>
+            {pendenciasPorJogador.length ? pendenciasPorJogador.map((jogador) => (
+              <View key={jogador.id} className={`flex-row items-center justify-between gap-3 p-3 rounded-xl mb-2 ${jogador.totalPendente > 0 ? 'bg-slate-900/50' : 'bg-emerald-950/30'}`}>
+                <View className="flex-1">
+                  <Text className="text-slate-100 text-xs font-bold">{jogador.nome}</Text>
+                  <Text className="text-slate-500 text-[9px] mt-1">
+                    {jogador.totalPendente > 0 ? `Pendente: ${jogador.diasPendentes.join(' · ')}` : `Pago: ${jogador.diasPagos.join(' · ')}`}
+                  </Text>
+                  <Text className={`font-black text-sm mt-1 ${jogador.totalPendente > 0 ? 'text-rose-300' : 'text-emerald-300'}`}>
+                    {jogador.totalPendente.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => fazerPagamentoConsolidado(jogador)}
+                  disabled={Boolean(pagamentoEmAndamentoId)}
+                  className={`px-3 py-2 rounded-xl ${jogador.totalPendente > 0 ? 'bg-emerald-500/20' : 'bg-slate-700'}`}
+                >
+                  <Text className={`text-[10px] font-black ${jogador.totalPendente > 0 ? 'text-emerald-300' : 'text-slate-300'}`}>
+                    {jogador.totalPendente > 0 ? 'Marcar pago' : 'Reabrir'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )) : (
+              <Text className="text-emerald-300 text-xs font-bold">Não há mensalidades pendentes neste mês.</Text>
+            )}
+          </View>
+        )}
+
+        {/* ── Rateio Mensalistas ── */}
+        {fechamento && (
           <View className="bg-slate-800/45 p-5 rounded-2xl border-t-2 border-t-indigo-500 border border-white/5 mb-3">
             <View className="flex-row justify-between items-center mb-3">
               <View className="flex-row items-center gap-2">
@@ -520,72 +569,6 @@ export default function FinanceiroScreen() {
             <FontAwesome5 name="undo" size={10} color="#64748b" />
             <Text className="text-[10px] text-slate-500 font-bold uppercase ml-1">Corrigir / Refazer Cálculo</Text>
           </TouchableOpacity>
-        )}
-
-        {/* ── Cards de Rateio por dia (paridade legado: cor, jogadores clicáveis, botão cobrar) ── */}
-        {fechamento && (
-          <View className="space-y-4 pb-8">
-            {diasDaSemana.filter(dia => fechamento.dias[dia]).map(dia => {
-              const d = fechamento.dias[dia];
-              const cor = corPorDia[dia] || corPorDia.Sábado;
-              return (
-                <View key={dia} className={`bg-slate-800/45 p-5 rounded-2xl border-l-4 border border-white/5 ${cor.border}`}>
-                  <View className="flex-row justify-between items-center mb-1">
-                    <Text className={`font-bold uppercase tracking-wider text-sm ${cor.text}`}>
-                      Rateio {dia}
-                    </Text>
-                    <Text className="font-black text-white text-xl">
-                      R$ {d.valorPorPessoa.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </Text>
-                  </View>
-                  <Text className="text-xs text-slate-400 mb-3">
-                    Mensalistas: {d.totalMensalistas} | Custo: R$ {d.custo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  </Text>
-
-                  {d.aviso && (
-                    <View className="mb-3 p-2 bg-red-500/10 border border-red-500/20 rounded-xl flex-row items-center gap-2">
-                      <FontAwesome5 name="exclamation-triangle" size={10} color="#f87171" />
-                      <Text className="text-[10px] text-red-300 font-bold italic ml-1">{d.aviso}</Text>
-                    </View>
-                  )}
-
-                  <View className="space-y-2 mb-3">
-                    {d.jogadores.map(jog => (
-                      <View
-                        key={jog.id}
-                        className="flex-row items-center justify-between p-2 bg-slate-800/40 rounded-xl border border-slate-700/30"
-                      >
-                        <Text className={`text-xs ${jog.mensalidadePaga ? 'text-white font-bold' : 'text-slate-400'}`}>
-                          {jog.nome}
-                        </Text>
-                        <TouchableOpacity
-                          onPress={() => fazerPagamento(jog, dia)}
-                          className={`w-7 h-7 rounded-lg items-center justify-center ${jog.mensalidadePaga ? 'bg-emerald-500 shadow-sm shadow-emerald-500/30' : 'bg-slate-700'}`}
-                        >
-                          <FontAwesome5 name={jog.mensalidadePaga ? 'check' : 'minus'} size={10} color="white" />
-                        </TouchableOpacity>
-                      </View>
-                    ))}
-                    {d.jogadores.length === 0 && (
-                      <Text className="text-xs text-slate-500 italic p-2 text-center">
-                        Nenhum mensalista cadastrado para este dia.
-                      </Text>
-                    )}
-                  </View>
-
-                  {d.jogadores.length > 0 && (
-                    <TouchableOpacity
-                      onPress={() => cobrarMensalidadeDia(d.valorPorPessoa, dia)}
-                      className="w-full bg-[#25D366] py-2.5 rounded-xl flex-row justify-center items-center gap-2 shadow-sm"
-                    >
-                      <FontAwesome5 name="whatsapp" size={16} color="white" />
-                      <Text className="text-white font-bold text-sm ml-2">Cobrar Todos {dia.substring(0, 3)}</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              );
-            })}
-          </View>
         )}
 
         {/* Modal de Operação de Caixa (Substitui o Alert.prompt para funcionar no Android) */}

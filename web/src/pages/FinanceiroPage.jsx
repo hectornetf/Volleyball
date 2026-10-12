@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  DollarSign, ChevronLeft, ChevronRight, CheckCircle2, 
-  Settings, TrendingUp, MessageSquareShare, Calculator
+  DollarSign, ChevronLeft, ChevronRight, Settings, MessageSquareShare, Calculator
 } from 'lucide-react';
 import { useSession } from '../context/SessionContext';
 import { 
@@ -9,7 +8,7 @@ import {
   updateJogador, getSaldoGlobalEquipamentos, registrarEntradaCaixa, registrarSaidaCaixa 
 } from '../services/jogadorService';
 import { registrarLog } from '../services/historyService';
-import { computarFechamento } from '../utils/financeiroUtils';
+import { agruparPendenciasPorJogador, computarFechamento } from '../utils/financeiroUtils';
 
 const diasDaSemana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 
@@ -29,6 +28,7 @@ export default function FinanceiroPage() {
   const [configTemp, setConfigTemp] = useState({});
   const [fechamentoIniciado, setFechamentoIniciado] = useState(true);
   const [statusMes, setStatusMes] = useState('Em Aberto');
+  const [salvandoPagamento, setSalvandoPagamento] = useState(false);
 
   const agora = new Date();
   const refDate = new Date(agora.getFullYear(), agora.getMonth() + offsetMes, 1);
@@ -66,29 +66,59 @@ export default function FinanceiroPage() {
   }, [activeGroupId, mesRefStr]);
 
   const fechamento = computarFechamento(custosQuadra, jogadores, mesRefStr, statusMes);
+  const pendenciasPorJogador = agruparPendenciasPorJogador(fechamento);
 
-  const handleTogglePagamentoMensalista = async (jogador, dia) => {
-    const key = `${dia}_${mesRefStr}`;
-    const pagamentosAtuais = jogador.pagamentosMensais || {};
-    const novoStatus = !pagamentosAtuais[key];
+  const handleTogglePagamentoJogador = async (jogador) => {
+    if (salvandoPagamento) return;
+    const marcarComoPago = jogador.totalPendente > 0;
+    const diasAtualizar = marcarComoPago ? jogador.diasPendentes : jogador.diasPagos;
+    if (!diasAtualizar.length) return;
 
-    await updateJogador(jogador.id, { [`pagamentosMensais.${key}`]: novoStatus }, activeGroupId);
-    await registrarLog('FINANCEIRO', `Mensalidade (${dia}) de ${jogador.nome} marcada como: ${novoStatus ? 'PAGO' : 'PENDENTE'}`, 0, activeGroupId);
+    setSalvandoPagamento(true);
+    try {
+      const pagamentosAtualizados = Object.fromEntries(diasAtualizar.map(dia => [
+        `pagamentosMensais.${dia}_${mesRefStr}`,
+        marcarComoPago
+      ]));
+      await updateJogador(jogador.id, pagamentosAtualizados, activeGroupId);
+      const elencoAtualizado = jogadores.map(item => item.id === jogador.id
+        ? {
+            ...item,
+            pagamentosMensais: {
+              ...(item.pagamentosMensais || {}),
+              ...Object.fromEntries(diasAtualizar.map(dia => [`${dia}_${mesRefStr}`, marcarComoPago]))
+            }
+          }
+        : item
+      );
+      setJogadores(elencoAtualizado);
 
-    const elencoAtualizado = jogadores.map(item => item.id === jogador.id
-      ? { ...item, pagamentosMensais: { ...pagamentosAtuais, [key]: novoStatus } }
-      : item
-    );
-    const fechamentoAtualizado = computarFechamento(custosQuadra, elencoAtualizado, mesRefStr, statusMes);
-    if (fechamentoAtualizado.statusGeral !== statusMes) {
-      setStatusMes(fechamentoAtualizado.statusGeral);
-      await saveConfigFinanceira(activeGroupId, mesRefStr, { status: fechamentoAtualizado.statusGeral });
+      const statusParaCalcular = statusMes === 'Pago Totalmente' && !marcarComoPago ? 'Em Aberto' : statusMes;
+      const fechamentoAtualizado = computarFechamento(custosQuadra, elencoAtualizado, mesRefStr, statusParaCalcular);
+      if (fechamentoAtualizado.statusGeral !== statusMes) {
+        setStatusMes(fechamentoAtualizado.statusGeral);
+        await saveConfigFinanceira(activeGroupId, mesRefStr, { status: fechamentoAtualizado.statusGeral });
+      }
+      await registrarLog(
+        'FINANCEIRO',
+        `Mensalidade consolidada de ${jogador.nome} marcada como: ${marcarComoPago ? 'PAGO' : 'PENDENTE'}`,
+        0,
+        activeGroupId
+      );
+    } catch (error) {
+      window.alert(`Não foi possível atualizar o pagamento: ${error.message}`);
+    } finally {
+      setSalvandoPagamento(false);
     }
   };
 
-  const handleCobrarMensalidadeDia = (valorPorPessoa, dia) => {
-    const v = valorPorPessoa.toFixed(2).replace('.', ',');
-    const msg = `🏐 *VOLEIZIN: Mensalidade ${dia}* 🏐\n\nGalera de ${dia}!\n\nO valor da mensalidade deste mês é:\n💰 *R$ ${v} por pessoa*\n\nPor favor, efetuem o pagamento para garantir a quadra! 🙏\n\nAcesse: https://voleizindoscria.vercel.app/`;
+  const handleCompartilharPendencias = () => {
+    const pendencias = pendenciasPorJogador.filter(jogador => jogador.totalPendente > 0);
+    const totalGeral = pendencias.reduce((soma, jogador) => soma + jogador.totalPendente, 0);
+    const lista = pendencias
+      .map((jogador) => `• ${jogador.nome}: *${jogador.totalPendente.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}*`)
+      .join('\n');
+    const msg = `🏐 *VOLEIZIN — Cobranças de ${mesRefStr}* 🏐\n\n${lista}\n\n*Total pendente: ${totalGeral.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}*\n\nAcesse: https://voleizindoscria.vercel.app/`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
@@ -260,83 +290,54 @@ export default function FinanceiroPage() {
 
           </div>
 
-          {/* Rateio por Dia da Semana Cards */}
+          {/* Cobrança mensal consolidada por jogador */}
           <div className="space-y-4">
-            <h2 className="text-lg font-black text-white flex items-center space-x-2">
-              <TrendingUp className="w-5 h-5 text-cyan-400" />
-              <span>Rateio por Dia da Semana</span>
-            </h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {diasDaSemana.filter(dia => fechamento.dias[dia]).map((dia) => {
-                const infoDia = fechamento.dias[dia];
-
-                return (
-                  <div key={dia} className="bg-slate-900/80 p-5 rounded-3xl border border-slate-800 space-y-3">
-                    
-                    {/* Card Top */}
-                    <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                      <div>
-                        <h3 className="font-black text-base text-white">{dia}</h3>
-                        <span className="text-[11px] text-slate-400 font-semibold">
-                          Custo Quadra: <strong>R$ {infoDia.custo.toFixed(2)}</strong>
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-[10px] text-slate-400 font-bold block uppercase">Valor/Pessoa</span>
-                        <span className="text-sm font-black text-cyan-400">
-                          R$ {infoDia.valorPorPessoa.toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Mensalistas List */}
-                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                      {infoDia.jogadores.map((j) => (
-                        <div
-                          key={j.id}
-                          onClick={() => handleTogglePagamentoMensalista(j, dia)}
-                          className={`p-2.5 rounded-xl border cursor-pointer flex items-center justify-between transition-all ${
-                            j.mensalidadePaga
-                              ? 'bg-emerald-950/30 border-emerald-500/30 text-emerald-400'
-                              : 'bg-slate-800/40 border-slate-700/40 text-slate-300 hover:border-slate-600'
-                          }`}
-                        >
-                          <span className="text-xs font-bold">{j.nome}</span>
-                          <div className="flex items-center space-x-1.5 text-xs font-extrabold">
-                            {j.mensalidadePaga ? (
-                              <>
-                                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                                <span>PAGO</span>
-                              </>
-                            ) : (
-                              <span className="text-rose-400 text-[10px] uppercase font-bold">Pendente</span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-
-                      {infoDia.jogadores.length === 0 && (
-                        <p className="text-xs text-slate-500 italic text-center py-4">
-                          {infoDia.aviso || 'Nenhum mensalista cadastrado para este dia.'}
+            <section className="bg-slate-900/80 p-5 rounded-3xl border border-emerald-500/20">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <div>
+                  <h2 className="text-lg font-black text-white">Total pendente por jogador</h2>
+                  <p className="text-slate-400 text-xs mt-1">Valores restantes somados entre todos os dias do mês.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCompartilharPendencias}
+                  disabled={!pendenciasPorJogador.some(jogador => jogador.totalPendente > 0)}
+                  className="bg-emerald-500/20 hover:bg-emerald-500/30 disabled:opacity-40 disabled:cursor-not-allowed text-emerald-300 border border-emerald-500/30 font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2"
+                >
+                  <MessageSquareShare className="w-4 h-4" />
+                  <span>Enviar lista unificada pelo WhatsApp</span>
+                </button>
+              </div>
+              {pendenciasPorJogador.length ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {pendenciasPorJogador.map((jogador) => (
+                    <div key={jogador.id} className={`flex items-center justify-between gap-3 border p-3 rounded-xl ${jogador.totalPendente > 0 ? 'bg-slate-800/50 border-slate-700/40' : 'bg-emerald-950/30 border-emerald-500/20'}`}>
+                      <div className="min-w-0">
+                        <p className="text-slate-100 text-xs font-bold truncate">{jogador.nome}</p>
+                        <p className="text-slate-500 text-[10px] mt-1">
+                          {jogador.totalPendente > 0 ? `Pendente: ${jogador.diasPendentes.join(' · ')}` : `Pago: ${jogador.diasPagos.join(' · ')}`}
                         </p>
-                      )}
+                      </div>
+                      <div className="flex flex-col items-end gap-2 shrink-0">
+                        <span className={`font-black text-sm whitespace-nowrap ${jogador.totalPendente > 0 ? 'text-rose-300' : 'text-emerald-300'}`}>
+                          {jogador.totalPendente.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleTogglePagamentoJogador(jogador)}
+                          disabled={salvandoPagamento}
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase disabled:opacity-50 ${jogador.totalPendente > 0 ? 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30' : 'bg-slate-700/70 text-slate-300 hover:bg-slate-600'}`}
+                        >
+                          {jogador.totalPendente > 0 ? 'Marcar pago' : 'Reabrir'}
+                        </button>
+                      </div>
                     </div>
-
-                    {/* Cobrar Todos via WhatsApp Button */}
-                    {infoDia.jogadores.length > 0 && (
-                      <button
-                        onClick={() => handleCobrarMensalidadeDia(infoDia.valorPorPessoa, dia)}
-                        className="w-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 font-extrabold py-2.5 rounded-xl text-xs flex items-center justify-center space-x-2 transition-all mt-2"
-                      >
-                        <MessageSquareShare className="w-4 h-4" />
-                        <span>Cobrar Todos ({dia})</span>
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-emerald-300 text-xs font-bold">Não há mensalidades pendentes neste mês.</p>
+              )}
+            </section>
           </div>
         </>
       )}

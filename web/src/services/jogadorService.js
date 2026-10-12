@@ -5,13 +5,20 @@ import {
 } from 'firebase/firestore';
 import { encryptData, decryptData } from '../utils/crypto';
 import { registrarLog } from './historyService';
-import { equilibraTimes } from '../utils/estatisticasUtils';
+import { equilibraTimes, POSICOES_QUADRA, nomeDoTime } from '../utils/estatisticasUtils';
 
 const JOGADORES_COLLECTION = 'jogadores';
 const FINANCEIRO_OP_COLLECTION = 'operacoes_financeiras';
 const CONFIG_FINANCEIRA_COLLECTION = 'config_financeira';
 const LOGS_COLLECTION = 'logs_atividades';
 const SORTEIOS_COLLECTION = 'sorteios_times';
+const validarPosicoes = (posicoes) => {
+  if (!Array.isArray(posicoes) || posicoes.length < 1 || posicoes.length > 2
+    || new Set(posicoes.map(String)).size !== posicoes.length
+    || posicoes.some((id) => !POSICOES_QUADRA.some((posicao) => posicao.id === String(id)))) {
+    throw new Error('Selecione de 1 a 2 posições válidas para o jogador.');
+  }
+};
 
 /**
  * Funções de Sanitização Criptográfica
@@ -43,6 +50,7 @@ const decryptPlayer = (docData, groupId) => ({
 
 export const addJogador = async (jogador, groupId) => {
   if (!groupId) throw new Error("ID do Grupo obrigatório!");
+  if (jogador.posicoes !== undefined) validarPosicoes(jogador.posicoes);
   const encrypted = encryptPlayer(jogador, groupId);
   
   const docRef = await addDoc(collection(db, JOGADORES_COLLECTION), {
@@ -63,6 +71,7 @@ export const addJogador = async (jogador, groupId) => {
 };
 
 export const updateJogador = async (id, dados, groupId) => {
+  if (dados.posicoes !== undefined) validarPosicoes(dados.posicoes);
   const docRef = doc(db, JOGADORES_COLLECTION, id);
   const encrypted = { ...dados };
   if (dados.nome) encrypted.nome = encryptData(dados.nome, groupId);
@@ -329,6 +338,7 @@ export const gerarDadosDeTestePro = async (groupId) => {
       id: `mock_j${i}`,
       nome,
       nivel: (i % 5) + 1,
+      posicoes: [POSICOES_QUADRA[i % POSICOES_QUADRA.length].id, POSICOES_QUADRA[(i + 1) % POSICOES_QUADRA.length].id],
       tipo: 'MENSALISTA',
       diasMensalista: arrDiasVariados[i % arrDiasVariados.length],
       status: i === 13 ? 'Inativo' : 'Ativo',
@@ -340,6 +350,10 @@ export const gerarDadosDeTestePro = async (groupId) => {
       id: `mock_a${i}`,
       nome: a.nome,
       nivel: a.nivel,
+      posicoes: [
+        POSICOES_QUADRA[(nomesMensalistas.length + i) % POSICOES_QUADRA.length].id,
+        POSICOES_QUADRA[(nomesMensalistas.length + i + 1) % POSICOES_QUADRA.length].id,
+      ],
       tipo: 'AVULSO',
       diasMensalista: [],
       status: 'Ativo',
@@ -390,7 +404,7 @@ export const gerarDadosDeTestePro = async (groupId) => {
     });
 
     const times = equipes.map((equipe, t) => ({
-      nome: `Time ${t + 1}`,
+      nome: nomeDoTime(null, t),
       jogadores: equipe.map((p) => ({ id: p.id, nivelNoSorteio: p.nivel })),
       vitorias: 0,
     }));
@@ -448,7 +462,7 @@ export const gerarDadosDeTestePro = async (groupId) => {
     .sort((a, b) => participacoes[b.id] - participacoes[a.id] || b.nivel - a.nivel)
     .forEach((p) => incluir(participantesHoje, p, 14));
 
-  const draw = equilibraTimes(participantesHoje, rodadas, 6);
+  const draw = equilibraTimes(participantesHoje, rodadas);
   const sorteioAberto = {
     groupId,
     dia: nomeDiaHoje,
@@ -456,11 +470,16 @@ export const gerarDadosDeTestePro = async (groupId) => {
     criadoEm: refDate.toISOString(),
     concluido: false,
     times: draw.times.map((time, t) => ({
-      nome: `Time ${t + 1}`,
-      jogadores: time.map((j) => ({ id: j.id, nivelNoSorteio: Number(j.nivel) || 3 })),
+      nome: nomeDoTime(null, t),
+      jogadores: time.map((j, posicao) => ({
+        id: j.id,
+        nivelNoSorteio: Number(j.nivel) || 3,
+        posicaoId: j.posicaoId || POSICOES_QUADRA[posicao].id,
+        ...(Array.isArray(j.posicoes) ? { posicoes: j.posicoes } : {}),
+      })),
       vitorias: 0,
     })),
-    reservas: draw.reservas.map((j) => j.id),
+    reservas: draw.reservas.map((j) => ({ id: j.id, ...(Array.isArray(j.posicoes) ? { posicoes: j.posicoes } : {}) })),
     diagnostico: draw.diagnostico,
     origem: 'dados_teste',
   };
@@ -486,6 +505,7 @@ export const gerarDadosDeTestePro = async (groupId) => {
       nome: encryptData(p.nome, groupId),
       dataNascimento: encryptData(p.dataNascimento, groupId),
       nivel: p.nivel,
+      posicoes: p.posicoes,
       tipo: p.tipo,
       diasMensalista: p.diasMensalista || [],
       groupId,

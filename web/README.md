@@ -78,7 +78,7 @@ Cada push na branch `main` cria um novo deploy automaticamente.
 
 ## 🛠️ Tecnologias
 - **React 19 + Vite 6**
-- **Tailwind CSS 3**
+- **Tailwind CSS 4** (integração Vite)
 - **Firebase Firestore SDK (v11)**
 - **Crypto-JS (AES-256)**
 - **Lucide React Icons**

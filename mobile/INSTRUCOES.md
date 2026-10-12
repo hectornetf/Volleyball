@@ -10,7 +10,7 @@ A plataforma utiliza uma arquitetura **SaaS (Software as a Service)** moderna:
 - **Frontend**: React Native with Expo SDK 57 (Managed Workflow).
 - **Backend**: Firebase Firestore (NoSQL) com isolamento por Grupo.
 - **Segurança**: Criptografia AES-256 (Camada de Aplicação).
-- **Styling**: NativeWind (Tailwind CSS para Mobile).
+- **Styling**: Tailwind CSS 4 com NativeWind 5.0.0-rc.0 e react-native-css 3.1.0-rc.0 (pré-lançamentos); o app importa `global.css` e integra o CSS pelo Metro/PostCSS do Expo.
 
 ---
 
@@ -147,6 +147,12 @@ O workflow de atualização OTA usa o ambiente `preview` do próprio Expo. Assim
 
 Depois de cadastrá-las, faça uma nova build `preview`, instale o novo APK e publique uma OTA somente após conferir que o workflow concluiu sem erro.
 
+### Erro "Failed to download remote update"
+
+Se o aplicativo instalado mostrar `Failed to download remote update`, confira a conexão e se há uma atualização publicada no canal `preview`. Uma resposta `NO_UPDATE_AVAILABLE` significa apenas que não existe OTA compatível disponível naquele momento; não é, por si só, falha de configuração.
+
+Quando forem alterados módulos nativos do Expo, como `expo-updates`, é necessário gerar e instalar um APK novo — uma OTA atualiza apenas o JavaScript e não substitui os componentes nativos do aplicativo. Antes de gerar a build, rode `npx expo install --fix`, `npx -y expo-doctor` e `npm run lint`; confirme também que o workflow EAS concluiu a build e a publicação OTA. Se a build falhar por limite de uso do plano EAS, a OTA não será publicada por esse workflow.
+
 ### 4. Atualizações automáticas (Build + EAS Update)
 
 O workflow `.github/workflows/mobile-update.yml` roda a cada push na branch `main` com alterações em `mobile/` e:
@@ -199,6 +205,7 @@ flowchart TB
 - **AES-256 no cliente** via `utils/crypto.js` (nomes, datas, lançamentos).
 - **Multi-Tenancy**: toda query exige `groupId` (`firestore.rules`).
 - **Segredos no `.env`** (`EXPO_PUBLIC_*`) e `EXPO_TOKEN` como secret do GitHub — nunca versionados.
+- **Cobrança mensal consolidada**: o financeiro soma as mensalidades pendentes de cada jogador entre os dias da semana, permite marcar todos os dias pendentes de uma vez como pagos ou reabrir o pagamento e compartilhar a lista total pelo WhatsApp. A gravação preserva as chaves diárias existentes no Firestore para manter a compatibilidade dos dados.
 
 ---
 

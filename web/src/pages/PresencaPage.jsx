@@ -218,7 +218,7 @@ export default function PresencaPage() {
       </div>
 
       {/* Players List Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2">
         {filtered.map((j) => {
           const statusDia = j.presencas?.[dataJogo] || 'Falta';
           const isConfirmado = statusDia === 'Confirmado';
@@ -231,34 +231,34 @@ export default function PresencaPage() {
           return (
             <div
               key={j.id}
-              className={`p-4 rounded-2xl border transition-all flex items-center justify-between ${
+              className={`min-w-0 p-4 rounded-2xl border transition-all flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between ${
                 isConfirmado
                   ? 'bg-emerald-950/20 border-emerald-500/30'
                   : 'bg-slate-900/70 border-slate-800 hover:border-slate-700'
               }`}
             >
               {/* Left Info */}
-              <div className="flex items-center space-x-3 min-w-0">
+              <div className="flex min-w-0 flex-1 items-center space-x-3">
                 <Avatar jogador={j} size={44} />
-                <div className="space-y-1 min-w-0">
-                <div className="flex items-center space-x-2">
-                  <span className={`font-extrabold text-base ${isFalta ? 'line-through text-slate-500' : 'text-white'}`}>
+                <div className="min-w-0 flex-1 space-y-1">
+                <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className={`min-w-0 max-w-full flex-1 truncate font-extrabold text-base ${isFalta ? 'line-through text-slate-500' : 'text-white'}`}>
                     {j.nome}
                   </span>
-                  <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${
+                  <span className={`shrink-0 text-[10px] font-black uppercase px-2 py-0.5 rounded ${
                     isAvulsoDesteDia ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
                   }`}>
                     {isAvulsoDesteDia ? 'Avulso' : 'Mensalista'}
                   </span>
                 </div>
 
-                <div className="flex items-center space-x-3 text-xs text-slate-400">
+                <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
                   <span>Nível: <strong className="text-amber-400">{j.nivel || 3} ⭐</strong></span>
                   
                   {isAvulsoDesteDia && (
                     <button
                       onClick={() => handleToggleDiariaAvulso(j)}
-                      className={`text-[11px] font-bold px-2 py-0.5 rounded flex items-center space-x-1 transition-all ${
+                       className={`flex shrink-0 items-center space-x-1 whitespace-nowrap rounded px-2 py-0.5 text-[11px] font-bold transition-all ${
                         pagouDiariaHoje(j)
                           ? 'bg-amber-400/20 text-amber-400 border border-amber-400/30'
                           : 'bg-amber-500 hover:bg-amber-400 text-white font-extrabold shadow-md'
@@ -273,11 +273,11 @@ export default function PresencaPage() {
               </div>
 
               {/* Right Vou / Falto Action Buttons */}
-              <div className="flex items-center space-x-1.5">
+              <div className="flex w-full shrink-0 items-center gap-1.5 lg:w-auto">
                 <button
                   onClick={() => handleMarcarPresenca(j, 'Confirmado')}
                   disabled={updatingId === j.id || (avulsoNaoPago && !isConfirmado)}
-                  className={`px-3 py-2 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-all ${
+                  className={`flex-1 px-3 py-2 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-all lg:flex-none ${
                     isConfirmado
                       ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
                       : 'bg-slate-800 text-slate-400 hover:text-white border border-slate-700'
@@ -289,7 +289,7 @@ export default function PresencaPage() {
                 <button
                   onClick={() => handleMarcarPresenca(j, 'Falta')}
                   disabled={updatingId === j.id}
-                  className={`px-3 py-2 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-all ${
+                  className={`flex-1 px-3 py-2 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-all lg:flex-none ${
                     isFalta
                       ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20'
                       : 'bg-slate-800 text-slate-400 hover:text-white border border-slate-700'
