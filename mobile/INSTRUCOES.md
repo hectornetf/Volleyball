@@ -121,19 +121,19 @@ Para gerar os arquivos de instalação final, utilizamos o **EAS Build**.
 
 ### 1. Login
 ```bash
-npx eas-cli login
+npx --yes eas-cli@27.1.0 login
 ```
 
 ### 2. Configuração do Projeto
 Execute na pasta `mobile/`:
 ```bash
-npx eas-cli@latest project:info
+npx --yes eas-cli@27.1.0 project:info
 ```
 
 ### 3. Comandos de Geração
-- **Android (APK de Teste)**: `npx eas-cli build --platform android --profile preview`
-- **Android (Play Store)**: `npx eas-cli build --platform android --profile production`
-- **iOS (IPA)**: `npx eas-cli build --platform ios` (Requer conta Apple Developer)
+- **Android (APK de Teste)**: `npx --yes eas-cli@27.1.0 build --platform android --profile preview`
+- **Android (Play Store)**: `npx --yes eas-cli@27.1.0 build --platform android --profile production`
+- **iOS (IPA)**: `npx --yes eas-cli@27.1.0 build --platform ios` (Requer conta Apple Developer)
 
 > **Build automático:** o workflow `.github/workflows/mobile-update.yml` já gera o APK `preview` automaticamente a cada push na branch `main` — os comandos acima são apenas para builds manuais ou de outros perfis.
 

@@ -196,7 +196,7 @@ Encontrou um bug ou tem uma sugestão? Abra uma **Issue** ou **Pull Request** no
 - **Web:** disponível em [voleizindoscria.vercel.app](https://voleizindoscria.vercel.app/), com deploy automático a cada push na `main`.
 - **Mobile:** Expo SDK 57, com builds pelo EAS e atualizações JavaScript via EAS Update.
 - **APK automático:** cada push na `main` com mudanças em `mobile/` gera um novo APK `preview` via workflow `mobile-update.yml` — sem comando manual. O `.apk` fica disponível no painel do EAS.
-- **APK manual (opcional):** execute `npx eas-cli@latest build --platform android --profile preview` dentro de `mobile/`.
+- **APK manual (opcional):** execute `npx --yes eas-cli@27.1.0 build --platform android --profile preview` dentro de `mobile/`.
 - **Atualizações OTA:** o workflow `.github/workflows/mobile-update.yml` publica no canal `preview` quando há alterações em `mobile/` na `main`.
 - **Dados de teste (Admin, Web e Mobile):** "Gerar Amostra Completa de Teste PRO" cria 16 jogadores, 12 rodadas concluídas com placar por confronto, 1 rodada aberta do dia, presenças, finanças e configuração do mês. Use **"Resetar Todos os Dados do Grupo"** antes de gerar — o gerador bloqueia grupos que já possuem elenco para evitar duplicação.
 

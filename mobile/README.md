@@ -42,7 +42,7 @@ Para testar no celular, use o Expo Go compatível com SDK 57 ou gere uma build p
 
 ```bash
 # Opcional — gerar APK manualmente (o Actions já faz isso a cada push)
-npx eas-cli@latest build --platform android --profile preview
+npx --yes eas-cli@27.1.0 build --platform android --profile preview
 ```
 
 ---

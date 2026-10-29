@@ -39,11 +39,12 @@ jobs:
         run: npm run lint
 
       - name: Build APK (Android preview)
-        run: npx eas-cli@latest build --platform android --profile preview --message "${{ github.event.head_commit.message }}" --non-interactive
+        run: npx --yes eas-cli@27.1.0 build --platform android --profile preview --message "$COMMIT_MESSAGE" --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message || 'Manual preview build' }}
 
       - name: Publish OTA update
-        run: npx eas-cli@latest update --channel preview --environment preview --auto --non-interactive
+        run: npx --yes eas-cli@27.1.0 update --channel preview --environment preview --auto --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
