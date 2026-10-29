@@ -91,6 +91,7 @@ flowchart LR
 - **AES-256 no cliente** via `utils/crypto.js` (nomes, datas, lançamentos).
 - **Multi-Tenancy**: toda query exige `groupId` (`firestore.rules`).
 - **Segredos no `.env`** (`EXPO_PUBLIC_*`) e `EXPO_TOKEN` como secret do GitHub — nunca versionados.
+- **deepmerge**: enquanto o Expo depender de uma versão sem correção publicada, `patch-package` aplica a mitigação em `npm install`; `npm run test:security` valida a proteção contra prototype poisoning.
 
 ---
 

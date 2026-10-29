@@ -168,7 +168,7 @@ Cada commit incrementa automaticamente o número de versão (patch: `1.0.0 → 1
 - **Auditoria de Histórico**: Feed de logs gravados no Firestore para acompanhamento de pagamentos e presenças.
 - **Regras do Firestore** (`firestore.rules`): toda query exige o filtro `groupId`, garantindo isolamento entre grupos.
 - **Segredos fora do código**: credenciais via `.env` (`EXPO_PUBLIC_*` / `VITE_*`) e `EXPO_TOKEN` como secret do GitHub — nunca versionados.
-- **Dependências**: Dependabot verifica atualizações semanalmente e abre PRs para revisão. Pacotes acoplados ao SDK mobile são agrupados para atualização coordenada; o workflow de segurança roda auditoria, lint e build nos PRs e também semanalmente. Correções de segurança não exigem commits manuais; revise e faça merge dos PRs gerados.
+- **Dependências**: Dependabot verifica atualizações semanalmente. PRs agrupados de atualizações minor/patch são mesclados automaticamente após auditoria, lint e build aprovados; upgrades major e atualizações coordenadas do SDK mobile continuam exigindo revisão manual. O workflow também roda semanalmente para auditar e validar o projeto.
 
 ---
 

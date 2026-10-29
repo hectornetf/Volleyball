@@ -9,6 +9,8 @@ on:
       - "web/package-lock.json"
       - "mobile/package.json"
       - "mobile/package-lock.json"
+      - "mobile/patches/**"
+      - "mobile/tests/**"
       - ".github/dependabot.yml"
       - ".github/workflows/dependency-security.yml"
   schedule:
@@ -67,6 +69,10 @@ jobs:
         run: npm ci
         working-directory: mobile
 
+      - name: Test dependency security patch
+        run: npm run test:security
+        working-directory: mobile
+
       - name: Audit dependencies
         run: npm audit --audit-level=high
         working-directory: mobile
@@ -78,3 +84,23 @@ jobs:
       - name: Check Expo compatibility
         run: npx expo install --check
         working-directory: mobile
+
+  automerge:
+    name: Auto-merge validated Dependabot updates
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.actor == 'dependabot[bot]' &&
+      contains(github.event.pull_request.title, 'minor-and-patch group')
+    needs:
+      - web
+      - mobile
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Merge after successful validation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge "$PR_URL" --squash --delete-branch
