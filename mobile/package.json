@@ -17,7 +17,7 @@
     "@react-navigation/bottom-tabs": "^7.21.0",
     "@react-navigation/native": "^7.2.2",
     "@tailwindcss/postcss": "4.3.3",
-    "babel-preset-expo": "~57.0.0",
+    "babel-preset-expo": "~58.0.23",
     "crypto-js": "^4.2.0",
     "expo": "~58.0.21",
     "expo-clipboard": "~58.0.4",
@@ -50,7 +50,7 @@
   "private": true,
   "devDependencies": {
     "@babel/core": "^7.29.0",
-    "babel-preset-expo": "~57.0.0",
+    "babel-preset-expo": "~58.0.23",
     "eslint": "^9.39.4",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react": "^7.37.5",
