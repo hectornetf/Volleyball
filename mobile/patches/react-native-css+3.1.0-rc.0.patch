@@ -1,0 +1,19 @@
+diff --git a/node_modules/react-native-css/dist/commonjs/compiler/compiler.js b/node_modules/react-native-css/dist/commonjs/compiler/compiler.js
+index 07995ed..624fa1d 100644
+--- a/node_modules/react-native-css/dist/commonjs/compiler/compiler.js
++++ b/node_modules/react-native-css/dist/commonjs/compiler/compiler.js
+@@ -143,7 +143,6 @@ function compile(code, options = {}) {
+   const visitor = {
+     Rule(rule) {
+       (0, _atRules.maybeMutateReactNativeOptions)(rule, builder);
+-      return rule;
+     },
+     StyleSheetExit(sheet) {
+       if (isLoggerEnabled) {
+@@ -160,6 +159,5 @@ function compile(code, options = {}) {
+         // We have processed this rule, so now delete it from the AST
+       }
+       logger(`Exiting lightningcss`);
+-      return sheet;
+     }
+   };
