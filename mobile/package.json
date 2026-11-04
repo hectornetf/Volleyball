@@ -49,7 +49,7 @@
   "license": "MIT",
   "private": true,
   "devDependencies": {
-    "@babel/core": "^7.29.0",
+    "@babel/core": "^8.0.10",
     "babel-preset-expo": "~58.0.23",
     "eslint": "^9.39.4",
     "eslint-config-prettier": "^10.1.8",
